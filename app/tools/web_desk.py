@@ -596,7 +596,7 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
                         steps["newswire"].status, steps["newswire"].summary = "skipped", "unavailable: Nimble news search returned errors"
                         return
             desk.street = _as_items(r, 5)
-            steps["newswire"].summary = f"{len(r)} stories since Oct 8" + (f" · {', '.join(sorted({x.source for x in desk.street})[:3])}" if r else "")
+            steps["newswire"].summary = f"{len(r)} stories since {_info().session_day:%b %-d}" + (f" · {', '.join(sorted({x.source for x in desk.street})[:3])}" if r else "")
 
         async with nimble.client(timeout=ENRICH_BUDGET_S) as http_slow:
             tasks = [asyncio.create_task(_timed(steps[sid], fn(), on_change))

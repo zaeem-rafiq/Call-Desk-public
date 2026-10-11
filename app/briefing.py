@@ -78,7 +78,7 @@ def table_name() -> str:
 
 
 def instructions(info: config.CallInfo) -> str:
-    return (f"You write the end-of-call brief for the investor relations and FP&A team of a peer consumer staples company. "
+    return (f"You write the end-of-call brief for the investor relations and FP&A team of a peer company in the same industry. "
             f"Below are the fact-checked guidance flags from {info.title} ({info.ticker}), one per line: "
             "metric | direction | prior guidance | new value (where the number came from) | what changed | why it matters | "
             "confidence from 0 to 1. Return a headline of at most 14 words and 3 to 5 bullets of at most 20 words each, "
