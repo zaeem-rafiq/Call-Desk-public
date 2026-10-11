@@ -51,9 +51,11 @@ class EventHub:
         self.close_recording()
         if not (promote and self._record_dir):
             return None
-        latest = REPLAY_DIR / "latest"
+        latest, prev = REPLAY_DIR / "latest", REPLAY_DIR / "latest-prev"
         if latest.exists():
-            shutil.rmtree(latest)
+            if prev.exists():
+                shutil.rmtree(prev)
+            latest.rename(prev)  # keep the previous good cache one step back
         shutil.copytree(self._record_dir, latest)
         _write_readable_exports(latest)
         return latest

@@ -65,7 +65,10 @@ def main() -> int:
     print(f"test query: {TEST_QUERY}")
     for r in rows:
         print("  ->", json.dumps(r.get("CHUNK", ""))[:160])
-    return 0 if rows else 2
+    ok = bool(rows) and all(r.get("CHUNK") for r in rows)
+    if not ok:
+        print("self-test FAILED: no rows, or rows without CHUNK text")
+    return 0 if ok else 2
 
 
 if __name__ == "__main__":

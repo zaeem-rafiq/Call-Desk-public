@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import logging
 from datetime import datetime
@@ -40,20 +41,22 @@ class RunManager:
     def running(self) -> bool:
         return self.task is not None and not self.task.done()
 
-    def start(self, mode: str, speed: float, start_s: float = 0.0) -> str:
-        self.stop()
+    async def start(self, mode: str, speed: float, start_s: float = 0.0) -> str:
+        await self.stop()  # the old run must finish publishing "stopped" before the new run's hub reset
         run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
         record = mode == "live"
         hub.start_run(run_id, record=record)
-        self.mode, self.start_s, self.speed = mode, start_s, speed
+        chunk = float(config.get("CHUNK_SECONDS") or 12)
+        self.mode, self.speed = mode, speed
+        self.start_s = (start_s // chunk) * chunk if mode == "live" else start_s  # live runs snap to a chunk
         self.task = asyncio.create_task(self._run(mode, speed, run_id, record, start_s))
         return run_id
 
     async def _run(self, mode: str, speed: float, run_id: str, record: bool, start_s: float) -> None:
         try:
             summary = await (pipeline.run_live(hub, speed, start_s) if mode == "live" else replay.run_replay(hub, speed, start_s))
-            if record and start_s == 0:
-                _promote(run_id, summary)
+            if record:
+                _promote(run_id, {**summary, "speed": speed, "start_s": start_s})
         except asyncio.CancelledError:
             hub.publish("status", {"state": "stopped", "mode": mode})
             hub.close_recording()
@@ -63,21 +66,38 @@ class RunManager:
             hub.publish("status", {"state": "error", "mode": mode, "message": f"{type(exc).__name__}: {exc}"})
             hub.close_recording()
 
-    def stop(self) -> None:
+    async def stop(self) -> None:
         if self.running:
             self.task.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await self.task
+
+
+def _run_quality(summary: dict) -> int | None:
+    """Number of live integrations for a clean, full, real-time Gemini run; None if not replay-worthy."""
+    clean = (
+        summary.get("transcriber") == "gemini"
+        and summary.get("speed") == 1.0
+        and summary.get("start_s", 0) == 0
+        and not summary.get("errors")
+        and not summary.get("degraded")
+    )
+    return sum(v == "live" for v in summary.get("integrations", {}).values()) if clean else None
 
 
 def _promote(run_id: str, summary: dict) -> None:
-    """Keep the best run as the replay cache: a real-Gemini run, or anything if no cache exists."""
-    gemini_live = summary.get("transcriber") == "gemini"
-    if not (gemini_live or not replay.available()):
+    """Replace the replay cache only with a clean run at least as live as the cached one."""
+    quality = _run_quality(summary)
+    cached = replay.meta()
+    cached_quality = _run_quality(cached) if cached else None
+    if replay.available() and (quality is None or (cached_quality is not None and quality < cached_quality)):
         hub.finish_run(promote=False)
+        log.info("run %s kept out of the replay cache (quality %s vs cached %s)", run_id, quality, cached_quality)
         return
     latest = hub.finish_run(promote=True)
     if latest:
         (latest / "meta.json").write_text(json.dumps({"run_id": run_id, **summary}, indent=2))
-        log.info("replay cache updated from run %s", run_id)
+        log.info("replay cache updated from run %s (quality %s)", run_id, quality)
 
 
 runs = RunManager()
@@ -96,13 +116,13 @@ async def start_run(req: RunRequest) -> dict:
         raise HTTPException(409, "no replay cache yet; run live once first")
     if mode not in ("live", "replay"):
         raise HTTPException(400, "mode must be live or replay")
-    run_id = runs.start(mode, req.speed, max(0.0, req.start_s))
+    run_id = await runs.start(mode, req.speed, max(0.0, req.start_s))
     return {"run_id": run_id, "mode": mode}
 
 
 @app.post("/api/stop")
 async def stop_run() -> dict:
-    runs.stop()
+    await runs.stop()
     return {"stopped": True}
 
 
@@ -126,9 +146,8 @@ async def state() -> dict:
 
 @app.get("/api/events")
 async def events(request: Request) -> StreamingResponse:
-    q = hub.subscribe()
-
     async def stream():
+        q = hub.subscribe()
         try:
             yield "retry: 2000\n\n"
             while True:

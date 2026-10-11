@@ -48,6 +48,14 @@ def _types():
     return types
 
 
+def _require_output(resp) -> None:
+    """Blocked or truncated responses come back with no text; fail loudly instead of returning nothing."""
+    if resp.parsed is None and not resp.text:
+        cands = getattr(resp, "candidates", None) or []
+        reason = cands[0].finish_reason if cands else getattr(resp, "prompt_feedback", None)
+        raise RuntimeError(f"empty Gemini response ({reason})")
+
+
 # ---------------------------------------------------------------- listening
 LISTEN_SYSTEM = """You are the listening layer of Call Desk, which monitors earnings calls live for corporate IR and FP&A teams.
 You receive one short audio chunk of {company} ({ticker}): {title}, held {date}.
@@ -89,9 +97,12 @@ async def transcribe_and_extract(wav: bytes, context: list[str], k: int, start: 
                 response_mime_type="application/json",
                 response_schema=ChunkResult,
                 thinking_config=types.ThinkingConfig(thinking_level="low"),
+                # A live feed cannot wait 90 s for one chunk: shorter timeout, fewer retries than the agent.
+                http_options=types.HttpOptions(timeout=15_000, retry_options=types.HttpRetryOptions(attempts=2, initial_delay=1.0)),
             ),
         )
-    result = resp.parsed if isinstance(resp.parsed, ChunkResult) else ChunkResult.model_validate_json(resp.text or "{}")
+    _require_output(resp)
+    result = resp.parsed if isinstance(resp.parsed, ChunkResult) else ChunkResult.model_validate_json(resp.text)
     for c in result.claims:
         if c.metric not in METRICS:
             c.metric = "other"
@@ -181,8 +192,8 @@ async def agent_fact_check(claim: Claim, flag: Flag, info: config.CallInfo, plan
     )
     resp = await client().aio.models.generate_content(model=model, contents=[_claim_block(claim, flag)], config=tool_cfg)
     calls = [(c.name, dict(c.args or {})) for c in (resp.function_calls or []) if c.name in plan]
-    # Pin the price lookup to the quote's call time; the model may reformat the timestamp.
-    calls = [(n, {**a, "since_ts": flag.call_ts}) if n == "get_price_reaction" else (n, a) for n, a in calls]
+    # Pin the price lookup to the plan (quote time, ticker, benchmark); the model may reformat them.
+    calls = [(n, plan[n]) if n == "get_price_reaction" else (n, a) for n, a in calls]
     requested = {n for n, _ in calls}
     calls += [(n, args) for n, args in plan.items() if n not in requested]  # every flag gets all three checks
     log.info("agent %s tool calls: %s", flag.id, [(n, a.get("query", a.get("ticker"))) for n, a in calls])
@@ -209,7 +220,8 @@ async def agent_fact_check(claim: Claim, flag: Flag, info: config.CallInfo, plan
             thinking_config=types.ThinkingConfig(thinking_level="low"),
         ),
     )
-    s = synth.parsed if isinstance(synth.parsed, Synthesis) else Synthesis.model_validate_json(synth.text or "{}")
+    _require_output(synth)
+    s = synth.parsed if isinstance(synth.parsed, Synthesis) else Synthesis.model_validate_json(synth.text)
     out = s.model_dump()
     out["consistent"] = out.pop("consistent_with_prior")
     out["evidence"] = [{**e, "index": e["index"] - 1} for e in out["evidence"]]

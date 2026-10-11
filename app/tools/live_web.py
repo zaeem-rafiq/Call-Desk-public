@@ -37,6 +37,7 @@ async def mock_search_live_web(query: str, limit: int = 5) -> list[dict]:
 
 NIMBLE_BASE = "https://sdk.nimbleway.com/v2"
 EXTRACT_TOP = 2  # pages to open for full text; the rest keep their search description
+EXTRACT_BUDGET_S = 4.0
 
 
 def _passages(markdown: str, query: str, max_chars: int = 700) -> str:
@@ -76,7 +77,7 @@ async def live_search_live_web(query: str, limit: int = 5) -> list[dict]:
         async def enrich(item: dict) -> None:
             try:
                 e = await http.post("/extract", json={"url": item["url"], "formats": ["markdown"], "markdown_backend": "main_content",
-                                                      "request_timeout": 8000}, timeout=10.0)
+                                                      "request_timeout": 4000}, timeout=EXTRACT_BUDGET_S + 1)
                 body = e.json()
                 if body.get("status") == "success":
                     text = _passages((body.get("data") or {}).get("markdown") or "", query)
@@ -86,5 +87,9 @@ async def live_search_live_web(query: str, limit: int = 5) -> list[dict]:
             except Exception:  # noqa: BLE001 - extraction is best effort; the search description stays
                 pass
 
-        await asyncio.gather(*(enrich(i) for i in results[:EXTRACT_TOP] if i["url"]))
+        pending = [asyncio.create_task(enrich(i)) for i in results[:EXTRACT_TOP] if i["url"]]
+        if pending:  # extraction is a bonus: keep search descriptions for pages that miss the time box
+            _, late = await asyncio.wait(pending, timeout=EXTRACT_BUDGET_S)
+            for task in late:
+                task.cancel()
     return results

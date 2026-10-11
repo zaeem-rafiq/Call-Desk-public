@@ -97,6 +97,7 @@ class Flag(BaseModel):
     sentry_trace_url: str | None = None
     tool_calls: list[ToolCall] = Field(default_factory=list)
     mocked: list[str] = Field(default_factory=list)  # integrations that were mocked for this flag
+    degraded: bool = False  # the live agent failed; the card shows the claim as heard plus raw tool evidence
 
 
 class TranscriptSegment(BaseModel):

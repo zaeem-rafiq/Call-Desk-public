@@ -60,6 +60,24 @@ def _mock_synthesis(claim: Claim, label: str, prior_hits: list[dict], web_hits: 
     }
 
 
+def _claim_only_synthesis(claim: Claim, label: str, results: dict) -> dict:
+    """Verdict when the live agent failed: only what was heard, with the raw tool hits as neutral evidence."""
+    n_prior = len(results["search_prior_guidance"].data or []) if results.get("search_prior_guidance") and results["search_prior_guidance"].ok else 0
+    n_web = len(results["search_live_web"].data or []) if results.get("search_live_web") and results["search_live_web"].ok else 0
+    return {
+        "direction": claim.direction,
+        "new_value": claim.new_value,
+        "new_value_source": "spoken" if claim.new_value else "",
+        "prior_value": claim.prior_value,
+        "prior_found": False,
+        "what_changed": f"{label}: {claim.new_value or 'change heard on the call'}.",
+        "why_it_matters": "The agent's verdict is unavailable for this line; the evidence below is unreviewed.",
+        "evidence": [{"source": "prior", "index": i, "stance": "neutral"} for i in range(min(2, n_prior))]
+        + [{"source": "web", "index": i, "stance": "neutral"} for i in range(min(3, n_web))],
+        "related_changes": [],
+    }
+
+
 async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: Callable[[Flag], None]) -> Flag:
     from . import gemini  # local import: gemini imports google-genai lazily
 
@@ -75,9 +93,12 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
         plan["get_price_reaction"]["since_ts"] = flag.call_ts
         use_llm = not config.is_mock("gemini")
 
+        ran: dict[str, tools.ToolResult] = {}
+
         async def run_and_show(calls: list[tuple[str, dict]]) -> dict[str, tools.ToolResult]:
             """Run the tools, then publish their timings and the price chart before the verdict is written."""
             res = await run_tools(calls)
+            ran.update(res)
             flag.tool_calls = [r.call for r in res.values()]
             price = res.get("get_price_reaction")
             if price and price.ok and price.data:
@@ -91,15 +112,20 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
             else:
                 results = await run_and_show(list(plan.items()))
                 synthesis = None
-        except Exception as exc:  # noqa: BLE001 - agent failure degrades to the deterministic plan
+        except Exception as exc:  # noqa: BLE001 - agent failure degrades to the claim as heard + raw tool evidence
             observability.capture(exc)
-            log.warning("agent failed, using deterministic plan: %s", exc)
-            results, synthesis = await run_and_show(list(plan.items())), None
+            log.warning("agent failed for %s: %s", flag.id, exc)
+            missing = [(n, a) for n, a in plan.items() if n not in ran]
+            if missing:
+                await run_and_show(missing)
+            results = dict(ran)
+            synthesis = _claim_only_synthesis(claim, flag.metric_label, results)
+            flag.degraded = True
 
         prior_res, web_res, price_res = (results.get(k) for k in ("search_prior_guidance", "search_live_web", "get_price_reaction"))
         prior_hits = prior_res.data if prior_res and prior_res.ok else []
         web_hits = web_res.data if web_res and web_res.ok else []
-        if synthesis is None:
+        if synthesis is None:  # Gemini key missing: canned demo text, labelled MOCK in the UI and the eval
             synthesis = _mock_synthesis(claim, flag.metric_label, prior_hits, web_hits)
 
         flag.tool_calls = [r.call for r in results.values()]

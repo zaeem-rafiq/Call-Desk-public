@@ -132,7 +132,7 @@ def connect(database=_UNSET, schema=_UNSET):
         database=e["SNOWFLAKE_DATABASE"] if database is _UNSET else database,
         schema=e["SNOWFLAKE_SCHEMA"] if schema is _UNSET else schema,
         login_timeout=15,
-        network_timeout=30,
+        network_timeout=15,
         client_session_keep_alive=False,
     )
     if e.get("SNOWFLAKE_ROLE"):
@@ -152,9 +152,9 @@ def _query_shared(sql: str, params: tuple):
             try:
                 if _shared_conn is None or _shared_conn.is_closed():
                     _shared_conn = connect()
-                cur = _shared_conn.cursor()
-                cur.execute(sql, params)
-                return cur.fetchone()
+                with _shared_conn.cursor() as cur:
+                    cur.execute(sql, params, timeout=10)
+                    return cur.fetchone()
             except Exception:
                 try:
                     if _shared_conn is not None:
@@ -174,7 +174,7 @@ def _cortex_query(query: str, limit: int) -> list[dict]:
     svc = f"{e['SNOWFLAKE_DATABASE']}.{e['SNOWFLAKE_SCHEMA']}.{SERVICE}"
     body = json.dumps({"query": query, "columns": COLUMNS, "limit": limit})
     raw = _query_shared("SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(%s, %s)", (svc, body))[0]
-    return json.loads(raw).get("results", [])
+    return [{k.upper(): v for k, v in r.items()} for r in json.loads(raw).get("results", [])]
 
 
 def _cortex_query_fresh(query: str, limit: int) -> list[dict]:
@@ -186,7 +186,7 @@ def _cortex_query_fresh(query: str, limit: int) -> list[dict]:
         cur = conn.cursor()
         cur.execute("SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(%s, %s)", (svc, body))
         raw = cur.fetchone()[0]
-    return json.loads(raw).get("results", [])
+    return [{k.upper(): v for k, v in r.items()} for r in json.loads(raw).get("results", [])]
 
 
 async def live_search_prior_guidance(query: str, limit: int = 4) -> list[dict]:

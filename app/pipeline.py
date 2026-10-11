@@ -85,7 +85,8 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
     def publish_flag(flag: Flag) -> None:
         hub.publish("flag", flag.model_dump(mode="json"))
 
-    asyncio.create_task(_warmup(modes))
+    warm = asyncio.create_task(_warmup(modes))
+    errors = 0
     seen: set[str] = set()
     context: deque[str] = deque(maxlen=2)
     checks: list[asyncio.Task] = []
@@ -96,47 +97,57 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         """Current position in the call audio, or None when not running in real time."""
         return start_s + (hub.elapsed() - t0) * speed if speed > 0 else None
 
-    for k in range(k0, n_chunks):
-        start, end = k * chunk_s, min((k + 1) * chunk_s, duration)
-        if speed > 0:
-            await asyncio.sleep(max(0.0, (end - start_s) / speed - (hub.elapsed() - t0)))
-        wav = call_audio.wav_chunk(start, end) if call_audio else None
-        try:
-            result = await transcriber.process(k, start, end, wav, list(context))
-        except Exception as exc:  # noqa: BLE001 - a bad chunk must not stop the call
-            observability.capture(exc)
-            hub.publish("error", {"chunk": k, "message": f"chunk {k} failed: {type(exc).__name__}"})
-            continue
-
-        for seg in result.segments:
-            t = start + max(0.0, min(seg.start, end - start))
-            hub.publish("transcript", TranscriptSegment(t=round(t, 1), call_ts=_iso(info.call_ts(t)), speaker=seg.speaker, text=seg.text, chunk=k).model_dump())
-        if result.segments:
-            context.append(" ".join(f"{s.speaker}: {s.text}" for s in result.segments))
-
-        # Least material first, so the most material flag from this chunk lands on top of the feed.
-        for claim in sorted(result.claims, key=lambda c: c.materiality):
-            key = dedupe_key(claim)
-            accepted = claim.materiality >= threshold and key not in seen
-            hub.publish("claim", {"chunk": k, "quote": claim.quote, "metric": claim.metric, "materiality": claim.materiality,
-                                  "accepted": accepted, "reason": "duplicate" if key in seen else ("below threshold" if not accepted else "")})
-            if not accepted:
+    try:
+        for k in range(k0, n_chunks):
+            start, end = k * chunk_s, min((k + 1) * chunk_s, duration)
+            if speed > 0:
+                await asyncio.sleep(max(0.0, (end - start_s) / speed - (hub.elapsed() - t0)))
+            wav = call_audio.wav_chunk(start, end) if call_audio else None
+            try:
+                result = await transcriber.process(k, start, end, wav, list(context))
+            except Exception as exc:  # noqa: BLE001 - a bad chunk must not stop the call
+                observability.capture(exc)
+                hub.publish("error", {"chunk": k, "message": f"chunk {k} failed: {type(exc).__name__}"})
+                errors += 1
                 continue
-            seen.add(key)
-            t = start + max(0.0, min(claim.start, end - start))
-            flag = Flag(
-                id=f"f{len(seen):02d}-{claim.metric}", call_ts=_iso(info.call_ts(t)), t_offset=round(t, 1),
-                speaker=claim.speaker, quote=claim.quote, claim_type=claim.claim_type, metric=claim.metric,
-                metric_label=metric_label(claim.metric), direction=claim.direction, prior_value=claim.prior_value,
-                new_value=claim.new_value, materiality=claim.materiality,
-            )
-            now = audio_now()
-            flag.latency_s = None if now is None else round(now - t, 1)
-            publish_flag(flag)
-            checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag, audio_now)))
 
-    await asyncio.gather(*checks)
-    summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(seen)}
+            for seg in result.segments:
+                t = start + max(0.0, min(seg.start, end - start))
+                hub.publish("transcript", TranscriptSegment(t=round(t, 1), call_ts=_iso(info.call_ts(t)), speaker=seg.speaker, text=seg.text, chunk=k).model_dump())
+            if result.segments:
+                context.append(" ".join(f"{s.speaker}: {s.text}" for s in result.segments))
+
+            # Least material first, so the most material flag from this chunk lands on top of the feed.
+            for claim in sorted(result.claims, key=lambda c: c.materiality):
+                key = dedupe_key(claim)
+                accepted = claim.materiality >= threshold and key not in seen
+                hub.publish("claim", {"chunk": k, "quote": claim.quote, "metric": claim.metric, "materiality": claim.materiality,
+                                      "accepted": accepted, "reason": "duplicate" if key in seen else ("below threshold" if not accepted else "")})
+                if not accepted:
+                    continue
+                seen.add(key)
+                t = start + max(0.0, min(claim.start, end - start))
+                flag = Flag(
+                    id=f"f{len(seen):02d}-{claim.metric}", call_ts=_iso(info.call_ts(t)), t_offset=round(t, 1),
+                    speaker=claim.speaker, quote=claim.quote, claim_type=claim.claim_type, metric=claim.metric,
+                    metric_label=metric_label(claim.metric), direction=claim.direction, prior_value=claim.prior_value,
+                    new_value=claim.new_value, materiality=claim.materiality,
+                )
+                now = audio_now()
+                flag.latency_s = None if now is None else round(now - t, 1)
+                publish_flag(flag)
+                checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag, audio_now)))
+
+        await asyncio.gather(*checks)
+    finally:
+        # A stopped run must not leave fact-checks publishing into the next run.
+        for task in (*checks, warm):
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*checks, warm, return_exceptions=True)
+    degraded = sum(1 for t in checks if not t.cancelled() and t.exception() is None and t.result() and t.result().degraded)
+    summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(seen),
+               "errors": errors, "degraded": degraded}
     hub.publish("status", summary)
     return summary
 
@@ -152,7 +163,7 @@ async def _warmup(modes: dict[str, str]) -> None:
             log.warning("snowflake warmup failed: %s", exc)
 
 
-async def _safe_check(claim: Claim, flag: Flag, info: config.CallInfo, publish, audio_now) -> None:
+async def _safe_check(claim: Claim, flag: Flag, info: config.CallInfo, publish, audio_now) -> Flag:
     def publish_with_latency(f: Flag) -> None:
         now = audio_now()
         if f.status == "checked" and now is not None:
@@ -160,10 +171,12 @@ async def _safe_check(claim: Claim, flag: Flag, info: config.CallInfo, publish, 
         publish(f)
 
     try:
-        await fact_check(claim, flag, info, publish_with_latency)
+        return await fact_check(claim, flag, info, publish_with_latency)
     except Exception as exc:  # noqa: BLE001 - keep the provisional flag, mark it checked with zero confidence
         observability.capture(exc)
         flag.status = "checked"
+        flag.degraded = True
         flag.confidence = 0.0
         flag.confidence_rationale = f"fact-check failed: {type(exc).__name__}"
         publish_with_latency(flag)
+        return flag
