@@ -65,7 +65,13 @@ IR_DOMAINS = ["investors.pepsico.com", "pepsico.com", "sec.gov"]
 GUIDANCE_ROW = re.compile(r"(?i)^(core|organic|net revenue|reported|effective tax|tax rate|capital spending|capex|free cash flow|"
                           r"total cash|cash returns|dividends|share repurchases|foreign exchange|fx|acquisitions|"
                           r"earnings per share|eps|adjusted|operating margin|pre-?tax|total revenue|revenue|capacity|"
-                          r"fuel|casm|cost per|gross capital|leverage|debt)")
+                          r"fuel|casm|cost per|gross capital|gross leverage|leverage|debt)")
+
+
+# A guidance value, not a financial-statement cell: a unit or guidance wording ("+2.5% to +3.5%", "$6.50 - $7.50",
+# "Approximately 22%", "Low-end of", "At least 80%", "Below 5%", "Up mid-teens", "2x"). "17" or "(15)" never qualify.
+GUIDANCE_VALUE = re.compile(r"(?i)(\d(\.\d+)?\s?(%|percent|x\b|times|billion|million)|\$\s?\d|approx|low-?end|high-?end|at least|"
+                            r"below|above|up |down |flat|mid-|low-|high-single|single-digit|double-digit|teens)")
 
 
 def guidance_table(content: str, max_rows: int = 12) -> str:
@@ -74,7 +80,7 @@ def guidance_table(content: str, max_rows: int = 12) -> str:
     for line in content.splitlines():
         cells = [c.strip(" *") for c in line.strip().strip("|").split("|")] if line.strip().startswith("|") else []
         cells = [c for c in cells if c]
-        if len(cells) >= 2 and GUIDANCE_ROW.match(cells[0]) and re.search(r"\d", " ".join(cells[1:])):
+        if len(cells) >= 2 and GUIDANCE_ROW.match(cells[0]) and GUIDANCE_VALUE.search(cells[1]):
             rows.append(" | ".join(cells[:3]))
     return "; ".join(list(dict.fromkeys(rows))[:max_rows])
 

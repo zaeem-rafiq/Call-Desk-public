@@ -144,6 +144,34 @@ async def _run_bounded(tasks: list[asyncio.Task], budget_s: float) -> None:
         await asyncio.gather(*tasks, return_exceptions=True)
 
 
+_MONTHS = {m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)}
+
+
+def _about_this_call(hit: dict, company: str, ticker: str) -> bool:
+    """The wall-breaker opens only coverage of this call: it names the company and is not dated before the call day."""
+    text = f"{hit.get('title', '')} {hit.get('snippet', '')}"
+    name = company.split()[0]
+    if name.lower() not in text.lower() and not re.search(rf"\b{re.escape(ticker)}\b", text):
+        return False
+    from datetime import date
+
+    call_day = _info().session_day
+    published = str(hit.get("published") or "")[:10]
+    try:
+        if published and date.fromisoformat(published) < call_day:
+            return False
+    except ValueError:
+        pass
+    m = re.search(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? (\d{1,2}), (20\d\d)\b", text)
+    if m:
+        try:
+            if date(int(m.group(3)), _MONTHS[m.group(1).lower()], int(m.group(2))) < call_day:
+                return False
+        except ValueError:
+            pass
+    return True
+
+
 def _on(domain: str, hosts: list[str]) -> bool:
     """True when domain is one of hosts or a subdomain of one (investor.pepsico.com is pepsico.com)."""
     return any(domain == h or domain.endswith("." + h) for h in hosts)
@@ -519,13 +547,14 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
             for h in found.get("broad", []):
                 d = nimble.domain(h.get("url", ""))
                 old = re.search(r"/(20(?:[01]\d|2[0-5]))/", h.get("url", ""))  # a dated path before 2026 is last year's story
-                if d and d not in seen and not _on(d, TRANSCRIPT_HOSTS + _ir_domains() + VIDEO_HOSTS) and not old:
+                if (d and d not in seen and not _on(d, TRANSCRIPT_HOSTS + _ir_domains() + VIDEO_HOSTS) and not old
+                        and _about_this_call(h, company, ticker)):
                     seen.add(d)
                     candidates.append(h)
             candidates.sort(key=lambda h: 0 if _on(nimble.domain(h["url"]), HARD_DOMAINS) else 1)
             candidates = candidates[:4]
             if not candidates:
-                steps["wall"].status, steps["wall"].summary = "skipped", "no news article to open"
+                steps["wall"].status, steps["wall"].summary = "skipped", "no news article about this call to open"
                 return
             knowledge = await asyncio.gather(*(nimble.domain_knowledge(http, nimble.domain(h["url"])) for h in candidates), return_exceptions=True)
             scanned = [(h, k) for h, k in zip(candidates, knowledge) if isinstance(k, dict)]

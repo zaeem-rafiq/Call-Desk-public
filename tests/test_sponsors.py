@@ -133,7 +133,7 @@ def test_a_skipped_step_is_not_shown_as_ok(monkeypatch):
     asyncio.run(web_desk.enrich(desk, company="PepsiCo", ticker="PEP", metric_label="Core EPS growth", new_value=None,
                                 found={"broad": []}, mock=False, on_change=lambda: None))
     wall = next(s for s in desk.steps if s.id == "wall")
-    assert wall.status == "skipped" and wall.summary == "no news article to open"
+    assert wall.status == "skipped" and wall.summary == "no news article about this call to open"
 
 
 def test_nimble_billing_limit_shows_as_unavailable(monkeypatch):
@@ -356,3 +356,22 @@ def test_only_unit_bearing_guidance_numbers_can_start_a_billed_agent_run():
     for metric, value in [("core_eps_growth", "+2.5% to +3.5%"), ("eps", "$5.10 to $5.60"), ("leverage", "2.2x"),
                           ("free_cash_flow", "approximately $2.5 billion"), ("organic_revenue_growth", "approximately +3%")]:
         assert verifiable(metric, value), (metric, value)
+
+
+def test_wall_breaker_opens_only_coverage_of_this_call():
+    from app.tools.web_desk import _about_this_call
+
+    assert _about_this_call({"title": "PepsiCo cuts outlook", "snippet": "Oct 8, 2026 — PepsiCo lowered"}, "PepsiCo", "PEP")
+    assert not _about_this_call({"title": "PepsiCo Q4 results", "snippet": "Feb 3, 2026 — PepsiCo said"}, "PepsiCo", "PEP")
+    assert not _about_this_call({"title": "Snack makers slump", "snippet": "Consumer staples fell"}, "PepsiCo", "PEP")
+    assert not _about_this_call({"title": "PepsiCo", "snippet": "", "published": "2026-02-03"}, "PepsiCo", "PEP")
+
+
+def test_guidance_table_keeps_guidance_rows_only():
+    from app.tools.live_web import guidance_table
+
+    page = "| Core EPS | +2.5% to +3.5% | Low-end of +5% to +7% |\n| EPS | 17 | (15) |\n| Net revenue | 25,274 | 23,925 |\n" \
+           "| Gross Leverage (adjusted debt to EBITDAR) | Approx. 2x |\n"
+    table = guidance_table(page)
+    assert "Core EPS | +2.5% to +3.5%" in table and "Gross Leverage" in table
+    assert "| 17 |" not in table and "17 | (15)" not in table and "25,274" not in table
