@@ -130,8 +130,8 @@ def _with_history(hits: list[dict], history: list[dict]) -> dict:
     return {"hits": hits, "history": history}
 
 
-async def mock_search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP", limit: int = 4) -> dict:
-    history = await guidance_history.mock_guidance_history(ticker, metric) if metric else []
+async def mock_search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP", period: str | None = None, limit: int = 4) -> dict:
+    history = await guidance_history.mock_guidance_history(ticker, metric, period) if metric else []
     return _with_history(_mock_ranked(query, limit, ticker), history)
 
 
@@ -225,8 +225,8 @@ def _cortex_query_fresh(query: str, limit: int) -> list[dict]:
     return [{k.upper(): v for k, v in r.items()} for r in json.loads(raw).get("results", [])]
 
 
-async def live_search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP", limit: int = 4) -> dict:
+async def live_search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP", period: str | None = None, limit: int = 4) -> dict:
     """Cortex Search (filtered to the ticker) plus the metric's guidance history by SQL; both on the shared connection."""
     rows = await asyncio.to_thread(_cortex_query, query, limit, ticker)
-    history = await guidance_history.live_guidance_history(ticker, metric) if metric else []
+    history = await guidance_history.live_guidance_history(ticker, metric, period) if metric else []
     return _with_history(_shape(rows), history)

@@ -6,10 +6,10 @@ from . import prices, prior_guidance, web_desk
 from .base import ToolResult, run_tool
 
 
-async def search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP") -> ToolResult:
+async def search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP", period: str | None = None) -> ToolResult:
     """Last quarter's guidance (Snowflake Cortex Search) plus the metric's guidance history (SQL). Data: {hits, history}."""
     return await run_tool(
-        "search_prior_guidance", "snowflake", {"query": query, "metric": metric, "ticker": ticker},
+        "search_prior_guidance", "snowflake", {"query": query, "metric": metric, "ticker": ticker, "period": period},
         prior_guidance.live_search_prior_guidance, prior_guidance.mock_search_prior_guidance, timeout_s=8,
     )
 

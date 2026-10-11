@@ -26,7 +26,8 @@ MOCKS = Path(__file__).resolve().parent / "mocks"
 
 def default_queries(claim: Claim, label: str, info: config.CallInfo) -> dict[str, dict]:
     return {
-        "search_prior_guidance": {"query": f"{info.company} fiscal 2026 {label} guidance outlook", "metric": claim.metric, "ticker": info.ticker},
+        "search_prior_guidance": {"query": f"{info.company} fiscal 2026 {label} guidance outlook", "metric": claim.metric, "ticker": info.ticker,
+                                  "period": claim.period},
         "search_live_web": {"query": f"{info.company} Q3 2026 {label} {claim.new_value or ''} guidance".strip(),
                             "metric_label": label, "company": info.company, "new_value": claim.new_value},
         "get_price_reaction": {"ticker": info.ticker, "since_ts": "", "benchmark": info.primary_benchmark},

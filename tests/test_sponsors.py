@@ -329,3 +329,18 @@ def test_concurrent_flags_share_one_fresh_agent_run(monkeypatch, tmp_path):
     desks = asyncio.run(two())
     assert started == [1], f"{len(started)} billed runs for one metric"
     assert all(d.verify and d.verify.confidence == "high" for d in desks)
+
+
+def test_listener_slugs_and_periods_map_to_each_companys_guidance_lines():
+    from app.tools import guidance_history as g
+
+    g._csv_rows.cache_clear()
+    cases = {("DAL", "eps", "FY2026"): "eps", ("DAL", "eps", "Q4 2026"): "q4_eps", ("DAL", "operating_margin", "Q3 2026"): "q3_operating_margin",
+             ("DAL", "leverage", None): "gross_leverage", ("DAL", "unit_cost_growth", None): "nonfuel_unit_cost_growth",
+             ("DAL", "capacity", "Q4 2026"): "q4_capacity_growth", ("DAL", "fuel_price", "Q3 2026"): "q3_fuel_price",
+             ("PEP", "core_eps_growth", "FY2026"): "core_eps_growth"}
+    if "DAL" not in set(g._csv_rows()["TICKER"]):
+        cases = {k: v for k, v in cases.items() if k[0] == "PEP"}
+    for (ticker, metric, period), want in cases.items():
+        assert g.resolve_metric(ticker, metric, period) == want, (ticker, metric, period)
+    assert g.resolve_metric("PEP", "operating_margin", "Q4 2026") == "operating_margin"  # no line: unchanged, history empty

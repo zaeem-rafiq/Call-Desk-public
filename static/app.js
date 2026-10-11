@@ -293,7 +293,9 @@ function renderTrajectory(node, f) {
     ol.append(li);
   });
   const now = el("li", `tp now ${dirClass(f.direction)}`);
-  now.append(el("span", "tp-date", "Oct 8 · this call"), el("span", "tp-val", f.new_value ? compact(f.new_value) : "…"));
+  const callDay = new Date(f.call_ts);  // the call's own date (Oct 8 for PepsiCo, Oct 9 for Delta)
+  const dayLabel = `${MONTHS[Number(f.call_ts.slice(5, 7)) - 1]} ${Number(f.call_ts.slice(8, 10))}`;
+  now.append(el("span", "tp-date", `${Number.isNaN(callDay.getTime()) ? "" : dayLabel} · this call`), el("span", "tp-val", f.new_value ? compact(f.new_value) : "…"));
   ol.append(now);
 }
 
