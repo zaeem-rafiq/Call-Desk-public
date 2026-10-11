@@ -94,6 +94,17 @@ export function setVoiceRun(id) {
   runId = id;
 }
 
+// The voice says numbers as words ("two point five to three point five percent"); the screen shows the card's
+// own values. The sentence is "<company> <cuts|raises> <metric> guidance to <new>[, from <prior>]." (app/voice.py).
+function displayText(f) {
+  const spoken = f.alert_text;
+  const m = /^(.*?\b(?:guidance|outlook|forecast)) to /i.exec(spoken);
+  const value = (f.new_value || "").trim();
+  if (!m || !value || /^not stated$/i.test(value)) return spoken;
+  const prior = /, from /.test(spoken) && f.prior_value ? `, from ${f.prior_value.replace(/^(low|high) end/i, "the $1 end")}` : "";
+  return `${m[1]} to ${value}${prior}.`;
+}
+
 export function onFlagVoice(f) {
   ensureToggle();
   if (!f || !f.alert_text) return;
@@ -112,7 +123,9 @@ export function onFlagVoice(f) {
       const quote = card.querySelector(".quote");
       if (quote) quote.after(line); else card.append(line);
     }
-    line.querySelector(".voice-text").textContent = f.alert_text;
+    const text = line.querySelector(".voice-text");
+    text.textContent = displayText(f);
+    text.title = `Spoken: ${f.alert_text}`;
   }
   const key = `${runId}:${f.id}`;
   if (!isAlertUrl(f.alert_audio_url) || played.has(key)) return;
