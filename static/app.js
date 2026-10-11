@@ -39,6 +39,11 @@ const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padSt
 const fmtET = (iso) => ET.format(new Date(iso));
 const signed = (v, d = 2) => (v === null || v === undefined ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`);
 const dirClass = (d) => (d === "n/a" ? "na" : d || "na");
+// A raise in a lower-is-better metric (leverage, a tax rate, unit costs, fuel) is bad news: amber "RAISE · WORSE", not green.
+const LOWER_IS_BETTER = new Set(["leverage", "core_tax_rate", "unit_cost_growth", "fuel_price", "input_costs"]);
+const LOWER_IS_BETTER_LABEL = /tax rate|leverage|unit cost|casm|fuel|input cost|debt/i;
+const worseRaise = (direction, metric, label) => direction === "raise" && (LOWER_IS_BETTER.has(metric) || LOWER_IS_BETTER_LABEL.test(label || ""));
+const dirKey = (direction, metric, label) => (worseRaise(direction, metric, label) ? "raise worse" : direction);
 
 // ---------- integration pills ----------
 function renderPills(modes = {}) {
@@ -79,7 +84,7 @@ function tick() {
 
 function addMarker(flag) {
   if (!state.duration || document.getElementById(`m-${flag.id}`)) return;
-  const m = el("span", `marker ${dirClass(flag.direction)}`);
+  const m = el("span", `marker ${dirClass(dirKey(flag.direction, flag.metric, flag.metric_label))}`);
   m.id = `m-${flag.id}`;
   m.style.left = `${(flag.t_offset / state.duration) * 100}%`;
   m.title = flag.metric_label;
@@ -249,9 +254,9 @@ function renderFlag(f) {
   }
   const keep = ["fresh", "expanded"].filter((c) => node.classList.contains(c));
   const compact = f.direction === "n/a";  // a NOTE: one line under the material cards, expandable on click
-  node.className = ["flag", dirClass(f.direction), ...keep, ...(compact ? ["compact"] : [])].join(" ");
+  node.className = ["flag", dirClass(dirKey(f.direction, f.metric, f.metric_label)), ...keep, ...(compact ? ["compact"] : [])].join(" ");
   placeCard(node, compact, isNew);
-  node.querySelector(".badge").textContent = BADGE[f.direction] || f.direction.toUpperCase();
+  node.querySelector(".badge").textContent = worseRaise(f.direction, f.metric, f.metric_label) ? "RAISE · WORSE" : BADGE[f.direction] || f.direction.toUpperCase();
   node.querySelector(".metric").textContent = f.metric_label;
   const timeEl = node.querySelector(".flag-time");
   timeEl.replaceChildren(`${fmtET(f.call_ts)} ET`);
@@ -340,7 +345,7 @@ function renderRelated(node, f) {
       el("td", null, r.metric_label),
       el("td", "r-prior", r.prior_value || "—"),
       el("td", null, `→ ${r.new_value}`),
-      el("td", `r-dir ${dirClass(r.direction)}`, BADGE[r.direction] || r.direction),
+      el("td", `r-dir ${dirClass(dirKey(r.direction, "", r.metric_label))}`, BADGE[r.direction] || r.direction),
     );
     body.append(tr);
   }
@@ -376,7 +381,7 @@ function renderTrajectory(node, f) {
     else if (i > 0 && p.value_text === pts[i - 1].value_text) li.classList.add("same");
     ol.append(li);
   });
-  const now = el("li", `tp now ${dirClass(f.direction)}`);
+  const now = el("li", `tp now ${dirClass(dirKey(f.direction, f.metric, f.metric_label))}`);
   const callDay = new Date(f.call_ts);  // the call's own date (Oct 8 for PepsiCo, Oct 9 for Delta)
   const dayLabel = `${MONTHS[Number(f.call_ts.slice(5, 7)) - 1]} ${Number(f.call_ts.slice(8, 10))}`;
   now.append(el("span", "tp-date", `${Number.isNaN(callDay.getTime()) ? "" : dayLabel} · this call`), el("span", "tp-val", f.new_value ? compact(f.new_value) : "…"));
@@ -629,12 +634,12 @@ function renderDetail(node, f) {
 function updateTally() {
   const counts = {};
   for (const n of document.querySelectorAll(".feed .flag")) {
-    const d = [...n.classList].find((c) => ["cut", "raise", "reaffirm", "new", "na"].includes(c)) || "na";
+    const d = n.classList.contains("worse") ? "worse" : [...n.classList].find((c) => ["cut", "raise", "reaffirm", "new", "na"].includes(c)) || "na";
     counts[d] = (counts[d] || 0) + 1;
   }
   const t = $("#tally");
   t.replaceChildren();
-  for (const [d, label] of [["cut", "CUT"], ["raise", "RAISE"], ["reaffirm", "REAFFIRM"], ["new", "NEW"], ["na", "NOTE"]]) {
+  for (const [d, label] of [["cut", "CUT"], ["raise", "RAISE"], ["worse", "RAISE · WORSE"], ["reaffirm", "REAFFIRM"], ["new", "NEW"], ["na", "NOTE"]]) {
     if (counts[d]) t.append(el("span", `t-${d}`, `${counts[d]} ${label}`));
   }
 }
@@ -737,7 +742,7 @@ function connect() {
     const f = JSON.parse(e.data);
     state.flags.set(f.id, f);
     renderFlag(f);
-    highlightQuote(f.quote, f.direction);
+    highlightQuote(f.quote, dirKey(f.direction, f.metric, f.metric_label));
     onFlagVoice(f);
     traceFlagRender(f);
   });
