@@ -59,11 +59,15 @@ def _seen(sentence: str, emitted: list[str]) -> bool:
     n = _norm(sentence)
     if not n:
         return True
-    if any(n == e or n in e or (len(n) > 12 and difflib.SequenceMatcher(None, n, e).ratio() > 0.85) for e in emitted):
+    nums = {w for w in n.split() if any(ch.isdigit() for ch in w)}
+    if any(n == e or n in e or (len(n) > 12 and difflib.SequenceMatcher(None, n, e).ratio() > 0.85 and nums <= set(e.split()))
+           for e in emitted):
         return True
     words = n.split()
     recent = set(" ".join(emitted[-8:]).split())
-    return len(words) >= 3 and sum(w in recent for w in words) / len(words) >= 0.8
+    if any(any(ch.isdigit() for ch in w) and w not in recent for w in words):
+        return False  # a new number means new information, however familiar the wording
+    return len(words) >= 3 and sum(w in recent for w in words) / len(words) >= 0.85
 
 
 def _complete_sentences(text: str) -> tuple[list[str], str]:

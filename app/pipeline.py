@@ -45,6 +45,7 @@ class MockTranscriber:
         return ChunkResult(segments=segs, claims=claims)
 
 
+VAGUE_STREAMING_BAR = 0.8
 HEDGE_AFTER_S = 7.0  # a normal chunk returns in 3-5 s; past this, send a duplicate and take the first answer
 
 
@@ -144,8 +145,12 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         for claim in sorted(result.claims, key=lambda c: c.materiality):
             slot = card_slot(claim)
             attached_to = cards.get(slot) or (None if best[slot] is claim else "same chunk")
-            accepted = claim.materiality >= threshold and attached_to is None
-            reason = f"same metric as {attached_to}" if attached_to else ("below threshold" if not accepted else "")
+            # Streaming hears one sentence at a time, so vague commentary (no value, no guidance direction)
+            # needs a higher bar before it becomes a card.
+            vague = streaming and not claim.new_value and claim.direction not in ("cut", "raise", "reaffirm")
+            bar = max(threshold, VAGUE_STREAMING_BAR) if vague else threshold
+            accepted = claim.materiality >= bar and attached_to is None
+            reason = f"same metric as {attached_to}" if attached_to else ("" if accepted else ("too vague" if vague and claim.materiality >= threshold else "below threshold"))
             hub.publish("claim", {"chunk": k, "quote": claim.quote, "metric": claim.metric, "materiality": claim.materiality,
                                   "accepted": accepted, "reason": reason, "attached_to": cards.get(slot)})
             if not accepted:

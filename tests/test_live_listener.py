@@ -13,3 +13,9 @@ def test_revisions_and_merged_finals_are_not_resent():
     assert _seen("it's the margin piece that's driving the guide down in EPS", sent)  # revision
     assert _seen("So it's the margin piece that's that's driving the guide down in EPS, but sales as you mentioned we expect to be robust.", sent)
     assert not _seen("We're also identifying structural cost reduction areas.", sent)
+
+
+def test_a_sentence_with_new_numbers_is_never_a_repeat():
+    sent = [_norm("For the fourth quarter, we expect earnings of $1.15 to $1.65 per share and an operating margin of 7% to 9%.")]
+    assert not _seen("For the full year, we now expect earnings of $5.10 to $5.60 per share.", sent)
+    assert _seen("For the fourth quarter we expect earnings of $1.15 to $1.65 per share", sent)
