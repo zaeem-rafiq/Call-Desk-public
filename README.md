@@ -19,7 +19,7 @@ Corporate IR and FP&A teams track their peers' earnings calls. On a live Q&A cal
 Replay mode plays a recorded live run of the demo call. It needs no API keys.
 
 ```bash
-git clone https://github.com/zaeem-rafiq/Call-Desk.git && cd Call-Desk
+git clone https://github.com/zaeem-rafiq/Call-Desk-public.git && cd Call-Desk-public
 uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requirements.txt
 .venv/bin/python -m app.main --replay     # open http://localhost:8000/?start=132 and press "Play call"
 ```
