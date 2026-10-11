@@ -287,6 +287,13 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .tc .fail { color: var(--red); }
 .trace { font: 11px var(--mono); margin: 0; word-break: break-all; color: var(--muted); }
 
+/* ---------- call picker ---------- */
+.call-select {
+  font: 600 11px/1 var(--mono); letter-spacing: 0.04em; color: var(--text);
+  background: var(--panel-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 5px 8px; cursor: pointer;
+}
+.call-select:hover, .call-select:focus-visible { border-color: var(--muted); outline: none; }
+
 /* ---------- degraded flag ---------- */
 .degraded-tag { font: 700 9px/1 var(--mono); letter-spacing: 0.08em; color: var(--red); background: var(--red-bg); border: 1px solid color-mix(in srgb, var(--red) 50%, transparent); padding: 3px 5px; border-radius: 3px; white-space: nowrap; }
 

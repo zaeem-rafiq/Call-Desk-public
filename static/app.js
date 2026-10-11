@@ -583,7 +583,8 @@ async function play() {
     return;
   }
   const startParam = Number(new URLSearchParams(location.search).get("start") || 0);
-  const res = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: state.mode, start_s: startParam }) });
+  const body = { mode: state.mode, start_s: startParam, ...(state.callId ? { call: state.callId } : {}) };
+  const res = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!res.ok) {
     $("#audio-state").textContent = (await res.json()).detail || "ERROR";
     return;
@@ -638,15 +639,45 @@ function connect() {
   });
 }
 
+// ---------- call picker (data/calls/<id>/call.json); ?call=<id> picks one, the default call needs no parameter ----------
+function renderCallPicker(calls, current) {
+  const box = $("#call-picker");
+  box.replaceChildren();
+  box.hidden = !calls || calls.length < 2;
+  if (box.hidden) return;
+  const select = el("select", "call-select");
+  select.setAttribute("aria-label", "Earnings call");
+  for (const c of calls) {
+    const opt = el("option", null, `${c.ticker} · ${c.company}`);
+    opt.value = c.id;
+    opt.selected = c.id === current;
+    if (!c.audio) opt.textContent += " (no audio)";
+    select.append(opt);
+  }
+  select.addEventListener("change", () => {
+    if (state.running) return;  // switching mid-run would mix two calls' events
+    const q = new URLSearchParams(location.search);
+    q.set("call", select.value);
+    q.delete("start");  // a start offset belongs to one call's clip
+    location.search = q.toString();
+  });
+  box.append(select);
+}
+
 async function init() {
-  const s = await (await fetch("/api/state")).json();
+  const wanted = new URLSearchParams(location.search).get("call");
+  const s = await (await fetch(wanted ? `/api/state?call=${encodeURIComponent(wanted)}` : "/api/state")).json();
   initSentryBrowser(s);
   renderPills(s.integrations);
   setMode(s.default_mode);
+  state.callId = s.call.id || s.active_call || wanted || null;
+  renderCallPicker(s.calls, state.callId);
   state.clipStart = new Date(s.call.clip_start);
   state.hasAudio = s.audio;
+  if (s.audio_url && audio.getAttribute("src") !== s.audio_url) { audio.src = s.audio_url; audio.load(); }
   $("#ticker").textContent = s.call.ticker;
   $("#call-title").textContent = s.call.title;
+  document.title = `Call Desk · ${s.call.ticker}`;
   document.querySelector('.mode button[data-mode="replay"]').disabled = !s.replay_available;
   if (!s.audio) $("#audio-state").textContent = "NO AUDIO FILE — MOCK CLOCK";
   if (s.running && s.position_s !== null) {
