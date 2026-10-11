@@ -38,7 +38,9 @@ From the recorded live run in `data/replay/latest/` (run `20261011-115458`): all
 | Confidence on the EPS cut | 0.92 |
 | Flags raised, errors, degraded flags | 5, 0, 0 |
 
-Latency varies with the network and model load. This is one run of one call, not a benchmark.
+A second call shows it is not built for one company: **Delta Air Lines (DAL) Q3 2026**, October 9, 2026, whose CFO reads the outlook aloud. Pick it in the header, or open `?call=dal_q3_2026`. Its recorded live run (`20261011-125425`) passes 10 of 10 golden checks with 0 errors; the headline card reads adjusted EPS cut from $6.50–$7.50 to $5.10–$5.60 per share (confidence 0.92), benchmarked against the JETS airline ETF.
+
+Latency varies with the network and model load. These are single runs, not a benchmark.
 
 ## How it works
 
@@ -94,7 +96,7 @@ flowchart LR
     - The *wall-breaker* uses Domain Knowledge to find which news sites run antibot systems (DataDome, Cloudflare and others), then reads the protected article with the driver Nimble recommends.
     - The *Reddit pulse* uses the pre-built `reddit_answers` Extract Template.
     - The *newswire* runs news search (`focus=news`), falling back to plain search.
-- **Tiger Data** stores prices. `price_ticks` is a hypertable in the columnstore (7.6× smaller), and `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. One SQL query over `bars_1m` computes PEP's move since each quote minus XLP's (the abnormal move), the day move and the close move, in about 2 ms on the server. The card shows the query and its speed.
+- **Tiger Data** stores prices. `price_ticks` is a hypertable in the columnstore (several times smaller; the card shows the current ratio), and `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. One SQL query over `bars_1m` computes PEP's move since each quote minus XLP's (the abnormal move), the day move and the close move, in about 2 ms on the server. The card shows the query and its speed.
 - **Snowflake** holds the prior guidance and the call's flags. It never stores call transcripts.
   - **Cortex Search** runs over the Q2 2026 guidance documents, filtered by ticker. It answers questions such as "What was PepsiCo's core EPS guidance last quarter?"
   - **`GUIDANCE_LINES`** records every FY2026 guidance statement made before the call, from Dec 2025 to Jul 2026. The fact-check reads the metric's history from it by SQL, and the card draws that history as a timeline.
@@ -105,6 +107,15 @@ flowchart LR
   - Every Gemini call is a `gen_ai.chat` span; every tool call, Nimble specialist and the Cortex Agent are spans in the same trace.
   - The browser loads Sentry's official SDK (pinned with its integrity hash) and records each card's render inside that flag's server trace.
   - Each flag links to its trace.
+  - **What it caught today.** During a live run, issue `CALL-DESK-2` grouped 11 `TimeoutError`s in the fact-check agent: one Snowflake connection was making each flag's Cortex Agent wait for the previous one. The trace showed the agent spans queued end to end; the fix gave each run its own pooled connection, and three concurrent agent runs then finished in 22.7 s.
+
+  ![Sentry trace of one flag: the Gemini planning call, Snowflake, the Nimble web desk specialists and Tiger Data in parallel, the Gemini verdict, then the Snowflake Cortex Agent and the remaining Nimble specialists. 32 spans, 42 s.](docs/sentry/trace-eps-flag.jpg)
+
+  ![Sentry AI Agents view: estimated cost per Gemini model, agent runs per agent, tool calls, and a table of traces with LLM calls, tool calls, tokens and cost.](docs/sentry/ai-agents.jpg)
+
+### Optional: streaming listener
+
+`LISTENER=live` streams the call to the Gemini Live API instead of 12-second chunks. It puts flags on screen about 5 s sooner, but in our runs it split some numbers and speakers less cleanly, so the demo and the recorded replays use the 12-second listener (the default).
 
 ## Run it
 
