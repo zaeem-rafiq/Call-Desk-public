@@ -47,3 +47,19 @@ Measured in real time with all five sponsors live (run 20261011-115458): the red
 - Q3 net revenue was $25.27B, up 5.6%. Organic growth was 3.1%, the fastest since Q4 2023.
 - PEP closed Oct 8 at $128.34, up 3.73%. XLP was up 2.11% and SPY down 0.42%.
 - **Not spoken on the call:** the guidance numbers. They appear only in the 6 AM release. Call Desk labels them "not spoken" and shows the source.
+
+## If a judge asks "is this built for PepsiCo only?" (30 seconds)
+
+1. Pick **DAL · Delta Air Lines** in the header's call picker. You can also open http://localhost:8000/?call=dal_q3_2026&start=180.
+2. Click **REPLAY**, then **Play call**. A replay spends 0 agent runs and needs no Wi-Fi for Gemini.
+3. Say: "Same engine, different company and a different call format. Delta's CFO reads the outlook aloud. About 20 seconds in, Call Desk flags full-year EPS cut from $6.50–$7.50 to $5.10–$5.60, and free cash flow cut from $3–4 billion to about $2.5 billion. The prior numbers come from Snowflake, and the tape is DAL against the airline ETF, JETS."
+
+Delta numbers to have ready:
+- Q4 EPS $1.15 to $1.65. Q4 operating margin 7% to 9%. Q4 fuel about $4.25 per gallon.
+- Full-year EPS $5.10 to $5.60, cut from $6.50 to $7.50 in July.
+- Free cash flow about $2.5B, cut from $3B to $4B. Year-end gross leverage 2.2×, against about 2× guided.
+- DAL closed Oct 9 flat (+0.04%). It was down about 3% at the 6:30 AM release.
+
+## If a judge asks "can it go faster?" (Gemini Live)
+
+The stage runs the 12-second chunk listener, because its cards are cleaner. A streaming listener on the Gemini Live API (`gemini-3.5-transcribe-live`) is in the code and off by default. It sends the audio to Gemini in real time and extracts claims sentence by sentence. In live tests the PepsiCo EPS flag landed about 5 seconds after the line, against about 11 seconds with chunks. Start it with `LISTENER=live .venv/bin/python -m app.main`. Use it only off stage: it shows more low-value cards.
