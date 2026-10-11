@@ -81,6 +81,8 @@ Each line gives the plain words first, then the finance name.
 2. Click **REPLAY**, then **Play call**. A replay spends 0 agent runs and needs no Wi-Fi for Gemini.
 3. Say: "Same engine, different company. This is Delta Air Lines, and here the finance chief reads the forecast out loud. About 30 seconds in, Call Desk shows it: Delta now expects to earn $5.10 to $5.60 per share this year, down from a range of $6.50 to $7.50. Its forecast of cash left over after running the business fell from a range of 3 to 4 billion dollars to about 2.5 billion. The old numbers come from Snowflake, and the stock is compared with other airlines."
 
+In the saved Delta replay, the full-year EPS card is labelled "not spoken", but the CFO did say "$5.10 to $5.60". The replay was recorded before that label was fixed, and live runs label it correctly. So don't open that card's details during the Delta beat. If asked, say: "The CFO said it out loud; that label is from an older recording."
+
 Delta numbers to have ready:
 - Profit per share for October to December (Q4 EPS): $1.15 to $1.65. Profit margin (Q4 operating margin): 7% to 9%. Fuel (Q4): about $4.25 per gallon.
 - Profit per share for the full year (EPS): $5.10 to $5.60, cut from $6.50 to $7.50 in July.
