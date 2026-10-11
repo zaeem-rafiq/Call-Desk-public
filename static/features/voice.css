@@ -1,0 +1,16 @@
+/* voice feature: Gemini spoken alerts (line on the card + top-bar mute toggle) */
+.voice-toggle {
+  background: transparent; border: 1px solid var(--line-2); border-radius: 4px; padding: 6px 9px;
+  font: 600 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--text);
+  white-space: nowrap;
+}
+.voice-toggle:hover { background: var(--panel-3); }
+.voice-toggle.off { color: var(--faint); }
+
+.voice-line {
+  margin: 8px 0 0;
+  font: 11px/1.5 var(--mono); color: var(--muted);
+}
+.voice-label { font: 600 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.voice-text { color: var(--text); }
+.flag.voice-speaking .voice-label { color: var(--accent, var(--red)); }
