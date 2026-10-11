@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Awaitable, Callable
 
-from . import audio, config, observability
+from . import audio, config, observability, resilience
 from .claims import ChunkResult, Claim, Segment, dedupe_key, metric_label
 from .factcheck import fact_check
 from .hub import EventHub
@@ -49,25 +49,7 @@ HEDGE_AFTER_S = 7.0  # a normal chunk returns in 3-5 s; past this, send a duplic
 
 
 async def hedged(make: Callable[[], Awaitable[ChunkResult]], hedge_after: float = HEDGE_AFTER_S) -> ChunkResult:
-    """Tail-latency guard: a slow or stuck request (e.g. a Gemini 504 plus retry) gets a twin; first success wins."""
-    tasks = [asyncio.create_task(make())]
-    try:
-        done, _ = await asyncio.wait(tasks, timeout=hedge_after)
-        if not done:
-            log.info("listener slow after %.0fs; sending a hedged duplicate", hedge_after)
-            tasks.append(asyncio.create_task(make()))
-        pending, error = set(tasks), None
-        while pending:
-            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
-            for task in done:
-                if task.exception() is None:
-                    return task.result()
-                error = task.exception()
-        raise error  # type: ignore[misc]
-    finally:
-        for task in tasks:
-            if not task.done():
-                task.cancel()
+    return await resilience.hedged(make, hedge_after, label="listener")
 
 
 class GeminiTranscriber:
