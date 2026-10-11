@@ -39,6 +39,8 @@ The preview pane cannot launch servers from this folder (the space in "Call Desk
 - `gemini-api-dev` from `google-gemini/gemini-skills` at `832c8f9`.
 - `setup-timescaledb-hypertables` and `timescaledb-hyperfunctions` from `timescale/pg-aiguide` at `187be00`.
 
+- `nimble-web-expert` from `Nimbleway/agent-skills` at `fdb077c` (MIT). It is written for Nimble's CLI and MCP, which this project does not install: use it as the API reference while building Call Desk, and call Nimble through `app/tools/nimble.py`. For ordinary web lookups outside Call Desk work, do not invoke it.
+
 To update one, copy its folder again from the official GitHub repository. Do not use `npx skills`, which is a Vercel tool. `app/gemini.py` calls `generate_content`; the Gemini skill recommends the Interactions API, so treat a migration as its own change, not part of unrelated work.
 
 ## Git and preview workflow
