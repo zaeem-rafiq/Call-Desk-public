@@ -192,7 +192,19 @@ async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tool
                     st.status, st.summary = "failed", f"{type(exc).__name__}: {exc}"[:160]
             publish(flag)
 
-    await asyncio.gather(cortex_agent(), nimble_desk(), return_exceptions=True)
+    async def voice_alert() -> None:
+        from . import voice
+
+        try:
+            url, text = await asyncio.wait_for(voice.alert_for(flag, info), timeout=30)
+        except Exception as exc:  # noqa: BLE001 - a missing alert is fine; the card stands
+            observability.capture(exc)
+            return
+        if url or text:
+            flag.alert_audio_url, flag.alert_text = url, text
+            publish(flag)
+
+    await asyncio.gather(cortex_agent(), nimble_desk(), voice_alert(), return_exceptions=True)
 
 
 def _apply_synthesis(flag, claim, s, prior_hits, web_hits, prior_res, web_res) -> None:

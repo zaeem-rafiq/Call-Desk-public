@@ -1,5 +1,11 @@
 // Call Desk front end: one EventSource, a transcript pane, and a flag feed.
 // All server text goes through textContent (never innerHTML).
+// Feature modules (static/features/*.js) each own one sponsor feature; app.js only calls their exports.
+
+import { renderTigerExtra } from "./features/tiger.js";
+import { onFlagVoice } from "./features/voice.js";
+import { renderBrief, resetBrief } from "./features/brief.js";
+import { initSentryBrowser, traceFlagRender } from "./features/sentry.js";
 
 const $ = (sel) => document.querySelector(sel);
 const ET = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
@@ -225,6 +231,7 @@ function renderFlag(f) {
       stats.append(close);
     }
     if (pr.mock) stats.firstChild.append(el("span", "mock-tag", "MOCK"));
+    renderTigerExtra(node, f);
   }
 
   const conf = node.querySelector(".conf");
@@ -523,6 +530,7 @@ function updateTally() {
 
 // ---------- run control ----------
 function resetUI() {
+  resetBrief();
   $("#transcript").replaceChildren();
   $("#feed").replaceChildren();
   $("#markers").replaceChildren();
@@ -596,7 +604,10 @@ function connect() {
     state.flags.set(f.id, f);
     renderFlag(f);
     highlightQuote(f.quote, f.direction);
+    onFlagVoice(f);
+    traceFlagRender(f);
   });
+  es.addEventListener("brief", (e) => renderBrief(JSON.parse(e.data)));
   es.addEventListener("error", (e) => {
     if (e.data) console.warn("pipeline error", e.data);
   });
@@ -604,6 +615,7 @@ function connect() {
 
 async function init() {
   const s = await (await fetch("/api/state")).json();
+  initSentryBrowser(s);
   renderPills(s.integrations);
   setMode(s.default_mode);
   state.clipStart = new Date(s.call.clip_start);

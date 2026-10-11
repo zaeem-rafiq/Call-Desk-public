@@ -1,5 +1,5 @@
 {
-  "run_id": "20261011-111534",
+  "run_id": "20261011-112816",
   "state": "done",
   "mode": "live",
   "transcriber": "gemini",
@@ -10,7 +10,7 @@
     "snowflake": "live",
     "sentry": "live"
   },
-  "flags": 7,
+  "flags": 6,
   "errors": 0,
   "degraded": 0,
   "speed": 1.0,

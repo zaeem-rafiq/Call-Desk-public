@@ -41,6 +41,9 @@ class PriceReaction(BaseModel):
     series: list[PricePoint] = Field(default_factory=list)
     source: str = ""
     mock: bool = False
+    sql: str = ""  # the Tiger Data query that computed the move (shown on the card)
+    query_ms: int | None = None  # its server time
+    storage: dict = Field(default_factory=dict)  # hypertable columnstore stats, e.g. {"before_bytes", "after_bytes", "ratio", "chunks"}
 
 
 class ConfidenceComponents(BaseModel):
@@ -182,6 +185,22 @@ class Flag(BaseModel):
     guidance_history: list[GuidancePoint] = Field(default_factory=list)  # Snowflake: every earlier statement of this metric
     snowflake_agent: SnowflakeAgent | None = None  # filled after the verdict
     web_desk: WebDesk | None = None  # Nimble specialists; enrich steps land after the verdict
+    alert_text: str = ""  # Gemini TTS: the sentence spoken for this flag
+    alert_audio_url: str | None = None  # /static/alerts/<file>.wav, played once by the UI
+
+
+class CallBrief(BaseModel):
+    """End-of-call IR brief written inside Snowflake from the run's flags (CALL_FLAGS + Cortex AI)."""
+
+    status: Literal["running", "done", "failed"] = "running"
+    headline: str = ""
+    bullets: list[str] = Field(default_factory=list)
+    sql: str = ""
+    rows_written: int = 0
+    ms: int | None = None
+    model: str = ""
+    error: str | None = None
+    mock: bool = False
 
 
 class TranscriptSegment(BaseModel):

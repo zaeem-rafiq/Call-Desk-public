@@ -1,27 +1,28 @@
-[    0.0s] Analyst: And then Steve, if I can just slip in one on the margin side. Obviously the earnings revision in Q4 is margin driven with the top-line expectations holding. So just help us understand what
-[   12.0s] Analyst: change there. But I think really the context is when you have a big Q4 revision, it may imply further pressure in '27. So just as we look out to '27, I know you won't give guidance
-[   24.0s] Analyst: but just some of the key buckets to margins as we look out to '27, reinvestment to reinvigorate North American volumes, commodity pressure given that's a big change for Q4, any incre-
-[   36.0s] Dara Mohsenian (Morgan Stanley): -mental cost savings thoughts, those would all be helpful just conceptually for '27.
-[   41.4s] Steve Schmitt (CFO): Great. Hey Dara, this is Steve. Good morning, and thanks for the question, and good morning, everyone. Maybe I'll start with the second question
-[   48.0s] Steve Schmitt (CFO): and then kick it to Ramon for the state of the union where you where you began your question. So, before I get into the guidance revision, maybe I'll talk a little bit about the quarter, at least from a high
-[   60.0s] Steve Schmitt (CFO): level standpoint. And the reality is that we're pleased with many aspects of our Q3 performance. Organic revenue accelerated to 3.1%.
-[   72.0s] Steve Schmitt (CFO): Reported revenue was north of 5, core operating profit increased 3%, and EPS increased 2%. Importantly, as we look at the health of the business around the world, global beverage volume
-[   84.0s] Steve Schmitt (CFO): was up 3%, global food volume was up 1%, and it's actually up 4% if you exclude the grains business in South Africa. And overall International had really a stellar quarter, organic revenue
+[    0.0s] Analyst: And then Steve, if I can just slip in one on the margin side. Obviously the earnings revision in Q4 is margin-driven with the top-line expectations holding, so just help us understand what
+[   12.0s] Analyst: changed there. But I think really the context is when you have a big Q4 revision, it may imply further pressure in '27. So just as we look out to '27, I know you won't give guidance
+[   24.0s] Analyst: but just some of the key buckets to margins as we look out to '27, reinvestment to reinvigorate North American volumes, commodity pressure given that's a big change for Q4, any
+[   36.0s] Dara Mohsenian (Morgan Stanley): cost savings thoughts. Those would all be helpful just conceptually for '27.
+[   41.4s] Steve Schmitt (CFO): Great. Hey, Dara. This is Steve. Good morning, and thanks for the question. Good morning, everyone. Maybe I'll start with the second question
+[   48.0s] Steve Schmitt (CFO): question, and then kick it to Ramon for the State of the Union where you where you began your question. So before I get into the guidance revision, maybe I'll talk a little bit about the quarter, at least from a high
+[   60.0s] Steve Schmitt (CFO): standpoint. And the reality is that we're pleased with many aspects of our Q3 performance. Organic revenue accelerated to 3.1%.
+[   72.0s] Steve Schmitt (CFO): reported revenue was north of 5, core operating profit increased 3%, and EPS increased 2%. Importantly, as we look at the health of the business around the world, global beverage vol-
+[   84.0s] Steve Schmitt (CFO): ume was up 3%, global food volume was up 1%, and it's actually up 4% if you exclude the grains business in South Africa. And overall, international had really a stellar quarter. Organic revenue
 [   96.0s] Steve Schmitt (CFO): increased 8%, operating margin expanded 105 basis points. Now shifting to the North America business, our foods business in North America, organic sales improved from Q2
-[  108.0s] Steve Schmitt (CFO): and our beverage business in North America decelerated. So if I turn to guidance, there are always a number of factors that go into how we think about guidance. The largest changes in
-[  120.0s] Steve Schmitt (CFO): mentioned we said in our prepared remarks was margin performance is below where we expected it to be. Input costs are trending higher and mix has been a headwind in particular.
+[  108.0s] Steve Schmitt (CFO): two, and our beverage business in North America decelerated. So if I turn to to guidance, there are always a number of factors that go into how we think about guidance. The largest changes in
+[  119.8s] Steve Schmitt (CFO): 
+[  120.0s] Steve Schmitt (CFO): mentioned we said in our prepared remarks was margin performance is below where we expected it to be. Input costs are trending higher, and mix has been a headwind in particular.
 [  132.0s] Steve Schmitt (CFO): despite these pressures, I think it's important to note that we've decided to sustain key investments around the company to make sure that we stimulate growth and build momentum. This includes A&M, which increased in international,
-[  144.0s] Steve Schmitt (CFO): and also increased in North America importantly. So it's the margin piece that's that's driving the guide down in EPS. But sales, as you mentioned, we expect to to be robust. Another mention
-[  156.0s] Steve Schmitt (CFO): we're also identifying structural cost reduction areas and we're going to be using revenue management tools in the coming months to partially mitigate this margin pressure that we have in the fourth quarter and these
-[  168.0s] Steve Schmitt (CFO): efforts should start helping as we turn the calendar year. So that's how I think about guidance, the revision. You mentioned '27, so maybe I'll touch on that too. In '27 we have clear priorities. We certainly want
-[  180.0s] Steve Schmitt (CFO): North America to grow faster and more efficiently. We're going to continue to fuel the international business and maintain momentum there, and we're going to be very disciplined with costs and capital allocation. So as you imagine, we've been
+[  144.0s] Steve Schmitt (CFO): and it also increased in North America importantly. So it's the margin piece that's that's driving the guide down in EPS, but sales as you mentioned we expect to to be robust. Another mention
+[  156.0s] Steve Schmitt (CFO): We're also identifying structural cost reduction areas and we're going to be using revenue management tools in the coming months to partially mitigate this margin pressure that we have in the fourth quarter. And these
+[  168.0s] Steve Schmitt (CFO): efforts should start helping as we turn the calendar year. So that's how I think about guidance, the revision. You mentioned '27, so maybe I'll touch on that too. In '27, we have clear priorities. We certainly want
+[  180.0s] Steve Schmitt (CFO): North America to grow faster and more efficiently. We're going to continue to fuel the international business and maintain momentum there. And we're going to be very disciplined with costs and capital allocation. So as you imagine, we've been
 [  192.0s] Steve Schmitt (CFO): working through our '27 plans for some for some time. We're just not in a position today to provide a complete view of what our expectations might be and I'd rather not give a partial view now. So we'll get more detailed on our
-[  204.0s] Steve Schmitt (CFO): 2027 expectations in Feb when we report the fourth quarter. So I know that was a lot, but now I'll kick it over to Ramon and give a State of the Union.
-[  212.1s] Ramon Laguarta (CEO): Okay. Probably you guys got a lot, you know,
-[  216.0s] Ramon Laguarta (CEO): the framework there. So listen, we're we're pleased with the acceleration of the business. So we, you know, going into the year, our priority number one was to accelerate top-line
-[  228.0s] Ramon Laguarta (CEO): across the company. And now if you think about the enterprise, we grew 3.1% in organic net revenue in Q3. That is the fastest rate of
-[  240.0s] Ramon Laguarta (CEO): growth since Q4 '23. So clearly, an important milestone for us to cross the 3%. And we like the way that growth came, which was volume led, you know, so if you
-[  252.0s] Ramon Laguarta (CEO): Steve mentioned a 3% growth in in beverages global global beverage volume and a 4% in snacks globally in the snacks business. Now, not
-[  264.0s] Ramon Laguarta (CEO): foods. We have some, you know, a large business in South Africa that are that are very heavy kind of commodity type, that impacted the overall global. So, good good good
-[  276.0s] Ramon Laguarta (CEO): very positive threshold. We crossed a threshold of 3%, and, you know, obviously it is a, it's on its way to to the long-term, you know, 4% that we want to get
+[  204.0s] Steve Schmitt (CFO): 2027 expectations in Feb when we report the fourth quarter. So I know that was a lot, but now I'll kick it over to Ramon and give a state of the union.
+[  212.8s] Ramon Laguarta (CEO): Okay, Tom. Probably you guys got a lot, you know,
+[  216.0s] Ramon Laguarta (CEO): the framework there. So listen, we're pleased with the acceleration of the business. So, going into the year, our priority number one was to accelerate top line
+[  228.0s] Ramon Laguarta (CEO): across the company. And if you think about the enterprise, we grew 3.1% in organic net revenue in Q3. That is the fastest rate of
+[  240.0s] Ramon Laguarta (CEO): growth since Q4 '23. So clearly, an important milestone for us to cross the 3%. And we like the way that growth came, which was volume-led. Now, so if you
+[  252.0s] Ramon Laguarta (CEO): Steve mentioned, a 3% growth in in beverages global global beverage volume and a a 4% in snacks globally in the snacks business. Now now that
+[  264.0s] Ramon Laguarta (CEO): foods with some you know large business in South Africa there are very heavy kind of commodity type that impacted the overall global. So, good good good
+[  276.0s] Ramon Laguarta (CEO): it's a very positive threshold we cross. A threshold of 3% and you know, obviously, it is a on its way to to the long-term, you know, 4% that we want to get.
 [  288.0s] Ramon Laguarta (CEO): get to.
