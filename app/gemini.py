@@ -59,8 +59,8 @@ def _require_output(resp) -> None:
 # ---------------------------------------------------------------- listening
 LISTEN_SYSTEM = """You are the listening layer of Call Desk, which monitors earnings calls live for corporate IR and FP&A teams.
 You receive one short audio chunk of {company} ({ticker}): {title}, held {date}.
-Known participants: Ravi Pamnani (SVP Investor Relations), Ramon Laguarta (Chairman and CEO), Steve Schmitt (EVP and CFO),
-the operator, and sell-side analysts (introduced by the operator or greeted by name, e.g. "Hey Dara" means Dara Mohsenian of Morgan Stanley).
+Known participants: {participants},
+the operator, and sell-side analysts (introduced by the operator or greeted by name{analyst_hint}).
 Label executives as "Name (CEO)" / "Name (CFO)", analysts as "Name (Firm)" when known, otherwise "Analyst".
 Identify speakers by what they say, not only by turn order: analysts ask questions; executives answer and speak for the company
 ("we expect", "our guide", "we're investing"). A turn in the company's voice is an executive's (the CFO takes most financial
@@ -90,8 +90,7 @@ questions), even when a chunk starts mid-answer with no introduction.
 async def transcribe_and_extract(wav: bytes, context: list[str], k: int, start: float, end: float, info: config.CallInfo) -> ChunkResult:
     types = _types()
     model = config.get("GEMINI_MODEL_FAST")
-    system = LISTEN_SYSTEM.format(company=info.company, ticker=info.ticker, title=info.title, date="October 8, 2026",
-                                  metrics=", ".join(METRICS))
+    system = listen_system(info)
     prompt = (f"Chunk {k} covers {start:.0f}s to {end:.0f}s of the clip.\n"
               f"Previous context (already transcribed, do not repeat):\n{chr(10).join(context) or '(start of clip)'}")
     with observability.agent_transaction(
@@ -117,13 +116,28 @@ async def transcribe_and_extract(wav: bytes, context: list[str], k: int, start: 
     return result
 
 
+def call_date(info: config.CallInfo) -> str:
+    return f"{info.call_start:%B} {info.call_start.day}, {info.call_start.year}"
+
+
+def listen_system(info: config.CallInfo) -> str:
+    """The listener prompt for one call: its roster, analysts and date come from data/calls/<id>/call.json."""
+    analysts = tuple(getattr(info, "analysts", ()) or ())
+    hint = ""
+    if analysts:  # 'Dara Mohsenian (Morgan Stanley)' -> e.g. "Hey Dara" means Dara Mohsenian of Morgan Stanley
+        name, _, firm = analysts[0].partition(" (")
+        hint = f', e.g. "Hey {name.split()[0]}" means {name}' + (f" of {firm.rstrip(')')}" if firm else "")
+    return LISTEN_SYSTEM.format(company=info.company, ticker=info.ticker, title=info.title, date=call_date(info),
+                                participants=", ".join(info.roster) or "the company's executives", analyst_hint=hint,
+                                metrics=", ".join(METRICS))
+
+
 # ---------------------------------------------------------------- agent
 AGENT_SYSTEM = """You are Call Desk's fact-check agent for corporate IR and FP&A teams who track peers' earnings calls.
-A claim was just spoken live on {company}'s ({ticker}) Q3 2026 earnings call (October 8, 2026, Q&A only; the press release and
-prepared remarks were posted at 6 AM ET). Executives on Q&A calls often refer to guidance without saying the numbers.
+A claim was just spoken live on {company}'s ({ticker}) earnings call on {date}. {call_context}
 Verify the claim fast. In ONE step, call all three tools in parallel:
-- search_prior_guidance: find what the company guided for this metric last quarter (Q2 2026, July 2026).
-- search_live_web: find this morning's Q3 2026 release or news coverage that states the exact current value for this metric.
+- search_prior_guidance: find what the company guided for this metric before this call (its previous quarterly report).
+- search_live_web: find today's earnings release, prepared remarks or news coverage that states the exact current value for this metric.
 - get_price_reaction: ticker {ticker}, since_ts = the claim's call time, benchmark {benchmark}."""
 
 TOOL_DECLS = [
@@ -194,7 +208,8 @@ async def agent_fact_check(claim: Claim, flag: Flag, info: config.CallInfo, plan
     """Step 1: the model plans parallel tool calls. Step 2: run them. Step 3: structured verdict."""
     types = _types()
     model = config.get("GEMINI_MODEL_AGENT")
-    system = AGENT_SYSTEM.format(company=info.company, ticker=info.ticker, benchmark=info.primary_benchmark)
+    system = AGENT_SYSTEM.format(company=info.company, ticker=info.ticker, benchmark=info.primary_benchmark, date=call_date(info),
+                                 call_context=info.call_context)
     tool_cfg = types.GenerateContentConfig(
         system_instruction=system,
         tools=[types.Tool(function_declarations=[types.FunctionDeclaration(**d) for d in TOOL_DECLS])],

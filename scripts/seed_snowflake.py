@@ -46,16 +46,16 @@ def main() -> int:
             SOURCE_URL STRING, COMPANY STRING, TICKER STRING)""")
         cur.executemany(
             "INSERT INTO PRIOR_DOCS (DOC_ID, CHUNK, DOC_TITLE, QUARTER, DOC_TYPE, SOURCE_URL, COMPANY, TICKER) "
-            "VALUES (%s, %s, %s, %s, %s, %s, 'PepsiCo', 'PEP')",
-            [(c["DOC_ID"], c["CHUNK"], c["DOC_TITLE"], c["QUARTER"], c["DOC_TYPE"], c["SOURCE_URL"]) for c in chunks],
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            [(c["DOC_ID"], c["CHUNK"], c["DOC_TITLE"], c["QUARTER"], c["DOC_TYPE"], c["SOURCE_URL"], c["COMPANY"], c["TICKER"]) for c in chunks],
         )
         cur.execute("""CREATE OR REPLACE TABLE PRIOR_GUIDANCE (
             TICKER STRING, AS_OF STRING, FISCAL_YEAR NUMBER, LINE STRING, SOURCE_DOC STRING)""")
         cur.executemany(
-            "INSERT INTO PRIOR_GUIDANCE (TICKER, AS_OF, FISCAL_YEAR, LINE, SOURCE_DOC) VALUES ('PEP', %s, 2026, %s, %s)",
-            [(c["QUARTER"], c["CHUNK"], c["DOC_ID"]) for c in guidance_rows],
+            "INSERT INTO PRIOR_GUIDANCE (TICKER, AS_OF, FISCAL_YEAR, LINE, SOURCE_DOC) VALUES (%s, %s, 2026, %s, %s)",
+            [(c["TICKER"], c["QUARTER"], c["CHUNK"], c["DOC_ID"]) for c in guidance_rows],
         )
-        lines = pd.read_csv(guidance_history.CSV, dtype=str, keep_default_na=False)
+        lines = pd.concat([pd.read_csv(p, dtype=str, keep_default_na=False) for p in guidance_history.csv_paths()], ignore_index=True)
         cur.execute("""CREATE OR REPLACE TABLE GUIDANCE_LINES (
             TICKER STRING, FISCAL_YEAR NUMBER, AS_OF_DATE DATE, AS_OF_QUARTER STRING, AS_OF_EVENT STRING,
             METRIC STRING, METRIC_LABEL STRING, LOW FLOAT, HIGH FLOAT, UNIT STRING, VALUE_TEXT STRING,
@@ -147,11 +147,11 @@ tools:
   - tool_spec:
       type: "cortex_analyst_text_to_sql"
       name: "Guidance_History"
-      description: "PepsiCo (PEP) fiscal 2026 guidance history before the Q3 2026 call: one row per metric per guidance event, Dec 2025 to Jul 2026, with ranges, wording, status and management qualifiers."
+      description: "Fiscal 2026 guidance history for each covered company (filter by TICKER), as stated before its Q3 2026 earnings call: one row per metric per guidance event, with ranges, wording, status and management qualifiers."
   - tool_spec:
       type: "cortex_search"
       name: "Prior_Docs_Search"
-      description: "PepsiCo prior-quarter guidance documents: the Q2 2026 outlook text and guidance table."
+      description: "Prior-quarter guidance documents for each covered company (TICKER attribute): outlook text and guidance tables."
 tool_resources:
   Guidance_History:
     semantic_view: "{db}.{schema}.GUIDANCE_SV"

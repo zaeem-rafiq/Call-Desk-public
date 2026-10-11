@@ -40,8 +40,41 @@ from .live_web import IR_DOMAINS, _passages, guidance_table, interleave, ir_quer
 MOCK_FILE = Path(__file__).resolve().parent.parent / "mocks" / "web_desk.json"
 VERDICT_BUDGET_S = 6.5  # the tool's own timeout is 8 s; return what landed by then
 ENRICH_BUDGET_S = 45.0
-CALL_DATE = "2026-10-08"
-IR_SITE = "https://investors.pepsico.com"
+
+
+def _info() -> config.CallInfo:
+    return config.call_info()  # the active call (set per run)
+
+
+def _call_date() -> str:
+    return str(_info().session_day)  # search filters: coverage from the call day onward
+
+
+def _ir_domains() -> list[str]:
+    return list(_info().ir_domains) or IR_DOMAINS
+
+
+def _ir_site() -> str:
+    """The investor-relations host to map: an 'investor(s).' or 'ir.' domain if the call lists one."""
+    doms = _ir_domains()
+    return "https://" + next((d for d in doms if d.startswith(("investor", "ir."))), doms[0])
+
+
+def _spoken_date(d) -> str:
+    return f"{d:%B} {d.day}, {d.year}"
+
+
+def _prior_report_date(ticker: str) -> str:
+    """Date of the last guidance before the call, from the guidance history (e.g. 'July 9, 2026'); '' if unknown."""
+    try:
+        from datetime import date
+
+        from .guidance_history import _csv_rows
+        df = _csv_rows()
+        last = df[df["TICKER"] == ticker]["AS_OF_DATE"].max()
+        return _spoken_date(date.fromisoformat(last)) if isinstance(last, str) and last else ""
+    except Exception:  # noqa: BLE001 - a prompt detail, never a failure
+        return ""
 WIRE_DOMAINS = ["prnewswire.com", "businesswire.com", "reuters.com", "cnbc.com", "wsj.com", "bloomberg.com",
                 "marketwatch.com", "barrons.com", "ft.com", "apnews.com"]
 # Transcripts of the call itself would make the check circular.
@@ -56,7 +89,7 @@ STEP_META = {
     "broad": ("Broad web search", "POST /v2/search · 2 queries", "verdict"),
     "newswire": ("Newswire & street", "POST /v2/search · focus=news", "enrich"),
     "serp": ("Google right now", "POST /v2/fast-serp · google_search", "verdict"),
-    "sitemap": ("IR site mapper", "POST /v2/map · investors.pepsico.com", "verdict"),
+    "sitemap": ("IR site mapper", "POST /v2/map · investor relations site", "verdict"),
     "verify": ("Verification agent", "POST /v2/agents/runs · effort=low", "enrich"),
     "wall": ("Wall-breaker", "GET /v2/domain-knowledge → POST /v2/extract driver=…", "enrich"),
     "social": ("Reddit pulse", "POST /v2/extract/templates/run · reddit_answers", "enrich"),
@@ -117,8 +150,8 @@ def _on(domain: str, hosts: list[str]) -> bool:
 
 
 # ------------------------------------------------------------------ IR site map (cached per process)
-_ir_links: list[dict] | None = None
-_ir_task: asyncio.Task | None = None
+_ir_links_by_call: dict[str, list[dict]] = {}
+_ir_tasks: dict[str, asyncio.Task] = {}
 
 
 def _release_urls(links: list[dict]) -> list[str]:
@@ -128,29 +161,30 @@ def _release_urls(links: list[dict]) -> list[str]:
     return sorted(hits, key=lambda u: (0 if "earnings-release" in u else 1 if "prepared" in u else 2, len(u)))
 
 
-async def _map_ir() -> list[dict]:
-    global _ir_links
+async def _map_ir(call_id: str, site: str) -> list[dict]:
     async with nimble.client(timeout=20.0) as http:
-        _ir_links = await nimble.site_map(http, IR_SITE, limit=1000)
-    return _ir_links
+        _ir_links_by_call[call_id] = await nimble.site_map(http, site, limit=1000)
+    return _ir_links_by_call[call_id]
 
 
 # ------------------------------------------------------------------ verdict phase
 async def live_verdict(query: str, metric_label: str = "", new_value: str | None = None, company: str = "PepsiCo") -> dict:
     """Five specialists in parallel; whatever lands inside VERDICT_BUDGET_S feeds the verdict, the rest is dropped."""
-    global _ir_task
+    call_id = _info().call_id
     steps = {sid: _step(sid) for sid in ("primary", "broad", "serp", "sitemap")}
     hits: dict[str, list[dict]] = {}
 
-    stale = _ir_task is None or _ir_task.get_loop() is not asyncio.get_running_loop() or (
-        _ir_task.done() and (_ir_task.cancelled() or _ir_task.exception() is not None))
-    if _ir_links is None and stale:
-        _ir_task = asyncio.create_task(_map_ir())  # cached for every later flag; shared, so not cancelled with this one
+    ir_task = _ir_tasks.get(call_id)
+    stale = ir_task is None or ir_task.get_loop() is not asyncio.get_running_loop() or (
+        ir_task.done() and (ir_task.cancelled() or ir_task.exception() is not None))
+    if call_id not in _ir_links_by_call and stale:
+        # cached for every later flag of this call; shared, so not cancelled with this one
+        ir_task = _ir_tasks[call_id] = asyncio.create_task(_map_ir(call_id, _ir_site()))
 
     async with nimble.client(timeout=5.0) as http:
         async def primary():
             r = await nimble.search(http, ir_query(company, metric_label), depth="standard", max_results=4,
-                                    include_domains=IR_DOMAINS, start_date=CALL_DATE)
+                                    include_domains=_ir_domains(), start_date=_call_date())
             rows = []
             for h in r:
                 table = guidance_table(h["snippet"])
@@ -183,9 +217,9 @@ async def live_verdict(query: str, metric_label: str = "", new_value: str | None
             steps["serp"].summary = f"top {len(r)} Google results" + (f" · #1 {r[0]['source']}" if r else "") + (f" · {how}" if how != "fast" else "")
 
         async def sitemap():
-            if _ir_links is None:
+            if call_id not in _ir_links_by_call:
                 try:
-                    await asyncio.wait_for(asyncio.shield(_ir_task), timeout=VERDICT_BUDGET_S - 1)
+                    await asyncio.wait_for(asyncio.shield(ir_task), timeout=VERDICT_BUDGET_S - 1)
                 except asyncio.TimeoutError:
                     steps["sitemap"].status, steps["sitemap"].summary = "skipped", "map still running; later flags use it"
                     return
@@ -194,7 +228,7 @@ async def live_verdict(query: str, metric_label: str = "", new_value: str | None
                         raise
                     steps["sitemap"].status, steps["sitemap"].summary = "skipped", "unavailable: Nimble map returned a server error"
                     return
-            links = _ir_links or []
+            links = _ir_links_by_call.get(call_id) or []
             urls = _release_urls(links)
             hits["sitemap"] = [{"title": u.rstrip("/").rsplit("/", 1)[-1], "url": u, "source": nimble.domain(u),
                                 "snippet": "Q3 2026 document found on the IR site map"} for u in urls[:2]]
@@ -327,31 +361,38 @@ async def _finish_pending(agent_id: str, run_id: str, company: str, metric_label
     except Exception as exc:  # noqa: BLE001 - a failed run frees the slot; nothing else to do
         if not isinstance(exc, asyncio.CancelledError):
             _store(_verify_key(company, metric_label), None)
+
+
 def _verify_schema() -> dict:
     s = {"type": "string"}
+    when, before = _spoken_date(_info().session_day), _prior_report_date(_info().ticker)
     return {"type": "object", "properties": {
         "metric": s,
-        "guidance_in_oct_8_2026_release": {"type": "string", "description": "the fiscal 2026 range as written in the Q3 2026 release of October 8, 2026"},
-        "guidance_before_oct_8_2026": {"type": "string", "description": "the range in effect just before, from the Q2 2026 report of July 9, 2026"},
+        "guidance_in_this_release": {"type": "string", "description": f"the fiscal 2026 range as written in the Q3 2026 release of {when}"},
+        "guidance_before_this_release": {"type": "string", "description": "the range in effect just before"
+                                                                          + (f", from the report of {before}" if before else "")},
         "change": {"type": "string", "description": "one word: cut, raise, reaffirm, or new"},
         "source_url": s,
-    }, "required": ["metric", "guidance_in_oct_8_2026_release", "guidance_before_oct_8_2026", "change", "source_url"]}
+    }, "required": ["metric", "guidance_in_this_release", "guidance_before_this_release", "change", "source_url"]}
 
 
 def _verify_prompt(company: str, ticker: str, metric_label: str, primary_url: str) -> str:
     where = f" The company's own document is at {primary_url}." if primary_url else ""
-    return (f"{company} ({ticker}) reported third-quarter 2026 results on October 8, 2026 and updated its fiscal 2026 guidance. "
-            f"From that October 8, 2026 release, what is the fiscal 2026 {metric_label} guidance, and what was it before (July 9, 2026)?"
-            f"{where} Report exactly this metric, not a similar one (core EPS and core constant-currency EPS are different lines). "
+    when, before = _spoken_date(_info().session_day), _prior_report_date(ticker)
+    return (f"{company} ({ticker}) reported third-quarter 2026 results on {when} and updated its fiscal 2026 guidance. "
+            f"From that {when} release, what is the fiscal 2026 {metric_label} guidance, and what was it before"
+            + (f" ({before})?" if before else " (in its previous quarterly report)?")
+            + f"{where} Report exactly this metric, not a similar one (core EPS and core constant-currency EPS are different lines). "
             f"Ignore releases from 2025 or earlier.")
 
 
 def _verify_sources(primary_url: str) -> dict:
     # Nimble requires each group's `order` to match its position in the list.
-    out = {"allow": [{"title": "Company investor relations and SEC filings", "domains": IR_DOMAINS, "order": 0},
+    out = {"allow": [{"title": "Company investor relations and SEC filings", "domains": _ir_domains(), "order": 0},
                      {"title": "Wires and financial press", "domains": WIRE_DOMAINS, "order": 1}]}
     if primary_url:
-        out["prioritize"] = f"The company's Q3 2026 earnings release and prepared remarks dated October 8, 2026, e.g. {primary_url}"
+        out["prioritize"] = (f"The company's Q3 2026 earnings release and prepared remarks dated {_spoken_date(_info().session_day)}, "
+                             f"e.g. {primary_url}")
     return out
 
 
@@ -376,7 +417,8 @@ def to_verify(output: dict, run_s: float | None) -> WebVerify:
                      answer=answer, claims=[c for c in claims if c.claim != "metric"], sources=items[:6], official_sources=official, run_s=run_s)
 
 
-VERIFY_LABELS = {"guidance_in_oct_8_2026_release": "now", "guidance_before_oct_8_2026": "before", "change": "change", "source_url": "source"}
+VERIFY_LABELS = {"guidance_in_this_release": "now", "guidance_before_this_release": "before",
+                 "guidance_in_oct_8_2026_release": "now", "guidance_before_oct_8_2026": "before", "change": "change", "source_url": "source"}
 
 
 def _as_items(rows: list[dict], n: int = 4) -> list[WebItem]:
@@ -462,7 +504,7 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
             for h in found.get("broad", []):
                 d = nimble.domain(h.get("url", ""))
                 old = re.search(r"/(20(?:[01]\d|2[0-5]))/", h.get("url", ""))  # a dated path before 2026 is last year's story
-                if d and d not in seen and not _on(d, TRANSCRIPT_HOSTS + IR_DOMAINS + VIDEO_HOSTS) and not old:
+                if d and d not in seen and not _on(d, TRANSCRIPT_HOSTS + _ir_domains() + VIDEO_HOSTS) and not old:
                     seen.add(d)
                     candidates.append(h)
             candidates.sort(key=lambda h: 0 if _on(nimble.domain(h["url"]), HARD_DOMAINS) else 1)
@@ -499,13 +541,13 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
             q = f"{company} {ticker} {metric_label} guidance analysts react"
             async with nimble.client(timeout=20.0) as news_http:  # focus=news runs subagents: slow under load
                 try:
-                    r = await nimble.search(news_http, q, focus="news", max_results=6, start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
+                    r = await nimble.search(news_http, q, focus="news", max_results=6, start_date=_call_date(), exclude_domains=TRANSCRIPT_HOSTS)
                 except (nimble.NimbleError, httpx.TimeoutException) as exc:
                     if isinstance(exc, nimble.NimbleError) and "-> 5" not in str(exc):
                         raise
                     # focus=news often returns 500 "can't download the query response": fall back to plain search once.
                     try:
-                        r = await nimble.search(news_http, f"{q} news", max_results=6, start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
+                        r = await nimble.search(news_http, f"{q} news", max_results=6, start_date=_call_date(), exclude_domains=TRANSCRIPT_HOSTS)
                     except (nimble.NimbleError, httpx.TimeoutException):
                         steps["newswire"].status, steps["newswire"].summary = "skipped", "unavailable: Nimble news search returned errors"
                         return

@@ -33,7 +33,8 @@ def agent_name() -> str:
 
 
 def question(company: str, ticker: str, quote: str, metric_label: str, new_value: str | None, direction: str = "") -> str:
-    return (f"Claim heard live on {company}'s ({ticker}) Q3 2026 earnings call on October 8, 2026: \"{quote}\". "
+    d = config.call_info().session_day
+    return (f"Claim heard live on {company}'s ({ticker}) Q3 2026 earnings call on {d:%B} {d.day}, {d.year}: \"{quote}\". "
             f"Metric: {metric_label}. Value now: {new_value or 'none stated'}. Direction heard: {direction or 'not stated'}. "
             f"What was the fiscal 2026 guidance for this metric before this call, and how did it evolve through 2026? "
             f"Is the claim consistent with that history?")
@@ -159,5 +160,5 @@ async def mock_check(company: str, ticker: str, quote: str, metric_label: str, n
                 f"({last['event']}, {last['as_of_date']}).{note} The same range had stood since {history[0]['as_of_date']}."),
         sql=guidance_history.SQL.replace("%s", f"'{ticker}'", 1).replace("%s", f"'{metric}'", 1),
         rows=[{"AS_OF_DATE": h["as_of_date"], "VALUE_TEXT": h["value_text"], "STATUS": h["status"]} for h in history],
-        citations=[f"PepsiCo {last['as_of_quarter']} guidance table"],
+        citations=[f"{company} {last['as_of_quarter']} guidance table"],
     )

@@ -22,17 +22,18 @@ COLUMNS = ["CHUNK", "DOC_TITLE", "QUARTER", "DOC_TYPE", "SOURCE_URL"]
 _WORD = re.compile(r"[a-z0-9.%+-]+")
 
 
-def _doc_meta(path: Path) -> dict:
+def _doc_meta(path: Path, company: str, ticker: str) -> dict:
     name = path.stem.lower()
-    quarter = "Q2 2026" if "q2_2026" in name else ("Q1 2026" if "q1_2026" in name else ("Q4 2025" if "q4_2025" in name else "prior"))
+    q = re.search(r"q([1-4])_(20\d\d)", name)
+    quarter = f"Q{q.group(1)} {q.group(2)}" if q else "prior"
     doc_type = "guidance" if "guidance" in name or "release" in name else "transcript"
     url = ""
     head = path.read_text(errors="ignore")[:2000]
     m = re.search(r"https?://\S+", head)
     if m:
         url = m.group(0).rstrip(").,>]")
-    title = f"PepsiCo {quarter} {'earnings release outlook' if doc_type == 'guidance' else 'earnings call transcript'}"
-    return {"DOC_TITLE": title, "QUARTER": quarter, "DOC_TYPE": doc_type, "SOURCE_URL": url}
+    title = f"{company} {quarter} {'earnings release outlook' if doc_type == 'guidance' else 'earnings call transcript'}"
+    return {"DOC_TITLE": title, "QUARTER": quarter, "DOC_TYPE": doc_type, "SOURCE_URL": url, "COMPANY": company, "TICKER": ticker}
 
 
 def _table_rows(text: str) -> list[list[str]]:
@@ -49,6 +50,8 @@ def _guidance_row_chunks(path: Path, meta: dict) -> list[dict]:
     section = text.split("## Guidance table", 1)[-1].split("\n## ", 1)[0] if "## Guidance table" in text else ""
     rows = _table_rows(section)[1:]  # skip header
     low_end = "low end of the EPS range" in text
+    when = re.search(r"\(([A-Z][a-z]+ \d{1,2}, \d{4})\)", text[:400])  # the date in the document's title line
+    as_of = f"{meta['QUARTER']} ({when.group(1)})" if when else meta["QUARTER"]
     out = []
     for cells in rows:
         if len(cells) < 2:
@@ -57,31 +60,45 @@ def _guidance_row_chunks(path: Path, meta: dict) -> list[dict]:
         basis = f" ({cells[2].lower()})" if len(cells) > 2 else ""
         note = ""
         if low_end and "EPS" in metric:
-            note = " On the Q2 call the CFO said EPS may be towards the low end of the range."
-        out.append({"CHUNK": f"PepsiCo fiscal 2026 guidance as of {meta['QUARTER']} (July 9, 2026): {metric}: {value}{basis}.{note}",
-                    **meta, "DOC_TITLE": f"PepsiCo {meta['QUARTER']} guidance table", "DOC_ID": f"{path.name}#row-{len(out)}"})
+            note = f" On the {meta['QUARTER'].split()[0]} call the CFO said EPS may be towards the low end of the range."
+        out.append({"CHUNK": f"{meta['COMPANY']} fiscal {meta['QUARTER'].split()[-1]} guidance as of {as_of}: {metric}: {value}{basis}.{note}",
+                    **meta, "DOC_TITLE": f"{meta['COMPANY']} {meta['QUARTER']} guidance table", "DOC_ID": f"{path.name}#row-{len(out)}"})
     return out
 
 
-def load_prior_chunks(max_chars: int = 1200) -> list[dict]:
-    """Split data/prior/* into paragraph-packed chunks. Shared by the seed script and the mock."""
+def prior_sources() -> list[tuple[Path, str, str]]:
+    """(prior_dir, company, ticker) for every call in data/calls/, once per folder."""
+    out: list[tuple[Path, str, str]] = []
+    for c in config.list_calls():
+        info = config.call_info(c["id"])
+        if info.prior_dir not in [d for d, _, _ in out]:
+            out.append((info.prior_dir, info.company, info.ticker))
+    return out
+
+
+def load_prior_chunks(max_chars: int = 1200, sources: list[tuple[Path, str, str]] | None = None) -> list[dict]:
+    """Split every call's prior/ guidance documents into paragraph-packed chunks, each tagged with its TICKER.
+
+    Shared by the seed script and the mock.
+    """
     chunks: list[dict] = []
-    for path in sorted((config.DATA / "prior").glob("*")):
-        # Guidance documents only: third-party call transcripts stay on this machine (owner decision, Oct 11).
-        if path.suffix.lower() not in {".txt", ".md"} or "transcript" in path.stem.lower():
-            continue
-        meta = _doc_meta(path)
-        if meta["DOC_TYPE"] == "guidance":
-            chunks.extend(_guidance_row_chunks(path, meta))
-        paras = [p.strip() for p in re.split(r"\n\s*\n", path.read_text(errors="ignore")) if p.strip()]
-        buf = ""
-        for p in paras:
-            if buf and len(buf) + len(p) > max_chars:
-                chunks.append({"CHUNK": buf, **meta, "DOC_ID": f"{path.name}#{len(chunks)}"})
-                buf = ""
-            buf = f"{buf}\n\n{p}" if buf else p
-        if buf:
-            chunks.append({"CHUNK": buf, **meta, "DOC_ID": f"{path.name}#{len(chunks)}"})
+    for prior_dir, company, ticker in sources if sources is not None else prior_sources():
+        for path in sorted(Path(prior_dir).glob("*")):
+            # Guidance documents only: third-party call transcripts stay on this machine (owner decision, Oct 11).
+            if path.suffix.lower() not in {".txt", ".md"} or "transcript" in path.stem.lower():
+                continue
+            meta = _doc_meta(path, company, ticker)
+            if meta["DOC_TYPE"] == "guidance":
+                chunks.extend(_guidance_row_chunks(path, meta))
+            paras = [p.strip() for p in re.split(r"\n\s*\n", path.read_text(errors="ignore")) if p.strip()]
+            buf = ""
+            for p in paras:
+                if buf and len(buf) + len(p) > max_chars:
+                    chunks.append({"CHUNK": buf, **meta, "DOC_ID": f"{ticker}/{path.name}#{len(chunks)}"})
+                    buf = ""
+                buf = f"{buf}\n\n{p}" if buf else p
+            if buf:
+                chunks.append({"CHUNK": buf, **meta, "DOC_ID": f"{ticker}/{path.name}#{len(chunks)}"})
     return chunks
 
 
@@ -115,14 +132,16 @@ def _with_history(hits: list[dict], history: list[dict]) -> dict:
 
 async def mock_search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP", limit: int = 4) -> dict:
     history = await guidance_history.mock_guidance_history(ticker, metric) if metric else []
-    return _with_history(_mock_ranked(query, limit), history)
+    return _with_history(_mock_ranked(query, limit, ticker), history)
 
 
-def _mock_ranked(query: str, limit: int) -> list[dict]:
+def _mock_ranked(query: str, limit: int, ticker: str = "PEP") -> list[dict]:
     q = set(_WORD.findall(query.lower()))
     boost = {"guidance", "outlook", "expect", "expects", "now", "core", "eps", "organic", "tax", "rate"}
     scored = []
     for words, chunk in _mock_index():
+        if chunk.get("TICKER", ticker) != ticker:
+            continue
         overlap = len(q & words)
         if not overlap:
             continue

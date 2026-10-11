@@ -103,23 +103,24 @@ def compute_reaction(
 
 
 # ---- mock: local CSV ----------------------------------------------------
-def _closes(name: str) -> dict[str, float]:
-    path = config.DATA / name
+def _closes(path) -> dict[str, float]:
     if not path.exists():
         return {}
     df = pd.read_csv(path)
     return dict(zip(df["ticker"], df["close"].astype(float)))
 
 
-@lru_cache(maxsize=1)
-def _csv_bars() -> tuple[pd.DataFrame, dict[str, float], dict[str, float]]:
-    bars = pd.read_csv(config.DATA / "prices.csv")
+@lru_cache(maxsize=8)
+def _csv_bars(prices_path, prior_close_path, day_close_path) -> tuple[pd.DataFrame, dict[str, float], dict[str, float]]:
+    """The active call's local bars and closes (data/calls/<id>/... or the PepsiCo files), cached per call."""
+    bars = pd.read_csv(prices_path)
     bars["ts"] = pd.to_datetime(bars["ts"], utc=True)
-    return bars[["ts", "ticker", "close"]], _closes("prior_close.csv"), _closes("day_close.csv")
+    return bars[["ts", "ticker", "close"]], _closes(prior_close_path), _closes(day_close_path)
 
 
 async def mock_price_reaction(ticker: str, since_ts: str, benchmark: str = "XLP") -> dict:
-    bars, prior, day = _csv_bars()
+    info = config.call_info()
+    bars, prior, day = _csv_bars(info.prices_path, info.prior_close_path, info.day_close_path)
     params = _reaction_params(ticker, benchmark, _parse_ts(since_ts))
     r = compute_reaction(bars, prior, day, ticker, benchmark, params["since"], _window_min(), "local prices.csv (Tiger offline)", True)
     return r.model_copy(update={"sql": display_sql(params)}).model_dump()

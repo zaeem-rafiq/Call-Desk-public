@@ -173,7 +173,8 @@ def test_self_check_never_raises(monkeypatch):
 @pytest.mark.skipif(not (config.DATA / "prices.csv").exists(), reason="vendor price data is not redistributed")
 def test_mock_reaction_numbers_unchanged_and_shows_the_query():
     r = asyncio.run(prices.mock_price_reaction("PEP", SINCE, "XLP"))
-    bars, prior, day = prices._csv_bars()
+    info = config.call_info()
+    bars, prior, day = prices._csv_bars(info.prices_path, info.prior_close_path, info.day_close_path)
     ref = prices.compute_reaction(bars, prior, day, "PEP", "XLP", prices._parse_ts(SINCE), prices._window_min(), "x", True).model_dump()
     assert [r[k] for k in prices.SQL_FIELDS] == [ref[k] for k in prices.SQL_FIELDS]
     assert r["mock"] and r["storage"] == {} and r["query_ms"] is None

@@ -12,8 +12,7 @@ def test_transcripts_never_reach_snowflake(tmp_path, monkeypatch):
     prior.mkdir()
     (prior / "q2_2026_transcript.txt").write_text("Steve Schmitt: we may be towards the low end.\n\nAnalyst: thanks.")
     (prior / "q2_2026_guidance.md").write_text("# Guidance\n\n## Guidance table\n\n| Metric | Value | Basis |\n|---|---|---|\n| Core EPS | +5% to +7% | Implied |\n")
-    monkeypatch.setattr(config, "DATA", tmp_path)
-    chunks = prior_guidance.load_prior_chunks()
+    chunks = prior_guidance.load_prior_chunks(sources=[(prior, "PepsiCo", "PEP")])
     assert chunks, "the guidance file must still load"
     assert not [c for c in chunks if "transcript" in c["DOC_ID"].lower() or c["DOC_TYPE"] == "transcript"]
 

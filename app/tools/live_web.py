@@ -63,7 +63,9 @@ def _passages(markdown: str, query: str, max_chars: int = 700) -> str:
 
 IR_DOMAINS = ["investors.pepsico.com", "pepsico.com", "sec.gov"]
 GUIDANCE_ROW = re.compile(r"(?i)^(core|organic|net revenue|reported|effective tax|tax rate|capital spending|capex|free cash flow|"
-                          r"total cash|cash returns|dividends|share repurchases|foreign exchange|fx|acquisitions)")
+                          r"total cash|cash returns|dividends|share repurchases|foreign exchange|fx|acquisitions|"
+                          r"earnings per share|eps|adjusted|operating margin|pre-?tax|total revenue|revenue|capacity|"
+                          r"fuel|casm|cost per|gross capital|leverage|debt)")
 
 
 def guidance_table(content: str, max_rows: int = 12) -> str:
@@ -117,7 +119,8 @@ async def live_search_live_web(query: str, metric_label: str = "", company: str 
         async def primary() -> list[dict]:
             """The company's own release and prepared remarks (standard depth returns page content, ~1 s)."""
             r = await http.post("/search", json={"query": ir_query(company, metric_label), "max_results": 4, "search_depth": "standard",
-                                                 "include_domains": IR_DOMAINS, "start_date": "2026-10-08"})
+                                                 "include_domains": list(config.call_info().ir_domains) or IR_DOMAINS,
+                                                 "start_date": str(config.call_info().session_day)})
             r.raise_for_status()
             return [h for h in (ir_hit(x) for x in r.json().get("results", [])) if h][:2]
 

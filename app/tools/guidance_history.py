@@ -49,9 +49,17 @@ def shape(rows: list[dict]) -> list[dict]:
     return out
 
 
+def csv_paths() -> list:
+    """guidance_lines.csv from every call's prior/ folder (data/prior for PepsiCo, data/calls/<id>/prior for others)."""
+    from .prior_guidance import prior_sources
+
+    return [d / "guidance_lines.csv" for d, _, _ in prior_sources() if (d / "guidance_lines.csv").exists()]
+
+
 @lru_cache(maxsize=1)
 def _csv_rows() -> pd.DataFrame:
-    return pd.read_csv(CSV, dtype=str, keep_default_na=False)
+    frames = [pd.read_csv(p, dtype=str, keep_default_na=False) for p in csv_paths()] or [pd.read_csv(CSV, dtype=str, keep_default_na=False)]
+    return pd.concat(frames, ignore_index=True)
 
 
 async def mock_guidance_history(ticker: str, metric: str) -> list[dict]:
