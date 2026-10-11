@@ -298,6 +298,31 @@ https://docs.nimbleway.com · https://docs.nimbleway.com/nimble-sdk/web-tools/se
 
 ---
 
+### Verified live on Oct 11, 2026 (account key, app/tools/nimble.py and app/tools/web_desk.py)
+- **Standard-depth search puts the page text in `description`.** `content` comes back empty. With `include_domains` set to
+  `investors.pepsico.com`, `pepsico.com` and `sec.gov`, it returns PepsiCo's Q3 2026 release and prepared-remarks text,
+  including the guidance table, in 0.3–0.9 s.
+- **Plain lite searches ignored `include_domains`** in one test, returning fda.gov results. Use standard depth when
+  the domain filter matters.
+- **`focus=news` and `focus=social` take 5–7 s.** They often exceeded a 5 s client timeout. `focus=social` returned
+  news sites, not social posts.
+- **`/v2/fast-serp` sometimes returns 500** ("can't download…"). One retry usually succeeds.
+- **`/v2/agents/runs` needs an `order` on every `sources.allow` and `sources.block` group**, numbered 0, 1, …
+  (`"sources order must match the source list position"`, 422). Runs at `effort=low` took 14–27 s.
+  - The agent answered a general question with old 2025 guidance at "high" confidence.
+  - Naming the release date and the company document's URL, through the prompt and `prioritize`, fixed it.
+- **`GET /v2/domain-knowledge/driver?url=reuters.com`** returned `antibots: ["datadome - interstitial", "datadome"]`,
+  `driver: vx6` in 0.1 s.
+- **`POST /v1/domain-health/check` returns 404** for this account on every path tried. It is not used.
+- **Extract Templates: 796 in the catalogue.** `google_search_aio` does not exist.
+  - Found: `chatgpt`, `gemini`, `perplexity` (input `{prompt}`); `reddit_answers` (`{prompt}`, returns
+    `posts[{post_link, upvotes, comments, post_subreddit}]`, ~30 s); `yahoo_finance_info_*` (`{ticker}`).
+  - `perplexity` did not finish within 60 s. `chatgpt` took 36 s and returned no `answer`.
+- **`/v2/map` on investors.pepsico.com returned 161 links**, earnings PDFs from 2020–2024 but none from 2026.
+  The site's sitemap lags, so search finds the new documents.
+
+---
+
 ## 3. Snowflake (connector 4.8.0) and Cortex Search
 
 ### Verified facts

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from . import live_web, prices, prior_guidance
+from . import prices, prior_guidance, web_desk
 from .base import ToolResult, run_tool
 
 
@@ -14,11 +14,14 @@ async def search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP
     )
 
 
-async def search_live_web(query: str, metric_label: str = "", company: str = "PepsiCo") -> ToolResult:
-    """Search the live web for news, the press release, and analyst reaction (Nimble)."""
+async def search_live_web(query: str, metric_label: str = "", company: str = "PepsiCo", new_value: str | None = None) -> ToolResult:
+    """Nimble web desk, verdict phase: company guidance table, broad and news search, Google, IR site map.
+
+    Data: {hits, steps, newswire, broad, primary_url, mock}; the desk's enrich phase runs after the verdict (factcheck).
+    """
     return await run_tool(
-        "search_live_web", "nimble", {"query": query, "metric_label": metric_label, "company": company},
-        live_web.live_search_live_web, live_web.mock_search_live_web, timeout_s=8,
+        "search_live_web", "nimble", {"query": query, "metric_label": metric_label, "company": company, "new_value": new_value},
+        web_desk.live_verdict, web_desk.mock_verdict, timeout_s=8,
     )
 
 

@@ -16,7 +16,7 @@ from typing import Callable
 
 from . import confidence, config, observability, tools
 from .claims import Claim, numeric_direction, parse_range
-from .models import Evidence, Flag, GuidancePoint, PriceReaction, RelatedChange
+from .models import Evidence, Flag, GuidancePoint, PriceReaction, RelatedChange, SnowflakeAgent, WebDesk, WebStep
 
 log = logging.getLogger("calldesk")
 MOCKS = Path(__file__).resolve().parent / "mocks"
@@ -26,7 +26,7 @@ def default_queries(claim: Claim, label: str, info: config.CallInfo) -> dict[str
     return {
         "search_prior_guidance": {"query": f"{info.company} fiscal 2026 {label} guidance outlook", "metric": claim.metric, "ticker": info.ticker},
         "search_live_web": {"query": f"{info.company} Q3 2026 {label} {claim.new_value or ''} guidance".strip(),
-                            "metric_label": label, "company": info.company},
+                            "metric_label": label, "company": info.company, "new_value": claim.new_value},
         "get_price_reaction": {"ticker": info.ticker, "since_ts": "", "benchmark": info.primary_benchmark},
     }
 
@@ -71,7 +71,7 @@ def _hits(res: tools.ToolResult | None) -> list[dict]:
 def _claim_only_synthesis(claim: Claim, label: str, results: dict) -> dict:
     """Verdict when the live agent failed: only what was heard, with the raw tool hits as neutral evidence."""
     n_prior = len(_hits(results.get("search_prior_guidance")))
-    n_web = len(results["search_live_web"].data or []) if results.get("search_live_web") and results["search_live_web"].ok else 0
+    n_web = len(_hits(results.get("search_live_web")))
     return {
         "direction": claim.direction,
         "new_value": claim.new_value,
@@ -108,6 +108,9 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
             res = await run_tools(calls)
             ran.update(res)
             flag.tool_calls = [r.call for r in res.values()]
+            web = res.get("search_live_web")
+            if web and web.ok and isinstance(web.data, dict):
+                flag.web_desk = WebDesk(steps=[WebStep(**st) for st in web.data.get("steps", [])], mock=bool(web.data.get("mock")))
             price = res.get("get_price_reaction")
             if price and price.ok and price.data:
                 flag.price_reaction = PriceReaction(**price.data)
@@ -133,7 +136,7 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
         prior_res, web_res, price_res = (results.get(k) for k in ("search_prior_guidance", "search_live_web", "get_price_reaction"))
         prior_hits = _hits(prior_res)
         flag.guidance_history = [GuidancePoint(**h) for h in ((prior_res.data or {}).get("history") or [])] if prior_res and prior_res.ok else []
-        web_hits = web_res.data if web_res and web_res.ok else []
+        web_hits = _hits(web_res)
         if synthesis is None:  # Gemini key missing: canned demo text, labelled MOCK in the UI and the eval
             synthesis = _mock_synthesis(claim, flag.metric_label, prior_hits, web_hits)
 
@@ -144,7 +147,44 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
         _apply_confidence(flag, prior_res, web_res, price_res, synthesis)
         flag.status = "checked"
         publish(flag)
+        if config.get("ENRICH", "1") != "0":
+            await _enrich(claim, flag, info, web_res, publish)
         return flag
+
+
+async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tools.ToolResult | None, publish: Callable[[Flag], None]) -> None:
+    """After the verdict: Snowflake's Cortex Agent and Nimble's slower web specialists fill in the card.
+
+    Awaited here (not detached), so stopping a run cancels them with the fact-check. They never change the verdict.
+    """
+    from .tools import snowflake_agent, web_desk
+
+    async def cortex_agent() -> None:
+        mock = config.is_mock("snowflake")
+        flag.snowflake_agent = SnowflakeAgent(status="running", mock=mock)
+        publish(flag)
+        try:
+            if mock:
+                flag.snowflake_agent = await snowflake_agent.mock_check(info.company, info.ticker, claim.quote, flag.metric_label,
+                                                                        flag.new_value, claim.metric)
+            else:
+                with observability.span("gen_ai.invoke_agent", "invoke_agent snowflake.GUIDANCE_AGENT",
+                                        {"gen_ai.agent.name": "snowflake-cortex-guidance-agent", "gen_ai.operation.name": "invoke_agent"}):
+                    flag.snowflake_agent = await asyncio.wait_for(snowflake_agent.live_check(
+                        info.company, info.ticker, claim.quote, flag.metric_label, flag.new_value), timeout=45)
+        except Exception as exc:  # noqa: BLE001 - shown on the card, never fatal
+            observability.capture(exc)
+            flag.snowflake_agent = SnowflakeAgent(status="failed", error=f"{type(exc).__name__}: {exc}"[:200], mock=mock)
+        publish(flag)
+
+    async def nimble_desk() -> None:
+        if flag.web_desk is None:
+            return
+        found = web_res.data if web_res and web_res.ok and isinstance(web_res.data, dict) else {}
+        await web_desk.enrich(flag.web_desk, company=info.company, ticker=info.ticker, metric_label=flag.metric_label,
+                              new_value=flag.new_value, found=found, mock=bool(found.get("mock")), on_change=lambda: publish(flag))
+
+    await asyncio.gather(cortex_agent(), nimble_desk())
 
 
 def _apply_synthesis(flag, claim, s, prior_hits, web_hits, prior_res, web_res) -> None:
@@ -210,7 +250,7 @@ def _apply_confidence(flag, prior_res, web_res, price_res, s) -> None:
     web_ev = [e for e in flag.evidence if e.source.startswith("Nimble")]
     sup = sum(e.stance == "supports" for e in web_ev)
     con = sum(e.stance == "contradicts" for e in web_ev)
-    total = len(web_res.data) if web_ok and web_res.data else 0
+    total = len(_hits(web_res))
     abnormal = flag.price_reaction.vs_benchmark if flag.price_reaction else None
     flag.confidence, flag.confidence_components, flag.confidence_rationale = confidence.combine(
         confidence.prior_score(prior_ok, bool(s.get("prior_found")), consistent),

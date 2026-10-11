@@ -40,9 +40,23 @@ flowchart LR
   - claim extraction with materiality scoring,
   - the fact-check agent with parallel function calling,
   - structured verdicts.
-- **Nimble** runs the live web search and page extraction. It finds the morning release and news that state the numbers executives didn't say aloud.
+- **Nimble** runs a "web desk" of nine specialists for every flag, each built on a different Nimble capability. They feed each other.
+  - **Before the verdict**, all five run in parallel and are capped at 6.5 s:
+    - The *primary-source reader* uses standard-depth search, limited to PepsiCo's IR site and the SEC. It returns the company's own guidance table, showing each line's current and previous values, in about 0.5 s. That table is the first web source in every verdict.
+    - The *broad web search* runs the model's query plus a fixed recall query.
+    - The *newswire scout* uses `focus=news`.
+    - *Google right now* uses Fast SERP.
+    - The *IR site mapper* uses Map.
+  - **After the verdict**, four more fill in the card:
+    - The *verification agent* is a Web Search Agent run with `output_schema`, starting from the document the primary reader found. It returns Nimble's trust report: a confidence grade, official sources, and citations for each claim.
+    - The *wall-breaker* uses Domain Knowledge to find which news sites run antibot systems (DataDome, Cloudflare and others). It then reads the protected article with the driver Nimble recommends.
+    - The *Reddit pulse* uses the pre-built `reddit_answers` Extract Template.
+    - The *street reaction* runs news search.
 - **Tiger Data** stores prices. `price_ticks` is a hypertable, and `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. Together they give PEP's move since each quote minus XLP's, which is the abnormal move.
-- **Snowflake** holds the warehouse of prior-quarter transcripts and guidance lines. A Cortex Search service answers questions such as "What was PepsiCo's core EPS guidance last quarter?"
+- **Snowflake** holds the prior guidance. It never stores call transcripts.
+  - **Cortex Search** runs over the Q2 2026 guidance documents, filtered by ticker. It answers questions such as "What was PepsiCo's core EPS guidance last quarter?"
+  - **`GUIDANCE_LINES`** records every FY2026 guidance statement made before the call, from Dec 2025 to Jul 2026. The fact-check reads the metric's history from it by SQL, and the card draws that history as a timeline.
+  - **The Cortex Agent `GUIDANCE_AGENT`** re-checks each claim after the verdict, inside Snowflake. It uses Cortex Analyst over the semantic view `GUIDANCE_SV`, Cortex Search, and SQL on the warehouse. Its verdict, the SQL it wrote, and the rows it read appear on the card.
 - **Sentry** covers errors and AI agent monitoring:
   - Each flag is its own `gen_ai.invoke_agent` trace.
   - Every Gemini call is a `gen_ai.chat` span, and every tool call is a `gen_ai.execute_tool` span.

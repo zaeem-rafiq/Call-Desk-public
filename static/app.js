@@ -185,6 +185,8 @@ function renderFlag(f) {
   vs.hidden = !f.new_value || !f.new_value_source || f.new_value_source === "spoken";
   vs.textContent = vs.hidden ? "" : `not spoken · ${f.new_value_source}`;
   renderRelated(node, f);
+  renderTrajectory(node, f);
+  node.querySelector(".degraded-tag").hidden = !f.degraded;
   node.querySelector(".speaker").textContent = f.speaker;
   node.querySelector(".quote").textContent = `“${f.quote}”`;
   node.querySelector(".what").textContent = f.what_changed || "";
@@ -231,7 +233,10 @@ function renderFlag(f) {
     node.querySelector(".conf-fill").style.width = `${Math.round(f.confidence * 100)}%`;
     node.querySelector(".conf-value").textContent = f.confidence.toFixed(2);
   }
+  renderAgents(node, f);
   renderDetail(node, f);
+  renderDeskDetail(node, f);
+  renderSnowflakeDetail(node, f);
   if (f.status === "checked") addMarker(f);
   updateTally();
 }
@@ -252,6 +257,188 @@ function renderRelated(node, f) {
     );
     body.append(tr);
   }
+}
+
+// ---------- Snowflake guidance history ----------
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function shortDate(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${MONTHS[m - 1]} ${d} ’${String(y).slice(2)}`;
+}
+const compact = (v) => (v || "").replace(/^approximately\s+/i, "~").replace(/\s*\(.*\)$/, "");
+
+function renderTrajectory(node, f) {
+  const box = node.querySelector(".trajectory");
+  const pts = f.guidance_history || [];
+  box.hidden = !pts.length;
+  if (!pts.length) return;
+  const by = box.querySelector(".by");
+  by.replaceChildren("Snowflake · SQL on GUIDANCE_LINES");
+  if ((f.mocked || []).includes("snowflake")) by.append(el("span", "mock-tag", "MOCK"));
+  const ol = box.querySelector(".traj");
+  ol.replaceChildren();
+  pts.forEach((p, i) => {
+    const li = el("li", "tp");
+    li.title = `${p.event} · ${p.status}${p.qualifier ? ` · ${p.qualifier}` : ""}`;
+    li.append(el("span", "tp-date", shortDate(p.as_of_date)), el("span", "tp-val", compact(p.value_text)));
+    if (p.qualifier && /low end/i.test(p.qualifier)) li.append(el("span", "tp-note", "low end"));
+    else if (i > 0 && p.value_text === pts[i - 1].value_text) li.classList.add("same");
+    ol.append(li);
+  });
+  const now = el("li", `tp now ${dirClass(f.direction)}`);
+  now.append(el("span", "tp-date", "Oct 8 · this call"), el("span", "tp-val", f.new_value ? compact(f.new_value) : "…"));
+  ol.append(now);
+}
+
+// ---------- agents strip (Nimble web desk + Snowflake Cortex Agent) ----------
+const STEP_SHORT = { primary: "IR", broad: "WEB", serp: "GOOGLE", sitemap: "MAP", verify: "AGENT", wall: "WALL", social: "REDDIT", newswire: "NEWS" };
+const VERDICT_CLASS = { CONSISTENT: "ok", NEW: "new", CONTRADICTS: "bad", UNVERIFIABLE: "na" };
+
+function stepTitle(s) {
+  return `${s.label} · ${s.endpoint}${s.ms !== null && s.ms !== undefined ? ` · ${s.ms} ms` : ""}${s.summary ? `\n${s.summary}` : ""}`;
+}
+
+function renderAgents(node, f) {
+  const desk = f.web_desk, sa = f.snowflake_agent;
+  node.querySelector(".agents").hidden = !desk && !sa;
+  const nrow = node.querySelector(".nimble-row");
+  nrow.hidden = !desk;
+  if (desk) {
+    const dots = nrow.querySelector(".desk-dots");
+    dots.replaceChildren();
+    for (const s of desk.steps) {
+      const d = el("span", `dot ${s.status} ${s.phase}`, STEP_SHORT[s.id] || s.id.toUpperCase());
+      d.title = stepTitle(s);
+      dots.append(d);
+    }
+    const v = nrow.querySelector(".agent-verdict");
+    v.replaceChildren();
+    const vs = desk.steps.find((s) => s.id === "verify");
+    if (desk.verify) {
+      v.append(el("span", `vbadge c-${desk.verify.confidence || "na"}`, `VERIFIED · ${(desk.verify.confidence || "?").toUpperCase()}`),
+        el("span", "vmeta", `${desk.verify.official_sources} official sources · ${desk.verify.run_s ?? "?"}s`));
+    } else if (vs && vs.status === "running") v.append(el("span", "vrun", "verification agent running…"));
+    else if (vs && vs.status !== "ok") v.append(el("span", "vmeta", `verification agent ${vs.status}`));
+    if (desk.mock) v.append(el("span", "mock-tag", "MOCK"));
+  }
+  const srow = node.querySelector(".sf-row");
+  srow.hidden = !sa;
+  if (sa) {
+    const v = srow.querySelector(".agent-verdict");
+    v.replaceChildren();
+    if (sa.status === "running") v.append(el("span", "vrun", "Cortex Search + Cortex Analyst running…"));
+    else if (sa.status === "failed") v.append(el("span", "vbadge c-low", "FAILED"));
+    else v.append(el("span", `vbadge v-${VERDICT_CLASS[sa.verdict] || "na"}`, sa.verdict || "ANSWERED"),
+      el("span", "vmeta", `${(sa.tools || []).length} tools · ${sa.rows.length} rows · ${sa.ms !== null && sa.ms !== undefined ? (sa.ms / 1000).toFixed(0) : "?"}s`));
+    if (sa.mock) v.append(el("span", "mock-tag", "MOCK"));
+    const answer = (sa.answer || sa.error || "").replace(/^(CONSISTENT|CONTRADICTS|NEW|UNVERIFIABLE)[.:]?\s*/i, "");
+    srow.querySelector(".agent-answer").textContent = answer;
+  }
+}
+
+function link(url, text) {
+  const a = el("a", null, text || url);
+  a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
+  return a;
+}
+
+function renderDeskDetail(node, f) {
+  const list = node.querySelector(".desk-steps");
+  const extra = node.querySelector(".desk-extra");
+  list.replaceChildren();
+  extra.replaceChildren();
+  const desk = f.web_desk;
+  if (!desk) { list.append(el("li", "muted", "Runs with the fact-check.")); return; }
+  for (const s of desk.steps) {
+    const li = el("li", `step ${s.status}`);
+    const head = el("div", "step-head");
+    head.append(el("span", `step-dot ${s.status}`, s.status === "ok" ? "✓" : s.status === "failed" ? "✗" : s.status === "skipped" ? "–" : "…"),
+      el("span", "step-label", s.label), el("span", "step-phase", s.phase === "verdict" ? "verdict" : "after verdict"),
+      el("span", "step-ms", s.ms !== null && s.ms !== undefined ? `${s.ms} ms` : ""));
+    li.append(head, el("div", "step-endpoint", s.endpoint + (s.feeds.length ? `  ← ${s.feeds.join(", ")}` : "")));
+    if (s.summary) li.append(el("div", "step-summary", s.summary));
+    if (s.mock) head.append(el("span", "mock-tag", "MOCK"));
+    list.append(li);
+  }
+  const v = desk.verify;
+  if (v) {
+    const box = el("div", "desk-block");
+    box.append(el("div", "sect-label", `Verification agent · trust ${v.confidence || "?"}`));
+    const t = el("table", "kv");
+    for (const [k, val] of Object.entries(v.answer || {})) {
+      const tr = el("tr");
+      const td = el("td");
+      if (/^https?:\/\//.test(String(val))) td.append(link(String(val))); else td.textContent = String(val);
+      tr.append(el("th", null, k), td);
+      t.append(tr);
+    }
+    box.append(t);
+    for (const c of (v.claims || []).slice(0, 4)) {
+      const p = el("div", "claim");
+      p.append(el("span", `vbadge c-${c.confidence || "na"}`, (c.confidence || "?").toUpperCase()), el("span", "claim-name", c.claim));
+      for (const ci of c.citations.slice(0, 2)) if (ci.url) p.append(link(ci.url, ci.source || ci.url));
+      box.append(p);
+    }
+    if (v.reasoning) box.append(el("p", "muted small", v.reasoning));
+    extra.append(box);
+  }
+  if (desk.wall && desk.wall.domain) {
+    const w = desk.wall;
+    const box = el("div", "desk-block");
+    box.append(el("div", "sect-label", "Wall-breaker"));
+    const scan = el("div", "scan");
+    for (const sc of w.scanned || []) scan.append(el("span", `scan-site${sc.antibots.length ? " protected" : ""}`, `${sc.domain}${sc.antibots.length ? ` · ${[...new Set(sc.antibots)].join(", ")}` : " · open"}`));
+    box.append(scan, el("p", "small", `Read ${w.domain} with driver ${w.driver || "auto"}${w.antibots?.length ? ` past ${[...new Set(w.antibots)].join(", ")}` : ""}.`));
+    if (w.snippet) box.append(el("p", "ev-snippet", w.snippet));
+    if (w.url) box.append(link(w.url, w.title || w.url));
+    extra.append(box);
+  }
+  for (const [items, label] of [[desk.street, "Newswire & street reaction"], [desk.social, "Reddit pulse"]]) {
+    if (!items || !items.length) continue;
+    const box = el("div", "desk-block");
+    box.append(el("div", "sect-label", label));
+    const ul = el("ul", "items");
+    for (const it of items) {
+      const li = el("li");
+      if (it.url) li.append(link(it.url, it.title || it.url)); else li.append(el("span", null, it.title));
+      if (it.snippet) li.append(el("div", "small muted", it.snippet));
+      ul.append(li);
+    }
+    box.append(ul);
+    extra.append(box);
+  }
+}
+
+function renderSnowflakeDetail(node, f) {
+  const box = node.querySelector(".sf-detail");
+  const sa = f.snowflake_agent;
+  box.replaceChildren();
+  if (!sa) { box.append(el("p", "muted", "Runs after the verdict.")); return; }
+  if (sa.status === "running") { box.append(el("p", "muted", "Agent running: Cortex Analyst over the semantic view GUIDANCE_SV, Cortex Search over prior guidance documents.")); return; }
+  if (sa.status === "failed") { box.append(el("p", "neg small", sa.error || "failed")); return; }
+  const tools = el("div", "scan");
+  for (const t of sa.tools || []) tools.append(el("span", "scan-site", t));
+  box.append(tools);
+  if (sa.answer) box.append(el("p", "ev-snippet", sa.answer));
+  if (sa.sql) {
+    box.append(el("div", "sect-label", "SQL the agent wrote"));
+    box.append(el("pre", "sql", sa.sql));
+  }
+  if (sa.rows && sa.rows.length) {
+    const cols = Object.keys(sa.rows[0]);
+    const t = el("table", "rows");
+    const head = el("tr");
+    for (const c of cols) head.append(el("th", null, c.toLowerCase()));
+    t.append(head);
+    for (const r of sa.rows) {
+      const tr = el("tr");
+      for (const c of cols) tr.append(el("td", null, r[c] === null || r[c] === undefined ? "" : String(r[c])));
+      t.append(tr);
+    }
+    box.append(t);
+  }
+  if (sa.citations && sa.citations.length) box.append(el("p", "small muted", `Cited: ${sa.citations.join(" · ")}`));
+  if (sa.mock) box.append(el("span", "mock-tag", "MOCK"));
 }
 
 function toggleDetail(node, open) {

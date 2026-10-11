@@ -1,0 +1,121 @@
+{
+  "_note": "MOCK web desk, used only when NIMBLE_API_KEY is missing. Verification values come from PepsiCo's Q3 2026 release (public, Oct 8 2026) and Q2 2026 release. Reddit, street and wall-breaker entries are placeholders, never invented posts or headlines.",
+  "verdict_ms": {
+    "primary": 910,
+    "broad": 2480,
+    "serp": 640,
+    "sitemap": 2210
+  },
+  "verdict_summary": {
+    "primary": "guidance table read from investors.pepsico.com (current vs previous)",
+    "broad": "results from 2 queries (model's + recall)",
+    "serp": "top 6 Google results",
+    "sitemap": "IR pages mapped \u00b7 Q3 2026 documents found"
+  },
+  "enrich_delay_s": {
+    "social": 0.7,
+    "wall": 0.9,
+    "verify": 2.5,
+    "newswire": 0.6
+  },
+  "enrich_ms": {
+    "social": 2870,
+    "wall": 4120,
+    "verify": 21400,
+    "newswire": 1350
+  },
+  "enrich_summary": {
+    "social": "placeholder: Reddit threads appear here in live mode",
+    "wall": "placeholder: antibot scan and driver appear here in live mode",
+    "verify": "confidence high \u00b7 2 official sources \u00b7 2 cited claims \u00b7 21s",
+    "newswire": "placeholder: news and analyst reaction appear here in live mode"
+  },
+  "street": [
+    {
+      "title": "Mock placeholder",
+      "url": "",
+      "source": "mock",
+      "snippet": "In live mode, analyst and press reaction found by Nimble news search is listed here."
+    }
+  ],
+  "social": [
+    {
+      "title": "Mock placeholder",
+      "url": "",
+      "source": "mock",
+      "snippet": "In live mode, Reddit threads found by Nimble's reddit_answers template are listed here."
+    }
+  ],
+  "wall": {
+    "domain": "mock",
+    "url": "",
+    "title": "Mock placeholder",
+    "antibots": [],
+    "driver": "",
+    "snippet": "In live mode, Nimble names the news site's antibot systems, picks a driver and reads the article."
+  },
+  "verify": {
+    "Core EPS growth": {
+      "confidence": "high",
+      "reasoning": "MOCK. Both values come from PepsiCo's own releases (primary, official).",
+      "answer": {
+        "now": "+2.5% to +3.5%",
+        "before": "low end of approximately +5% to +7%",
+        "change": "cut",
+        "source": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf"
+      },
+      "claims": [
+        {
+          "claim": "now",
+          "confidence": "high",
+          "citations": [
+            {
+              "title": "PepsiCo Q3 2026 earnings release (SEC Form 8-K, Exhibit 99.1)",
+              "url": "https://www.sec.gov/Archives/edgar/data/0000077476/000007747626000050/q320268-kxexhibit991.htm",
+              "source": "sec.gov",
+              "snippet": "Core EPS +2.5% to +3.5% (previous: low-end of +5% to +7%)"
+            }
+          ]
+        },
+        {
+          "claim": "before",
+          "confidence": "high",
+          "citations": [
+            {
+              "title": "PepsiCo Q2 2026 earnings release",
+              "url": "https://www.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q2-2026-earnings-release.pdf",
+              "source": "pepsico.com",
+              "snippet": "core EPS growth of approximately 5 to 7 percent in fiscal 2026"
+            }
+          ]
+        }
+      ],
+      "sources": [
+        {
+          "title": "PepsiCo Q3 2026 earnings release (SEC Form 8-K, Exhibit 99.1)",
+          "url": "https://www.sec.gov/Archives/edgar/data/0000077476/000007747626000050/q320268-kxexhibit991.htm",
+          "source": "sec.gov",
+          "snippet": "primary \u00b7 official"
+        },
+        {
+          "title": "PepsiCo Q2 2026 earnings release",
+          "url": "https://www.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q2-2026-earnings-release.pdf",
+          "source": "pepsico.com",
+          "snippet": "primary \u00b7 official"
+        }
+      ],
+      "official_sources": 2,
+      "run_s": 21.4
+    },
+    "default": {
+      "confidence": "medium",
+      "reasoning": "MOCK. In live mode a Nimble Web Search Agent re-checks this claim and returns its trust report.",
+      "answer": {},
+      "claims": [],
+      "sources": [],
+      "official_sources": 0,
+      "run_s": 18.0
+    }
+  },
+  "primary_url": "https://www.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-earnings-release.pdf"
+}
