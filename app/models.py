@@ -44,6 +44,8 @@ class PriceReaction(BaseModel):
     sql: str = ""  # the Tiger Data query that computed the move (shown on the card)
     query_ms: int | None = None  # its server time
     storage: dict = Field(default_factory=dict)  # hypertable columnstore stats, e.g. {"before_bytes", "after_bytes", "ratio", "chunks"}
+    peers: list[dict] = Field(default_factory=list)  # [{"ticker", "move", "vs_benchmark", "subject"}] over the same window
+    peers_sql: str = ""
 
 
 class ConfidenceComponents(BaseModel):

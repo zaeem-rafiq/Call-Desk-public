@@ -158,6 +158,44 @@ SELECT t.win_move, b.win_move, t.win_move - b.win_move AS abnormal_pp,
   t.day_move, t.day_move - b.day_move AS day_abnormal_pp,
   t.close_move, b.close_move, t.close_move - b.close_move AS close_abnormal_pp
 FROM m t JOIN m b ON t.ticker = %(ticker)s AND b.ticker = %(benchmark)s"""
+PEER_SQL = """\
+WITH bars AS (  -- the company and its peers, 1-minute closes from bars_1m
+  SELECT ticker, bucket, close FROM bars_1m
+  WHERE ticker = ANY(%(tickers)s) AND bucket BETWEEN %(lo)s AND %(until)s
+), px AS (      -- as-of close at the quote (or the first bar after it) and at the window end
+  SELECT ticker,
+    coalesce(last(close, bucket) FILTER (WHERE bucket <= %(since)s), first(close, bucket)) AS p0,
+    last(close, bucket) FILTER (WHERE bucket <= %(until)s) AS p1
+  FROM bars GROUP BY ticker
+), m AS (SELECT ticker, 100 * (p1 / p0 - 1) AS move FROM px)
+SELECT p.ticker, p.move, p.move - b.move AS vs_benchmark
+FROM m p JOIN m b ON b.ticker = %(benchmark)s
+WHERE p.ticker <> %(benchmark)s
+ORDER BY p.move - b.move"""
+
+
+def peer_params(params: dict, peers: tuple[str, ...]) -> dict:
+    return {**params, "tickers": [params["ticker"], *peers, params["benchmark"]]}
+
+
+def display_peer_sql(params: dict) -> str:
+    shown = {**params, "tickers": "{" + ",".join(params["tickers"]) + "}"}
+    return re.sub(r"%\((\w+)\)s", lambda m: _literal(shown[m.group(1)]), PEER_SQL)
+
+
+def _peer_rows(rows: list[tuple], subject: str) -> list[dict]:
+    return [{"ticker": t, "move": round(float(m), 3), "vs_benchmark": round(float(v), 3), "subject": t == subject}
+            for t, m, v in rows if m is not None and v is not None]
+
+
+def _call_peers() -> tuple[str, ...]:
+    """The active call's peer tickers (call.json "peers"); none when no call is configured."""
+    try:
+        return tuple(getattr(config.call_info(), "peers", ()) or ())
+    except Exception:  # noqa: BLE001 - peers are an extra panel; the reaction never depends on them
+        return ()
+
+
 SQL_FIELDS = ("pct_move", "benchmark_pct_move", "vs_benchmark", "day_pct_move", "day_vs_benchmark",
               "close_pct_move", "close_benchmark_pct_move", "close_vs_benchmark")
 
@@ -231,13 +269,14 @@ def _storage(conn) -> dict:
     return _storage_cache
 
 
-def _tiger_fetch(params: dict) -> tuple[pd.DataFrame, dict[str, float], dict[str, float], dict, int, dict]:
-    """One pipelined round trip: the reaction query, its server time, the sparkline bars, reference closes."""
+def _tiger_fetch(params: dict, peers: tuple[str, ...] = ()) -> tuple[pd.DataFrame, dict[str, float], dict[str, float], dict, int, dict, list]:
+    """One pipelined round trip: the reaction query, its server time, the sparkline bars, reference closes, peers."""
     import psycopg
 
     tickers = [params["ticker"], params["benchmark"]]
     with psycopg.connect(config.get("TIGER_DATABASE_URL"), connect_timeout=8) as conn:
         with conn.pipeline():
+            peer_cur = conn.execute(PEER_SQL, peer_params(params, peers)) if peers else None
             reaction = conn.execute(REACTION_SQL, params)
             explain = conn.execute("EXPLAIN (ANALYZE, FORMAT JSON) " + REACTION_SQL, params)
             bars_cur = conn.execute(
@@ -247,6 +286,7 @@ def _tiger_fetch(params: dict) -> tuple[pd.DataFrame, dict[str, float], dict[str
             closes_cur = conn.execute(
                 "SELECT kind, ticker, close FROM reference_close WHERE ticker = ANY(%s) AND session_day = %s", (tickers, params["day"]),
             )
+        peer_rows = _peer_rows(peer_cur.fetchall(), params["ticker"]) if peer_cur is not None else []
         numbers = _sql_numbers(reaction.fetchone(), params)
         ms = _server_ms(explain.fetchone()[0][0])
         rows, closes = bars_cur.fetchall(), closes_cur.fetchall()
@@ -256,15 +296,17 @@ def _tiger_fetch(params: dict) -> tuple[pd.DataFrame, dict[str, float], dict[str
     bars["close"] = bars["close"].astype(float)
     prior = {t: float(c) for k, t, c in closes if k == "prior"}
     day = {t: float(c) for k, t, c in closes if k == "day"}
-    return bars, prior, day, numbers, ms, storage
+    return bars, prior, day, numbers, ms, storage, peer_rows
 
 
 async def live_price_reaction(ticker: str, since_ts: str, benchmark: str = "XLP") -> dict:
     params = _reaction_params(ticker, benchmark, _parse_ts(since_ts))
-    bars, prior, day, numbers, ms, storage = await asyncio.to_thread(_tiger_fetch, params)
+    peers = _call_peers()
+    bars, prior, day, numbers, ms, storage, peer_rows = await asyncio.to_thread(_tiger_fetch, params, peers)
     # pandas builds the sparkline and labels; the numbers are the ones Tiger computed in SQL.
     r = compute_reaction(bars, prior, day, ticker, benchmark, params["since"], _window_min(), "Tiger Data · bars_1m continuous aggregate", False)
-    return r.model_copy(update={**numbers, "sql": display_sql(params), "query_ms": ms, "storage": storage}).model_dump()
+    extra = {"peers": peer_rows, "peers_sql": display_peer_sql(peer_params(params, peers))} if peers else {}
+    return r.model_copy(update={**numbers, "sql": display_sql(params), "query_ms": ms, "storage": storage, **extra}).model_dump()
 
 
 # ---- live self-check (scripts/verify_live.py --only tiger) ---------------
@@ -283,7 +325,7 @@ async def self_check() -> list[tuple[str, bool | None, str]]:
             return [("Tiger connection", False, "TIGER_DATABASE_URL is not set")]
         params = _reaction_params(ticker, benchmark, _parse_ts(since_ts))
         started = time.perf_counter()
-        bars, prior, day, numbers, ms, storage = await asyncio.to_thread(_tiger_fetch, params)
+        bars, prior, day, numbers, ms, storage, _ = await asyncio.to_thread(_tiger_fetch, params)
         wall_ms = round((time.perf_counter() - started) * 1000)
         ref = compute_reaction(bars, prior, day, ticker, benchmark, params["since"], _window_min(), "pandas", False).model_dump()
         mismatched = [k for k in SQL_FIELDS if (numbers[k] is None) != (ref[k] is None)]
