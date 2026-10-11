@@ -1,0 +1,45 @@
+/* Snowflake end-of-call brief: a compact card above the flag feed, styled like the flag cards. */
+.call-brief {
+  --accent: var(--blue);
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  margin: 12px 12px 0;
+  padding: 10px 14px;
+  max-height: 180px;
+  overflow: hidden;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
+  border-radius: var(--radius);
+  transition: opacity 0.35s ease, translate 0.35s ease;
+}
+@starting-style { .call-brief { opacity: 0; translate: 0 -6px; } }
+.call-brief:has(.brief-sql[open]) { max-height: 60vh; }
+.call-brief > * { flex: none; }
+
+.brief-head { display: flex; align-items: center; gap: 4px; }
+.brief-label { font: 600 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--blue); }
+
+.brief-running { display: flex; align-items: center; gap: 8px; margin-top: 8px; font: 11px var(--mono); color: var(--muted); }
+.brief-headline { margin: 7px 0 0; font-weight: 700; font-size: 14px; line-height: 1.35; }
+/* Bullets take the room left in the 180 px card and scroll inside it; header and footer stay put. */
+.call-brief > .brief-bullets {
+  flex: 0 1 auto; min-height: 36px; overflow-y: auto;
+  margin: 5px 0 0; padding-left: 16px;
+  font-size: 12.5px; line-height: 1.4; color: var(--text);
+}
+.brief-bullets li + li { margin-top: 2px; }
+.brief-bullets li::marker { color: var(--faint); }
+.brief-meta { font: 10px/1.4 var(--mono); color: var(--faint); font-variant-numeric: tabular-nums; }
+.call-brief > .brief-meta { margin-top: 7px; }
+.brief-failed { margin: 8px 0 0; font: 11px var(--mono); color: var(--muted); }
+
+.brief-sql { margin-top: 7px; }
+.brief-sql summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer; list-style: none; }
+.brief-sql summary::-webkit-details-marker { display: none; }
+.brief-sql-label { margin-left: auto; font: 600 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+.brief-sql-label::after { content: " ▸"; }
+.brief-sql[open] .brief-sql-label::after { content: " ▾"; }
+.brief-sql summary:hover .brief-sql-label, .brief-sql summary:focus-visible .brief-sql-label { color: var(--muted); }
+.brief-sql .sql { margin-top: 6px; max-height: 36vh; overflow: auto; }

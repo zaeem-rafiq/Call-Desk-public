@@ -19,6 +19,7 @@ import pandas as pd  # noqa: E402
 
 from app import config  # noqa: E402
 from app.tools import guidance_history, prior_guidance, snowflake_agent  # noqa: E402
+from app import briefing  # noqa: E402
 
 TEST_QUERY = "What was PepsiCo's core EPS guidance last quarter?"
 
@@ -66,6 +67,7 @@ def main() -> int:
             [tuple(v if v != "" else None for v in row) for row in lines.itertuples(index=False)],
         )
         print(f"{len(lines)} guidance lines loaded into GUIDANCE_LINES")
+        cur.execute(briefing.ddl())  # CALL_FLAGS: the end-of-call brief's input; kept across reseeds (IF NOT EXISTS)
         started = time.monotonic()
         cur.execute(f"""CREATE OR REPLACE CORTEX SEARCH SERVICE {prior_guidance.SERVICE}
             ON CHUNK
