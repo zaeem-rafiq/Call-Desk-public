@@ -351,6 +351,7 @@ async function play() {
     return;
   }
   state.runStartedAt = performance.now();
+  state.joinedMidRun = false;
   setRunning(true);
   if (state.hasAudio) {
     // The server snaps the start to a chunk boundary; the status event re-syncs if it differs.
@@ -368,7 +369,7 @@ function connect() {
     if (s.integrations) renderPills(s.integrations);
     if (s.speed) state.speed = s.speed;
     if (s.chunk_s) state.chunkS = s.chunk_s;
-    if (s.state === "running" && s.start_s !== undefined) {
+    if (s.state === "running" && s.start_s !== undefined && !state.joinedMidRun) {
       state.startS = s.start_s;
       if (state.hasAudio && Math.abs(audio.currentTime - s.start_s) > 1.5 && !audio.paused) audio.currentTime = s.start_s;
     }
@@ -406,6 +407,14 @@ async function init() {
   $("#call-title").textContent = s.call.title;
   document.querySelector('.mode button[data-mode="replay"]').disabled = !s.replay_available;
   if (!s.audio) $("#audio-state").textContent = "NO AUDIO FILE — MOCK CLOCK";
+  if (s.running && s.position_s !== null) {
+    // Joined mid-run (page reload): pick the clock up where the server is.
+    state.startS = 0;
+    state.joinedMidRun = true;
+    state.runStartedAt = performance.now() - s.position_s * 1000;
+    state.mode = s.mode;
+    setRunning(true);
+  }
   audio.addEventListener("loadedmetadata", () => {
     if (!state.duration) { state.duration = audio.duration; $("#duration").textContent = fmtTime(audio.duration); }
   });

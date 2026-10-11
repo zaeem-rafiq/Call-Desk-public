@@ -33,6 +33,8 @@ class RunManager:
     def __init__(self) -> None:
         self.task: asyncio.Task | None = None
         self.mode: str | None = None
+        self.start_s = 0.0
+        self.speed = 1.0
 
     @property
     def running(self) -> bool:
@@ -43,7 +45,7 @@ class RunManager:
         run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
         record = mode == "live"
         hub.start_run(run_id, record=record)
-        self.mode = mode
+        self.mode, self.start_s, self.speed = mode, start_s, speed
         self.task = asyncio.create_task(self._run(mode, speed, run_id, record, start_s))
         return run_id
 
@@ -111,6 +113,7 @@ async def state() -> dict:
         "default_mode": DEFAULT_MODE,
         "running": runs.running,
         "mode": runs.mode,
+        "position_s": round(runs.start_s + hub.elapsed() * runs.speed, 2) if runs.running else None,
         "integrations": config.integration_modes(),
         "replay_available": replay.available(),
         "audio": info.audio_path.exists(),
