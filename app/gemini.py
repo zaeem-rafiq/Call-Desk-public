@@ -62,6 +62,9 @@ You receive one short audio chunk of {company} ({ticker}): {title}, held {date}.
 Known participants: Ravi Pamnani (SVP Investor Relations), Ramon Laguarta (Chairman and CEO), Steve Schmitt (EVP and CFO),
 the operator, and sell-side analysts (introduced by the operator or greeted by name, e.g. "Hey Dara" means Dara Mohsenian of Morgan Stanley).
 Label executives as "Name (CEO)" / "Name (CFO)", analysts as "Name (Firm)" when known, otherwise "Analyst".
+Identify speakers by what they say, not only by turn order: analysts ask questions; executives answer and speak for the company
+("we expect", "our guide", "we're investing"). A turn in the company's voice is an executive's (the CFO takes most financial
+questions), even when a chunk starts mid-answer with no introduction.
 
 1. Transcribe the chunk verbatim (drop "um"/"uh"). Split it into speaker turns with each turn's start time in seconds from the start of THIS chunk.
    Use the previous context only to keep speakers consistent and to finish interpreting sentences; never re-transcribe it.
@@ -79,7 +82,8 @@ Label executives as "Name (CEO)" / "Name (CFO)", analysts as "Name (Firm)" when 
      0.7-0.89 forward-looking information the release does not spell out: margin trajectory, segment outlook, cost or pricing actions,
      next-year framework or its timing, capital allocation changes;
      0.4-0.59 restating the quarter's reported results (growth rates, volumes, margins for the quarter just reported), tone, color;
-     at most 0.4 analyst questions or restatements, pleasantries.
+     at most 0.4 an analyst's question, an analyst restating the company, pleasantries. A sentence in the company's own voice
+     ("we expect", "driving the guide down") is never an analyst restatement: score it by its content.
      Group a run of quarterly statistics into at most one claim. Return an empty claims list when nothing material is said."""
 
 
@@ -130,7 +134,7 @@ TOOL_DECLS = [
     },
     {
         "name": "search_live_web",
-        "description": "Live web search plus page extraction (Nimble) for press releases, news and analyst reaction. Returns titles, URLs and relevant passages.",
+        "description": "Nimble web desk: the company's own guidance table from its IR site and SEC filings, plus broad and news search and live Google results. Returns titles, URLs and relevant passages.",
         "parameters_json_schema": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     },
     {
@@ -210,7 +214,8 @@ async def agent_fact_check(claim: Claim, flag: Flag, info: config.CallInfo, plan
 
     prior_res = results["search_prior_guidance"]
     prior_hits = (prior_res.data or {}).get("hits") or [] if prior_res.ok else []
-    web_hits = results["search_live_web"].data if results["search_live_web"].ok else []
+    web_res = results["search_live_web"]
+    web_hits = ((web_res.data or {}).get("hits") or [] if isinstance(web_res.data, dict) else web_res.data or []) if web_res.ok else []
     price = results["get_price_reaction"]
     sources = ["PRIOR-QUARTER SOURCES (Snowflake Cortex Search):"]
     sources += [f"[P{i + 1}] {h.get('doc_title', '')}: {h.get('snippet', '')}" for i, h in enumerate(prior_hits)] or ["(none: tool failed or empty)"]
