@@ -5,13 +5,13 @@
 Nimble agent runs are a paid budget. Rehearse without fresh verification, and turn it on only for the stage run.
 
 1. Run `.venv/bin/python scripts/check_env.py --ping`. Every line should say `LIVE` and `ping: ok`.
-2. Rehearse with the plain command. It spends **0** Nimble agent runs, because verification reuses the saved results:
+2. Rehearse with this command. It spends **0** Nimble agent runs, because verification reuses the saved results. `REPLAY_FREEZE=1` keeps rehearsals from replacing the recorded replay backup:
    ```bash
-   .venv/bin/python -m app.main
+   REPLAY_FREEZE=1 .venv/bin/python -m app.main
    ```
 3. Just before you go on stage, stop the server (Ctrl+C) and restart it with fresh verification:
    ```bash
-   NIMBLE_VERIFY_FRESH=1 .venv/bin/python -m app.main
+   REPLAY_FREEZE=1 NIMBLE_VERIFY_FRESH=1 .venv/bin/python -m app.main
    ```
    - One play costs about **2** Nimble agent runs (core EPS and organic revenue). Every extra play costs about 2 more.
    - Set `NIMBLE_VERIFY_FRESH=1` only on this command line, never in `.env`. In `.env` it would make every eval and rehearsal spend runs.

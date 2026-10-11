@@ -45,6 +45,7 @@ DEFAULTS = {
     "CALL_AUDIO": "data/call.mp3",
     "LISTENER": "chunks",  # chunks | live (Gemini Live streaming transcription)
     "CALL_ID": "",  # default call; empty means pep_q3_2026
+    "REPLAY_FREEZE": "0",  # 1 = never replace a replay cache (set on demo day)
 }
 
 

@@ -89,6 +89,10 @@ def _run_quality(summary: dict) -> int | None:
 
 def _promote(run_id: str, summary: dict) -> None:
     """Replace the replay cache only with a clean run at least as live as the cached one."""
+    if config.get("REPLAY_FREEZE") == "1":  # demo day: rehearsals never replace the stage fallback
+        hub.finish_run(promote=False)
+        log.info("REPLAY_FREEZE=1: run %s kept out of the replay cache", run_id)
+        return
     quality = _run_quality(summary)
     cached = replay.meta()
     cached_quality = _run_quality(cached) if cached else None

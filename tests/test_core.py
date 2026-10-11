@@ -168,3 +168,25 @@ def test_truncated_spoken_value_is_completed_by_the_next_mention():
     assert _truncated("$5.10 to") and not _truncated("$5.10 to $5.60")
     _complete_value(flag, first, later, published.append)
     assert flag.new_value == "$5.10 to $5.60 per share" and first.new_value == flag.new_value and published
+
+
+def test_replay_from_a_start_point_skips_cards_spoken_before_it(tmp_path, monkeypatch):
+    import json as _json
+
+    from app import replay
+
+    events = [
+        {"event": "status", "t": 0.0, "data": {"state": "running", "start_s": 0.0}},
+        {"event": "flag", "t": 140.0, "data": {"id": "early", "t_offset": 130.0}},
+        {"event": "flag", "t": 188.0, "data": {"id": "early", "t_offset": 130.0}},  # late enrichment of an early card
+        {"event": "transcript", "t": 185.0, "data": {"t": 176.0, "text": "before start"}},
+        {"event": "flag", "t": 190.0, "data": {"id": "eps", "t_offset": 186.0}},
+    ]
+    (tmp_path / "events.jsonl").write_text("".join(_json.dumps(e) + "\n" for e in events))
+    monkeypatch.setattr(replay, "latest_dir", lambda call_id=None: tmp_path)
+    hub = EventHub()
+    hub.start_run("r", record=False)
+    asyncio.run(replay.run_replay(hub, speed=0, start_s=180))
+    shown = [e["data"].get("id") for e in hub.history if e["event"] == "flag"]
+    assert shown == ["eps"]
+    assert not [e for e in hub.history if e["event"] == "transcript"]

@@ -42,6 +42,11 @@ async def run_replay(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) ->
         is_status = item["event"] == "status"
         if item["t"] < skip and not is_status:
             continue
+        # A flag or transcript line spoken before the start point stays out, even if it was updated later
+        # (a late enrichment of an earlier card would otherwise pop onto the top of the feed).
+        spoken = item["data"].get("t_offset") if item["event"] == "flag" else item["data"].get("t") if item["event"] == "transcript" else None
+        if spoken is not None and spoken < rec_start + skip:
+            continue
         if speed > 0 and not is_status:
             await asyncio.sleep(max(0.0, (item["t"] - skip) / speed - (hub.elapsed() - t0)))
         data = item["data"]
