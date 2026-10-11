@@ -86,6 +86,19 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         hub.publish("flag", flag.model_dump(mode="json"))
 
     warm = asyncio.create_task(_warmup(modes))
+
+    async def preroll() -> list[str]:
+        """Starting mid-call: transcribe the two chunks before the start, unpublished, so the listener
+        knows who is speaking (otherwise the CFO can be mistaken for an analyst and the claim discarded)."""
+        spans = [(pk * chunk_s, (pk + 1) * chunk_s) for pk in range(max(0, k0 - 2), k0)]
+        results = await asyncio.gather(
+            *(transcriber.process(pk, a, b, call_audio.wav_chunk(a, b) if call_audio else None, [])
+              for pk, (a, b) in zip(range(max(0, k0 - 2), k0), spans)),
+            return_exceptions=True,
+        )
+        return [" ".join(f"{s.speaker}: {s.text}" for s in r.segments) for r in results if not isinstance(r, BaseException) and r.segments]
+
+    pre = asyncio.create_task(preroll()) if k0 > 0 else None
     errors = 0
     seen: set[str] = set()
     context: deque[str] = deque(maxlen=2)
@@ -103,6 +116,11 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
             if speed > 0:
                 await asyncio.sleep(max(0.0, (end - start_s) / speed - (hub.elapsed() - t0)))
             wav = call_audio.wav_chunk(start, end) if call_audio else None
+            if pre is not None and k == k0:
+                try:
+                    context.extend(await asyncio.wait_for(asyncio.shield(pre), timeout=6))
+                except Exception as exc:  # noqa: BLE001 - no context is better than a late first chunk
+                    log.warning("preroll context unavailable: %s", exc)
             try:
                 result = await transcriber.process(k, start, end, wav, list(context))
             except Exception as exc:  # noqa: BLE001 - a bad chunk must not stop the call
@@ -141,10 +159,11 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         await asyncio.gather(*checks)
     finally:
         # A stopped run must not leave fact-checks publishing into the next run.
-        for task in (*checks, warm):
+        extras = [t for t in (warm, pre) if t is not None]
+        for task in (*checks, *extras):
             if not task.done():
                 task.cancel()
-        await asyncio.gather(*checks, warm, return_exceptions=True)
+        await asyncio.gather(*checks, *extras, return_exceptions=True)
     degraded = sum(1 for t in checks if not t.cancelled() and t.exception() is None and t.result() and t.result().degraded)
     summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(seen),
                "errors": errors, "degraded": degraded}
