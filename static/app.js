@@ -323,9 +323,9 @@ function renderFlag(f) {
     );
     if (pr.close_pct_move !== null && pr.close_pct_move !== undefined) {
       const close = el("div", "close-line");
-      close.append(later("from later that day", "This is the day's closing price, after the quote. A live run shows it after the close; this replay of a past call shows it early."),
-        el("span", "lbl", " BY CLOSE "), el("span", pr.close_pct_move >= 0 ? "pos" : "neg", `${pr.ticker} ${signed(pr.close_pct_move)}%`),
-        el("span", "lbl", ` · `), el("span", pr.close_vs_benchmark >= 0 ? "pos" : "neg", `${signed(pr.close_vs_benchmark)} pts`), el("span", "lbl", ` vs ${pr.benchmark}`));
+      close.append(el("span", "lbl", "BY CLOSE "), el("span", pr.close_pct_move >= 0 ? "pos" : "neg", `${pr.ticker} ${signed(pr.close_pct_move)}%`),
+        el("span", "lbl", ` · `), el("span", pr.close_vs_benchmark >= 0 ? "pos" : "neg", `${signed(pr.close_vs_benchmark)} pts`), el("span", "lbl", ` vs ${pr.benchmark}`),
+        later("from later that day", "This is the day's closing price, after the quote. A live run shows it after the close; this replay of a past call shows it early."));
       stats.append(close);
     }
     if (pr.mock) stats.firstChild.append(el("span", "mock-tag", "MOCK"));
@@ -659,7 +659,7 @@ function updateTally() {
   const t = $("#tally");
   t.replaceChildren();
   for (const [d, label] of [["cut", "LOWERED"], ["raise", "RAISED"], ["worse", "RAISED · WORSE"], ["reaffirm", "UNCHANGED"], ["new", "NEW"], ["na", "NOTE"]]) {
-    if (counts[d]) t.append(el("span", `t-${d}`, `${counts[d]} ${label}`));
+    if (counts[d]) t.append(el("span", `t-${d}`, `${counts[d]} ${label}${d === "na" && counts[d] > 1 ? "S" : ""}`));
   }
 }
 
