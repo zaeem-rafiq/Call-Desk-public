@@ -82,3 +82,11 @@ Set `MOCK_<NAME>=1` to force a mock even when a key is present.
 - **Prior-quarter data.** The prior-quarter warehouse (`data/prior/`) holds only information published before the Q3 call.
 - **Evaluation-only text.** `data/q3_transcript.txt` and `data/raw/` are used only for evaluation and are never given to the agent.
 - **Price data.** yfinance provides 1-minute bars, not trades. Each bar is loaded as four bar-derived ticks (open, high, low, close). The continuous aggregate rebuilds exact 1-minute OHLC from them. A live feed would insert real trades into the same hypertable.
+
+## AI tools used
+
+MLH asks every team to name the AI tools it used. Call Desk used these:
+
+- **Claude Code (Claude Opus 5.5)** wrote and tested the code in this repository, researched the sponsor SDKs, and prepared the demo data. Every commit carries its co-author line. Zaeem Khan decided what to build and directed the work.
+- **Gemini API (`gemini-3.8-flash`)** is part of the product. It transcribes the call, extracts claims, runs the fact-check agent, and writes the verdicts (see [Sponsor tools](#sponsor-tools)).
+- **whisper.cpp (`base.en` model)** ran offline during data preparation. It located the demo clip inside the full call and produced the transcript used in mock mode (`app/mocks/mock_call.json`).
