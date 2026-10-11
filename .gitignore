@@ -27,3 +27,10 @@ data/replay/*-prev/
 
 # demo video with the call audio: built by scripts/record_demo.py, never published
 docs/media/*.mp4
+
+# third-party audio and vendor price bars: rebuilt by scripts/fetch_audio.py and scripts/fetch_prices.py
+data/call.mp3
+data/calls/**/*.mp3
+data/**/prices.csv
+data/**/day_close.csv
+data/**/prior_close.csv
