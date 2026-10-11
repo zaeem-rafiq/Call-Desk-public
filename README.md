@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white) ![Built at AI Engineer NYC 2026](docs/media/badge-built-at.svg)
 
-![Call Desk playing PepsiCo's earnings call. The words of the call appear on the left as they are spoken. A red card appears that says PepsiCo lowered its profit forecast, then fills in with the old and new numbers, where each number came from, how the stock moved, and a confidence score of 92%.](docs/media/demo.gif)
+![Call Desk playing PepsiCo's earnings call. The words of the call appear on the left as they are spoken. A red card appears that says PepsiCo lowered its profit forecast, then fills in with the old and new numbers, where each number came from, how the stock moved, and a confidence score.](docs/media/demo.gif)
 
 <sub>A recorded live run, sped up 3×. PepsiCo's finance chief says "it's the margin piece that's driving the guide down in EPS". The red card then shows the new forecast: profit per share growing 2.5% to 3.5% this year, down from about 5%.</sub>
 
@@ -24,7 +24,7 @@ Call Desk listens to the call as it happens.
    - **Now:** growing only 2.5% to 3.5%.
    - **Proof:** PepsiCo's own press release from that morning, and the forecast it gave three months earlier.
    - **The stock:** how PepsiCo's stock moved, next to similar food and drink companies.
-   - **How sure:** a confidence score of 92%, with its reasons shown.
+   - **How sure:** a confidence score of 98%. The evidence gave 92%, then two agents checked again and both agreed.
 
 **Think of a sports announcer** who shouts "that changes the score!" but never says the score. Call Desk is the friend beside you who checks the scoreboard and says: "It was 5, now it's 3. Here's a photo of the scoreboard."
 
@@ -75,19 +75,19 @@ uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requi
 
 ## Results
 
-All numbers come from one recorded live run: `20261011-134427` in `data/replay/latest/`, the run we show on stage. All five tools were live, at real-time speed, on one call.
+All numbers come from one recorded live run: `20261011-150448` in `data/replay/latest/`, the run we show on stage. All five tools were live, at real-time speed, on one call. Nimble's checking agent reused its result from a live run at 2:47 PM ET the same day, and the card labels it "cached".
 
 | What we measured | Result |
 |---|---|
 | Answer-key checks passed (`tests/golden.json`, written from the company's own press release) | 8 of 8 |
 | From the finance chief's sentence to the red card on screen | about 12 s |
 | From the sentence to the full answer, with the old and new numbers | about 24 s |
-| Confidence score on the lowered profit forecast | 92% (0.92) |
-| Nimble's web research agent on that card (a fresh run, not a stored result) | SURE (its highest trust grade), 7 official sources, 17 s |
-| Tiger Data: PepsiCo's stock (PEP) in the 30 minutes after the sentence, against a fund of food and drink companies (XLP) | 0.91 percentage points worse than the fund. Coca-Cola (KO) did 0.03 points better than the fund. Mondelez (MDLZ) and Keurig Dr Pepper (KDP) show no change, because nobody had traded them yet that morning (the market opens at 9:30 AM). The query took 2 ms. |
-| Cards shown, errors, cards where the checking agent failed | 9, 0, 0 |
+| Confidence score on the lowered profit forecast | 98%: 92% from the evidence, then 3 points each from Snowflake's agent and Nimble's check, which both agreed |
+| Nimble's web research agent on that card (its live run at 2:47 PM ET, reused and labelled "cached") | SURE (its highest trust grade), 7 official sources, 17 s |
+| Tiger Data: PepsiCo's stock (PEP) in the 30 minutes after the sentence, against a fund of food and drink companies (XLP) | 0.91 percentage points worse than the fund. Coca-Cola (KO) did 0.03 points better than the fund. Mondelez (MDLZ) and Keurig Dr Pepper (KDP) show no change, because nobody had traded them yet that morning (the market opens at 9:30 AM). The query took 3 ms. |
+| Cards shown, errors, cards where the checking agent failed | 8, 0, 0 |
 
-**It works on other companies too.** The second demo is **Delta Air Lines (DAL)**, from its call on October 9, 2026. Delta's finance chief reads the forecast out loud. Call Desk shows that Delta now expects to earn $5.10 to $5.60 per share this year, down from a range of $6.50 to $7.50 (confidence 92%). It compares Delta's stock with a fund of airlines (JETS). Its recorded live run, `20261011-125425`, passes 10 of 10 answer-key checks with 0 errors. Pick it in the header, or open `?call=dal_q3_2026`.
+**It works on other companies too.** The second demo is **Delta Air Lines (DAL)**, from its call on October 9, 2026. Delta's finance chief reads the forecast out loud. Call Desk shows that Delta now expects to earn $5.10 to $5.60 per share this year, down from a range of $6.50 to $7.50. It compares Delta's stock with a fund of airlines (JETS). Its recorded live run, `20261011-145906`, passes 10 of 10 answer-key checks with 0 errors. Pick it in the header, or open `?call=dal_q3_2026`.
 
 Speed depends on the network and on how busy the AI models are. These are single runs, not a benchmark.
 
@@ -123,7 +123,7 @@ flowchart LR
 
    A second Gemini call writes a structured verdict: the exact numbers, what changed, why it matters, the evidence with each source's stance, and the guidance table. A LOWERED or RAISED badge needs numbers on both sides.
 4. **Score.** Confidence is a transparent weighted sum: `0.45 × prior + 0.35 × web + 0.20 × price`. The card shows each component and its reason. A failed tool scores 0 for its component. It lowers confidence and never crashes the feed.
-5. **Re-check.** After the verdict is on screen, Snowflake's Cortex Agent and Nimble's Web Search Agent each re-check the claim on their own, Nimble's wall-breaker, Reddit and newswire specialists add reaction, and Gemini speaks an alert for a material cut or raise. They fill in the card and never change its numbers. The two agents do move the confidence score: each one that agrees with the card's direction adds 3 points (1.5 for a medium-trust Nimble answer), each one that disagrees takes away 10, low-trust answers count for nothing, and the score stops at 98%. The card shows each step, for example "92% → 95%". On a live PepsiCo check, Snowflake's agreement moved the EPS card from 92% to 95%. Replays recorded before this change, including the stage replay, show the score without these steps. `CROSS_CHECK=0` turns them off.
+5. **Re-check.** After the verdict is on screen, Snowflake's Cortex Agent and Nimble's Web Search Agent each re-check the claim on their own, Nimble's wall-breaker, Reddit and newswire specialists add reaction, and Gemini speaks an alert for a material cut or raise. They fill in the card and never change its numbers. The two agents do move the confidence score: each one that agrees with the card's direction adds 3 points (1.5 for a medium-trust Nimble answer), each one that disagrees takes away 10, low-trust answers count for nothing, and the score stops at 98%. The card shows each step, for example "92% → 95%". In the stage replay (run `20261011-150448`), both agents agreed, so PepsiCo's EPS card went from 92% to 98%. `CROSS_CHECK=0` turns them off.
 6. **Brief.** When the call ends, the run's flags are written to Snowflake and `AI_COMPLETE` writes a headline and 3–5 bullets for the investor relations (IR) team inside Snowflake.
 
 ## Sponsor tools

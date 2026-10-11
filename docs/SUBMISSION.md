@@ -31,7 +31,7 @@ Call Desk listens to the call live. About 12 seconds after that sentence, a red 
 - **Before and now:** profit per share was expected to grow about 5% this year. Now it is 2.5% to 3.5%. The new number is labelled "not spoken", because it comes from PepsiCo's press release that morning, not from the call.
 - **Proof:** the press release, found live on the web, and the forecast PepsiCo gave three months earlier.
 - **The stock:** how PepsiCo's stock moved, next to similar food and drink companies.
-- **How sure:** a confidence score of 92%, with its reasons shown.
+- **How sure:** a confidence score of 98%. The evidence gave 92%, then two agents checked again and both agreed.
 
 Think of a sports announcer who shouts "that changes the score!" but never says the score. Call Desk is the friend beside you who checks the scoreboard and says: "It was 5, now it's 3. Here's a photo of the scoreboard."
 
@@ -50,7 +50,7 @@ Five tools work together. Each one has one job.
    - **Tiger Data** measures how the stock moved, with one SQL query.
 
    A second Gemini call then writes the card's answer.
-3. **Score.** Confidence = 0.45 × old-forecast check + 0.35 × web check + 0.20 × stock check. A failed tool lowers the score. It never stops the call. After the answer, Snowflake's agent and Nimble's agent check again. Each one that agrees adds 3 points, each one that disagrees takes away 10, and the score never goes above 98%. The demo run in the video and screenshots was recorded before this rule was added, so it shows 92%.
+3. **Score.** Confidence = 0.45 × old-forecast check + 0.35 × web check + 0.20 × stock check. A failed tool lowers the score. It never stops the call. After the answer, Snowflake's agent and Nimble's agent check again. Each one that agrees adds 3 points, each one that disagrees takes away 10, and the score never goes above 98%. In the demo, both agents agree, so the profit card goes from 92% to 98%.
 4. **Keep a record (Sentry).** Sentry records every agent run, AI model call and tool call. Each card links to its record.
 5. **Show.** A Python web server (FastAPI) streams everything to a one-page app. Every run is recorded, so a replay mode can play it back with the original timing.
 
@@ -60,7 +60,7 @@ Five tools work together. Each one has one job.
   - Three checks cover what was said on the call: the lowered profit forecast, pressure on profit margins, and next year's forecast being put off until February.
   - Five checks cover the numbers. Each forecast line must have the right value and the right direction (up, down or unchanged). The lines are two measures of profit per share, two measures of sales, and the tax rate.
 - **Delta answer key: 10 of 10.** It catches the lowered full-year forecasts for profit per share and for cash left over after running the business (free cash flow). It also gets the forecasts for the last three months of the year (profit per share, profit margin and fuel cost) and Delta's year-end debt level.
-- **Speed:** the red card appears about 12 seconds after the finance chief's sentence, and the full answer about 12 seconds after that (the run we show on stage, 20261011-134427). With the Gemini Live listener, the card appears about 5 seconds after the sentence.
+- **Speed:** the red card appears about 12 seconds after the finance chief's sentence, and the full answer about 12 seconds after that (the run we show on stage, 20261011-150448). With the Gemini Live listener, the card appears about 5 seconds after the sentence.
 - **Replay recordings:** no pipeline errors, and no cards where the checking agent failed. Some optional Nimble specialists (for example the news search) were unavailable at times. The card shows them as unavailable, and the main checks still ran.
 
 ## Challenges
@@ -82,7 +82,7 @@ Paste each answer into its category's field. Each one is under 1000 characters.
 
 ### Best Overall
 
-Every three months, big companies hold a call to tell investors how they are doing. One sentence can move the stock. But on the call, executives often mention a change without repeating the number. Call Desk listens live. On PepsiCo's real call on October 8, 2026, the finance chief said "it's the margin piece that's driving the guide down in EPS", meaning profits will grow less than forecast. About 12 seconds later, a red card appeared. About 12 seconds after that, it showed the new forecast (profit per share up 2.5% to 3.5%, down from about 5%), the press release it came from, the old forecast, how the stock moved next to similar companies, and a 92% confidence score with its math. The same engine works on Delta Air Lines' call. It uses all five sponsors, each with one clear job. It scores 8 of 8 and 10 of 10 on answer keys written from the companies' own press releases.
+Every three months, big companies hold a call to tell investors how they are doing. One sentence can move the stock. But on the call, executives often mention a change without repeating the number. Call Desk listens live. On PepsiCo's real call on October 8, 2026, the finance chief said "it's the margin piece that's driving the guide down in EPS", meaning profits will grow less than forecast. About 12 seconds later, a red card appeared. About 12 seconds after that, it showed the new forecast (profit per share up 2.5% to 3.5%, down from about 5%), the press release it came from, the old forecast, how the stock moved next to similar companies, and a 98% confidence score with its math. The same engine works on Delta Air Lines' call. It uses all five sponsors, each with one clear job. It scores 8 of 8 and 10 of 10 on answer keys written from the companies' own press releases.
 
 ### Gemini
 
