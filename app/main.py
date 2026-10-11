@@ -14,7 +14,7 @@ import logging
 from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -192,6 +192,14 @@ async def call_audio_for(call_id: str) -> FileResponse:
     if not path.exists():
         raise HTTPException(404, f"{path.name} not built yet (scripts/fetch_audio.py)")
     return FileResponse(path, media_type="audio/mpeg")
+
+
+@app.get("/api/export.md")
+async def export_note() -> PlainTextResponse:
+    """The current run's flags as a Markdown morning note (live or replay)."""
+    from . import export
+
+    return PlainTextResponse(export.morning_note(hub.history), media_type="text/markdown; charset=utf-8")
 
 
 @app.get("/api/debug/sentry")
