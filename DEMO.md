@@ -26,7 +26,7 @@ Measured in real time with all five sponsors live (final stage run 20261011-1504
 
 ## The pitch in one breath
 
-"The stock moves the moment an executive says 'we'll earn less than we said.' Call Desk tells you how much less, with proof, in seconds."
+"Executives hint forecasts changed. Call Desk listens live and shows the new number, with proof."
 
 ## Plain words on stage
 

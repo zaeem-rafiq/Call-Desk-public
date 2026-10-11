@@ -1,6 +1,6 @@
 # Call Desk
 
-**The stock moves the moment an executive says “we'll earn less than we said.” Call Desk tells you how much less, with proof, in seconds.**
+**Executives hint forecasts changed. Call Desk listens live and shows the new number, with proof.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white) ![Built at AI Engineer NYC 2026](docs/media/badge-built-at.svg)
 
