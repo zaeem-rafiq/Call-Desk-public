@@ -27,5 +27,10 @@
     "pepsico.com",
     "investors.pepsico.com",
     "sec.gov"
+  ],
+  "peers": [
+    "KO",
+    "MDLZ",
+    "KDP"
   ]
 }

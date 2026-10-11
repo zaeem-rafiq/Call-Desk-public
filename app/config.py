@@ -97,6 +97,7 @@ class CallInfo:
     audio_path: Path
     roster: tuple[str, ...] = ()  # "Name (Role)" for executives
     analysts: tuple[str, ...] = ()  # "Name (Firm)" for analysts the clip may greet by first name
+    peers: tuple[str, ...] = ()  # peer tickers for the read-across panel
     call_context: str = ""  # one sentence for the agents: format of the call and when the release came out
     ir_domains: tuple[str, ...] = ()  # official sites for the company's release and remarks
     prices_path: Path = DATA / "prices.csv"
@@ -170,6 +171,7 @@ def call_info(call_id: str | None = None) -> CallInfo:
         audio_path=ROOT / audio,
         roster=tuple(spec.get("roster", [])),
         analysts=tuple(spec.get("analysts", [])),
+        peers=tuple(spec.get("peers", [])),
         call_context=spec.get("call_context", ""),
         ir_domains=tuple(spec.get("ir_domains", [])),
         prices_path=ROOT / spec["prices"],
