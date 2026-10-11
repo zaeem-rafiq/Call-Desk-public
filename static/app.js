@@ -390,7 +390,7 @@ function connect() {
     }
     if (s.duration) { state.duration = s.duration; $("#duration").textContent = fmtTime(s.duration); }
     if (s.call?.clip_start) state.clipStart = new Date(s.call.clip_start);
-    if (s.transcriber) $("#transcriber").textContent = s.transcriber === "gemini" ? `Gemini · ${s.chunk_s}s chunks` : "MOCK transcript (no Gemini key)";
+    if (s.transcriber) $("#transcriber").textContent = s.transcriber === "gemini" ? `Gemini · ${state.chunkS || 12}s chunks` : "MOCK transcript (no Gemini key)";
     if (s.state === "running") { if (!state.running) state.runStartedAt = performance.now() - s.t * 1000; setRunning(true); }
     if (s.state === "running" && s.speed && s.speed !== 1 && state.hasAudio) audio.playbackRate = Math.min(4, s.speed);
     if (s.state === "done") setRunning(false, s.mode === "replay" ? "REPLAY DONE" : "CALL ENDED");
