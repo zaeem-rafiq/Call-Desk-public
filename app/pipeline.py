@@ -81,11 +81,14 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
     else:
         transcriber = MockTranscriber()
         duration = call_audio.duration if call_audio else transcriber.duration
+    # LISTENER=live streams audio to the Gemini Live API (real time only); otherwise 12 s chunks.
+    streaming = (config.get("LISTENER") or "chunks") == "live" and transcriber.name == "gemini" and speed == 1.0
+    listener_name = "gemini-live" if streaming else transcriber.name
 
     k0 = max(0, min(int(start_s // chunk_s), int(duration // chunk_s)))  # start on a chunk boundary
     start_s = k0 * chunk_s
     hub.publish("status", {
-        "state": "running", "mode": "live", "transcriber": transcriber.name, "integrations": modes,
+        "state": "running", "mode": "live", "transcriber": transcriber.name, "listener": listener_name, "integrations": modes,
         "duration": duration, "chunk_s": chunk_s, "speed": speed, "audio": call_audio is not None, "start_s": start_s,
         "call": {"title": info.title, "ticker": info.ticker, "benchmark": info.primary_benchmark, "clip_start": _iso(info.clip_start)},
     })
@@ -123,8 +126,51 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         """Current position in the call audio, or None when not running in real time."""
         return start_s + (hub.elapsed() - t0) * speed if speed > 0 else None
 
+    def handle(k: int, start: float, end: float, result: ChunkResult) -> None:
+        """Publish a listener result: transcript lines, claim decisions, and new flags with their fact-checks."""
+        for seg in result.segments:
+            t = start + max(0.0, min(seg.start, end - start))
+            hub.publish("transcript", TranscriptSegment(t=round(t, 1), call_ts=_iso(info.call_ts(t)), speaker=seg.speaker, text=seg.text, chunk=k).model_dump())
+        if result.segments:
+            context.append(" ".join(f"{s.speaker}: {s.text}" for s in result.segments))
+
+        # One card per slot: within a result the most material claim wins the slot; later mentions attach to the card.
+        best: dict[str, Claim] = {}
+        for claim in result.claims:
+            slot = card_slot(claim)
+            if slot not in best or claim.materiality > best[slot].materiality:
+                best[slot] = claim
+        # Least material first, so the most material flag lands on top of the feed.
+        for claim in sorted(result.claims, key=lambda c: c.materiality):
+            slot = card_slot(claim)
+            attached_to = cards.get(slot) or (None if best[slot] is claim else "same chunk")
+            accepted = claim.materiality >= threshold and attached_to is None
+            reason = f"same metric as {attached_to}" if attached_to else ("below threshold" if not accepted else "")
+            hub.publish("claim", {"chunk": k, "quote": claim.quote, "metric": claim.metric, "materiality": claim.materiality,
+                                  "accepted": accepted, "reason": reason, "attached_to": cards.get(slot)})
+            if not accepted:
+                continue
+            flag_id = f"f{len(cards) + 1:02d}-{claim.metric}"
+            cards[slot] = flag_id
+            t = start + max(0.0, min(claim.start, end - start))
+            flag = Flag(
+                id=flag_id, call_ts=_iso(info.call_ts(t)), t_offset=round(t, 1),
+                speaker=claim.speaker, quote=claim.quote, claim_type=claim.claim_type, metric=claim.metric,
+                metric_label=metric_label(claim.metric, claim.claim_type), direction=claim.direction, prior_value=claim.prior_value,
+                new_value=claim.new_value, materiality=claim.materiality,
+            )
+            now = audio_now()
+            flag.latency_s = None if now is None else round(now - t, 1)
+            publish_flag(flag)
+            checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag, audio_now)))
+
     try:
-        for k in range(k0, n_chunks):
+        if streaming:
+            from . import live_listener
+
+            async for k, start, end, result in live_listener.stream(info, call_audio, start_s, audio_now, pre):
+                handle(k, start, end, result)
+        for k in range(k0, n_chunks) if not streaming else ():
             start, end = k * chunk_s, min((k + 1) * chunk_s, duration)
             if speed > 0:
                 await asyncio.sleep(max(0.0, (end - start_s) / speed - (hub.elapsed() - t0)))
@@ -141,42 +187,7 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
                 hub.publish("error", {"chunk": k, "message": f"chunk {k} failed: {type(exc).__name__}"})
                 errors += 1
                 continue
-
-            for seg in result.segments:
-                t = start + max(0.0, min(seg.start, end - start))
-                hub.publish("transcript", TranscriptSegment(t=round(t, 1), call_ts=_iso(info.call_ts(t)), speaker=seg.speaker, text=seg.text, chunk=k).model_dump())
-            if result.segments:
-                context.append(" ".join(f"{s.speaker}: {s.text}" for s in result.segments))
-
-            # One card per slot: within a chunk the most material claim wins the slot; later mentions attach to the card.
-            best: dict[str, Claim] = {}
-            for claim in result.claims:
-                slot = card_slot(claim)
-                if slot not in best or claim.materiality > best[slot].materiality:
-                    best[slot] = claim
-            # Least material first, so the most material flag from this chunk lands on top of the feed.
-            for claim in sorted(result.claims, key=lambda c: c.materiality):
-                slot = card_slot(claim)
-                attached_to = cards.get(slot) or (None if best[slot] is claim else "same chunk")
-                accepted = claim.materiality >= threshold and attached_to is None
-                reason = f"same metric as {attached_to}" if attached_to else ("below threshold" if not accepted else "")
-                hub.publish("claim", {"chunk": k, "quote": claim.quote, "metric": claim.metric, "materiality": claim.materiality,
-                                      "accepted": accepted, "reason": reason, "attached_to": cards.get(slot)})
-                if not accepted:
-                    continue
-                flag_id = f"f{len(cards) + 1:02d}-{claim.metric}"
-                cards[slot] = flag_id
-                t = start + max(0.0, min(claim.start, end - start))
-                flag = Flag(
-                    id=flag_id, call_ts=_iso(info.call_ts(t)), t_offset=round(t, 1),
-                    speaker=claim.speaker, quote=claim.quote, claim_type=claim.claim_type, metric=claim.metric,
-                    metric_label=metric_label(claim.metric, claim.claim_type), direction=claim.direction, prior_value=claim.prior_value,
-                    new_value=claim.new_value, materiality=claim.materiality,
-                )
-                now = audio_now()
-                flag.latency_s = None if now is None else round(now - t, 1)
-                publish_flag(flag)
-                checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag, audio_now)))
+            handle(k, start, end, result)
 
         await asyncio.gather(*checks)
 
@@ -197,7 +208,7 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
                 task.cancel()
         await asyncio.gather(*checks, *extras, return_exceptions=True)
     degraded = sum(1 for t in checks if not t.cancelled() and t.exception() is None and t.result() and t.result().degraded)
-    summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(cards),
+    summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "listener": listener_name, "integrations": modes, "flags": len(cards),
                "errors": errors, "degraded": degraded}
     hub.publish("status", summary)
     return summary

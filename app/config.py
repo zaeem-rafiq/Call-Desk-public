@@ -43,6 +43,8 @@ DEFAULTS = {
     "MATERIALITY_THRESHOLD": "0.6",
     "REACTION_WINDOW_MIN": "30",
     "CALL_AUDIO": "data/call.mp3",
+    "LISTENER": "chunks",  # chunks | live (Gemini Live streaming transcription)
+    "CALL_ID": "",  # default call; empty means pep_q3_2026
 }
 
 
