@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Call Desk</title>
+  <meta name="description" content="Hears earnings calls live and fact-checks every market-moving line in seconds.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2307090c'/%3E%3Cpath d='M6 20 L12 12 L17 17 L26 8' stroke='%23ff4d5e' stroke-width='3' fill='none'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true"></span>
+      <span class="brand-name">CALL&nbsp;DESK</span>
+    </div>
+    <div class="call-meta">
+      <span class="ticker" id="ticker">PEP</span>
+      <span class="call-title" id="call-title">PepsiCo Q3 2026 Earnings Call · Q&amp;A</span>
+      <span class="call-date">Oct 8, 2026</span>
+    </div>
+    <ul class="pills" id="pills" aria-label="Integration status"></ul>
+    <div class="controls">
+      <div class="mode" role="radiogroup" aria-label="Run mode">
+        <button type="button" role="radio" data-mode="live" aria-checked="true">LIVE</button>
+        <button type="button" role="radio" data-mode="replay" aria-checked="false">REPLAY</button>
+      </div>
+      <button type="button" class="play" id="play"><span class="play-icon" aria-hidden="true"></span><span id="play-label">Play call</span></button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="left panel" aria-label="Live call">
+      <div class="audio">
+        <div class="audio-row">
+          <span class="live-dot" id="live-dot" aria-hidden="true"></span>
+          <span class="audio-state" id="audio-state">READY</span>
+          <div class="clock" aria-live="off">
+            <span class="clock-label">CALL CLOCK</span>
+            <span class="clock-time" id="clock">--:--:--</span>
+            <span class="clock-tz">ET</span>
+          </div>
+        </div>
+        <div class="progress" id="progress" aria-hidden="true">
+          <div class="progress-fill" id="progress-fill"></div>
+          <div class="progress-markers" id="markers"></div>
+        </div>
+        <div class="audio-foot">
+          <span id="clip-range">Clip from the live call</span>
+          <span class="audio-time"><span id="elapsed">0:00</span> / <span id="duration">0:00</span></span>
+        </div>
+        <audio id="audio" preload="auto" src="/audio/call.mp3"></audio>
+      </div>
+      <div class="pane-head">
+        <h2>Live transcript</h2>
+        <span class="pane-sub" id="transcriber">Gemini · 12s chunks</span>
+      </div>
+      <ol class="transcript" id="transcript" aria-live="polite"></ol>
+      <p class="empty" id="transcript-empty">Press <b>Play call</b> to start listening.</p>
+    </section>
+
+    <section class="right panel" aria-label="Flags">
+      <div class="pane-head">
+        <h2>Flags</h2>
+        <div class="tally" id="tally"></div>
+      </div>
+      <ol class="feed" id="feed" aria-live="polite"></ol>
+      <div class="empty feed-empty" id="feed-empty">
+        <p>Flags appear here seconds after a market-moving line is spoken.</p>
+        <p class="muted">Each flag is checked against last quarter's guidance (Snowflake), the live web (Nimble) and the tape (Tiger Data), and traced in Sentry.</p>
+      </div>
+    </section>
+  </main>
+
+  <template id="flag-template">
+    <li class="flag">
+      <div class="flag-head">
+        <span class="badge"></span>
+        <h3 class="metric"></h3>
+        <span class="flag-time"></span>
+      </div>
+      <div class="chip-row">
+        <span class="chip"><span class="prior"></span><span class="arrow">→</span><span class="new"></span></span>
+        <span class="speaker"></span>
+      </div>
+      <blockquote class="quote"></blockquote>
+      <p class="what"></p>
+      <p class="why"></p>
+      <div class="checking" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <span>Fact-checking</span>
+        <span class="tool-chip">Snowflake</span><span class="tool-chip">Nimble</span><span class="tool-chip">Tiger</span>
+      </div>
+      <div class="market" hidden>
+        <svg class="spark" viewBox="0 0 240 56" preserveAspectRatio="none" role="img"></svg>
+        <div class="market-stats"></div>
+      </div>
+      <div class="conf" hidden>
+        <span class="conf-label">Confidence</span>
+        <span class="conf-bar"><span class="conf-fill"></span></span>
+        <span class="conf-value"></span>
+        <button type="button" class="expand" aria-expanded="false">Evidence &amp; trace</button>
+      </div>
+      <div class="detail" hidden>
+        <div class="detail-grid">
+          <div>
+            <h4>Evidence</h4>
+            <ul class="evidence"></ul>
+          </div>
+          <div>
+            <h4>Confidence components</h4>
+            <ul class="components"></ul>
+            <p class="rationale"></p>
+            <h4>Agent tool calls</h4>
+            <ul class="toolcalls"></ul>
+            <h4>Sentry trace</h4>
+            <p class="trace"></p>
+          </div>
+        </div>
+      </div>
+    </li>
+  </template>
+
+  <script src="/static/app.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "_note": "MOCK synthesis used only when GEMINI_API_KEY is missing.",
+  "core_eps_growth": {"prior_value": "low end of +5% to +7%", "what_changed": "Core EPS growth cut to +2.5% to +3.5%, from the low end of +5% to +7%.", "why_it_matters": "A two-to-three point EPS reset late in the year signals cost pressure the revenue raise is not covering; peer staples models anchored on mid-single-digit EPS need a second look."},
+  "core_cc_eps_growth": {"prior_value": "low end of +4% to +6%", "what_changed": "Core constant-currency EPS growth cut to +1% to +2%, from the low end of +4% to +6%.", "why_it_matters": "Strip out FX and underlying earnings growth is now roughly flat, the cleanest read on operating pressure."},
+  "organic_revenue_growth": {"prior_value": "+2% to +4%", "what_changed": "Organic revenue narrowed to about +3%, the midpoint of +2% to +4%.", "why_it_matters": "Top-line momentum is holding; the miss is in margins, not demand."},
+  "net_revenue_growth": {"prior_value": "not previously guided", "what_changed": "Reported net revenue growth now about +6%.", "why_it_matters": "FX and mix lift reported sales, which flatters the top line versus organic."},
+  "core_tax_rate": {"prior_value": "about 22%", "what_changed": "Core tax rate lowered to about 21% from about 22%.", "why_it_matters": "A lower tax rate props up EPS, so the operating cut is deeper than the headline."},
+  "north_america_margin": {"prior_value": null, "what_changed": "North America margin pressure continues into Q4.", "why_it_matters": "The largest profit pool stays under pressure, so Q4 risk sits in the US business."},
+  "outlook_next_year": {"prior_value": null, "what_changed": "2027 framework deferred to February.", "why_it_matters": "No 2027 anchor yet, so consensus will set it; expect estimate dispersion."}
+}

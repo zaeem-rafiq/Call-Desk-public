@@ -1,0 +1,142 @@
+"""The live pipeline: audio chunks at real-time speed -> transcript + claims -> flags.
+
+Chunk k is processed once real time reaches its end, so the feed behaves like a
+live call. Each material claim becomes a "checking" flag immediately, and a
+background fact-check fills in evidence, price reaction and confidence.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
+from collections import deque
+from datetime import datetime
+from pathlib import Path
+
+from . import audio, config, observability
+from .claims import ChunkResult, Claim, Segment, dedupe_key, metric_label
+from .factcheck import fact_check
+from .hub import EventHub
+from .models import Flag, TranscriptSegment
+
+log = logging.getLogger("calldesk")
+MOCKS = Path(__file__).resolve().parent / "mocks"
+
+
+class MockTranscriber:
+    """Canned PepsiCo Q&A aligned to the clip, for running without a Gemini key."""
+
+    name = "mock"
+
+    def __init__(self) -> None:
+        self.script = json.loads((MOCKS / "mock_call.json").read_text())
+        self.duration = float(self.script["duration"])
+
+    async def process(self, k: int, start: float, end: float, wav: bytes | None, context: list[str]) -> ChunkResult:
+        await asyncio.sleep(0.6)  # roughly a fast model round trip
+        segs, claims = [], []
+        for s in self.script["segments"]:
+            if start <= s["t"] < end:
+                segs.append(Segment(start=s["t"] - start, speaker=s["speaker"], text=s["text"]))
+                for c in s.get("claims", []):
+                    claims.append(Claim(**{**c, "speaker": s["speaker"], "start": s["t"] - start}))
+        return ChunkResult(segments=segs, claims=claims)
+
+
+class GeminiTranscriber:
+    name = "gemini"
+
+    def __init__(self, info: config.CallInfo) -> None:
+        self.info = info
+
+    async def process(self, k: int, start: float, end: float, wav: bytes | None, context: list[str]) -> ChunkResult:
+        from . import gemini
+
+        return await gemini.transcribe_and_extract(wav, context, k, start, end, self.info)
+
+
+def _iso(dt: datetime) -> str:
+    return dt.isoformat(timespec="seconds")
+
+
+async def run_live(hub: EventHub, speed: float = 1.0) -> dict:
+    info = config.call_info()
+    chunk_s = float(config.get("CHUNK_SECONDS") or 12)
+    threshold = float(config.get("MATERIALITY_THRESHOLD") or 0.6)
+    modes = config.integration_modes()
+
+    call_audio = audio.load(info.audio_path) if info.audio_path.exists() else None
+    if modes["gemini"] == "live" and call_audio is not None:
+        transcriber: MockTranscriber | GeminiTranscriber = GeminiTranscriber(info)
+        duration = call_audio.duration
+    else:
+        transcriber = MockTranscriber()
+        duration = call_audio.duration if call_audio else transcriber.duration
+
+    hub.publish("status", {
+        "state": "running", "mode": "live", "transcriber": transcriber.name, "integrations": modes,
+        "duration": duration, "chunk_s": chunk_s, "speed": speed, "audio": call_audio is not None,
+        "call": {"title": info.title, "ticker": info.ticker, "benchmark": info.primary_benchmark, "clip_start": _iso(info.clip_start)},
+    })
+
+    def publish_flag(flag: Flag) -> None:
+        hub.publish("flag", flag.model_dump(mode="json"))
+
+    seen: set[str] = set()
+    context: deque[str] = deque(maxlen=2)
+    checks: list[asyncio.Task] = []
+    n_chunks = max(1, int(-(-duration // chunk_s)))
+    t0 = hub.elapsed()
+
+    for k in range(n_chunks):
+        start, end = k * chunk_s, min((k + 1) * chunk_s, duration)
+        if speed > 0:
+            await asyncio.sleep(max(0.0, end / speed - (hub.elapsed() - t0)))
+        wav = call_audio.wav_chunk(start, end) if call_audio else None
+        try:
+            result = await transcriber.process(k, start, end, wav, list(context))
+        except Exception as exc:  # noqa: BLE001 - a bad chunk must not stop the call
+            observability.capture(exc)
+            hub.publish("error", {"chunk": k, "message": f"chunk {k} failed: {type(exc).__name__}"})
+            continue
+
+        for seg in result.segments:
+            t = start + max(0.0, min(seg.start, end - start))
+            hub.publish("transcript", TranscriptSegment(t=round(t, 1), call_ts=_iso(info.call_ts(t)), speaker=seg.speaker, text=seg.text, chunk=k).model_dump())
+        if result.segments:
+            context.append(" ".join(f"{s.speaker}: {s.text}" for s in result.segments))
+
+        for claim in result.claims:
+            key = dedupe_key(claim)
+            accepted = claim.materiality >= threshold and key not in seen
+            hub.publish("claim", {"chunk": k, "quote": claim.quote, "metric": claim.metric, "materiality": claim.materiality,
+                                  "accepted": accepted, "reason": "duplicate" if key in seen else ("below threshold" if not accepted else "")})
+            if not accepted:
+                continue
+            seen.add(key)
+            t = start + max(0.0, min(claim.start, end - start))
+            flag = Flag(
+                id=f"f{len(seen):02d}-{claim.metric}", call_ts=_iso(info.call_ts(t)), t_offset=round(t, 1),
+                speaker=claim.speaker, quote=claim.quote, claim_type=claim.claim_type, metric=claim.metric,
+                metric_label=metric_label(claim.metric), direction=claim.direction, prior_value=claim.prior_value,
+                new_value=claim.new_value, materiality=claim.materiality,
+            )
+            publish_flag(flag)
+            checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag)))
+
+    await asyncio.gather(*checks)
+    summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(seen)}
+    hub.publish("status", summary)
+    return summary
+
+
+async def _safe_check(claim: Claim, flag: Flag, info: config.CallInfo, publish) -> None:
+    try:
+        await fact_check(claim, flag, info, publish)
+    except Exception as exc:  # noqa: BLE001 - keep the provisional flag, mark it checked with zero confidence
+        observability.capture(exc)
+        flag.status = "checked"
+        flag.confidence = 0.0
+        flag.confidence_rationale = f"fact-check failed: {type(exc).__name__}"
+        publish(flag)

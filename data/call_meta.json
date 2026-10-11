@@ -1,0 +1,55 @@
+{
+  "source_url": "https://www.youtube.com/watch?v=MDQpk796NgU",
+  "source_description": "Public YouTube re-upload of PepsiCo's Q3 2026 earnings Q&A webcast audio (channel 'i101', uploaded 2026-10-08, no login). Downloaded with yt-dlp (format 251 Opus) and converted to mp3.",
+  "official_webcast_url": "https://edge.media-server.com/mmc/p/p8y572f3",
+  "official_webcast_note": "Linked from pepsico.com/investors/earnings as 'Webcast - Investors Q&A'. It shows a registration form (name, e-mail, location, occupation) before playback, so it was not used.",
+  "alternate_source_url": "https://www.youtube.com/watch?v=oIfebIPWjLY",
+  "alternate_source_note": "Castify Earnings Call upload, also 2506 s long, consistent with the same original webcast recording. Not downloaded.",
+  "full_audio_path": "data/raw/pep_q3_2026_full.mp3",
+  "full_duration_s": 2505.899,
+  "clip_path": "data/call.mp3",
+  "clip_start_s": 170.2,
+  "clip_end_s": 458.9,
+  "clip_duration_s": 288.7,
+  "clip_format": "mp3, mono, 24 kHz, 64 kbps CBR, 30 ms fade-in, 60 ms fade-out",
+  "clip_first_words": "And then Steve, if I can just slip in one on the margin side, obviously the earnings revision in Q4 is margin-driven with the top line expectations holding.",
+  "clip_last_words": "And, you know, obviously it is a, it's on its way to the long term, you know, 4% that we want to get to.",
+  "clip_speakers": [
+    "Dara Mohsenian (Morgan Stanley), end of question",
+    "Steve Schmitt (EVP and CFO)",
+    "Ramon Laguarta (Chairman and CEO)"
+  ],
+  "recording_starts_at_call_start": true,
+  "recording_starts_at_call_start_explanation": "The file opens with the operator's welcome ('Good morning and welcome to PepsiCo's 2026 third quarter earnings question and answer session') at about 0.06 s. There is no hold music or pre-roll, so offset 0 is the start of the call program. The file carries no wall-clock time, so the exact ET time of that moment is assumed, not measured.",
+  "assumed_call_start_et": "2026-10-08T08:15:00-04:00",
+  "operator_lead_in_detected_s": 0.0,
+  "estimated_clip_start_et": "2026-10-08T08:17:50-04:00",
+  "estimated_clip_end_et": "2026-10-08T08:22:38-04:00",
+  "window_source": "data/raw/guidance_window.txt (transcript words 465-1217 of 6199 in data/q3_transcript.txt, speaker labels removed)",
+  "window_location_method": {
+    "word_offset_ratio_estimate_s": [
+      188.0,
+      492.0
+    ],
+    "whisper_full_call_word_alignment_s": [
+      170.78,
+      458.51
+    ],
+    "dtw_word_timing_and_silence_detection_s": {
+      "speech_before_ends": 170.1,
+      "clip_first_word_onset": 170.7,
+      "clip_last_word_ends": 458.74,
+      "next_word_onset": 458.96
+    },
+    "confirmation": "Re-transcribed data/call.mp3 with whisper.cpp base.en; it begins with 'And then Steve, if I can just slip in...' and ends with '...4% that we want to get to.' with no trailing 'Now'.",
+    "model": "whisper.cpp ggml-base.en.bin (official ggerganov/whisper.cpp Hugging Face repo, sha1 137c40403d78fd54d454da0f9bd998f78703390c)"
+  },
+  "notes": [
+    "The live 8:15 a.m. ET call was Q&A only; prepared remarks were a PDF posted around 6:00 a.m. ET and were not read aloud.",
+    "The clip starts about 0.5 s before 'And then Steve' (silence between sentences) and ends in the 0.2 s gap before 'Now international...'.",
+    "The Motley Fool transcript omits 'And then' at the start of the window; the audio has it.",
+    "Clip ET times assume the operator began at exactly 8:15:00 ET. Conference calls often start 0-2 minutes late, so treat clip ET times as +/- 2 minutes.",
+    "Source peaks reach 0 dBFS in the original upload; no loudness change was applied.",
+    "Full-call whisper SRT: data/raw/pep_q3_2026_full_whisper.srt. Clip whisper SRT (clip-relative times): data/raw/call_clip_whisper.srt."
+  ]
+}

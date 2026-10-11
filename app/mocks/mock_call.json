@@ -1,0 +1,41 @@
+{
+  "_note": "MOCK transcript used only when GEMINI_API_KEY is missing. Paraphrased placeholder lines, not real quotes. Replaced by real Gemini output when live.",
+  "duration": 300,
+  "segments": [
+    {"t": 2, "speaker": "Operator", "text": "Our next question comes from an analyst. Please go ahead."},
+    {"t": 7, "speaker": "Analyst", "text": "Thanks. Can you walk us through the change to the full-year outlook, and how much of it is North America?"},
+    {"t": 20, "speaker": "Jamie Caulfield (CFO)", "text": "Sure. We now expect core constant currency EPS growth of 1% to 2%, and core EPS growth of 2.5% to 3.5% for the year, versus the low end of our prior range.",
+     "claims": [
+       {"quote": "We now expect core constant currency EPS growth of 1% to 2%", "claim_type": "guidance", "metric": "core_cc_eps_growth", "direction": "cut", "prior_value": null, "new_value": "+1% to +2%", "materiality": 0.95},
+       {"quote": "core EPS growth of 2.5% to 3.5% for the year", "claim_type": "guidance", "metric": "core_eps_growth", "direction": "cut", "prior_value": null, "new_value": "+2.5% to +3.5%", "materiality": 0.97}
+     ]},
+    {"t": 44, "speaker": "Jamie Caulfield (CFO)", "text": "On the top line, organic revenue growth is now about 3%, and reported net revenue growth is about 6%, helped by foreign exchange.",
+     "claims": [
+       {"quote": "organic revenue growth is now about 3%", "claim_type": "guidance", "metric": "organic_revenue_growth", "direction": "reaffirm", "prior_value": null, "new_value": "about +3%", "materiality": 0.8},
+       {"quote": "reported net revenue growth is about 6%", "claim_type": "guidance", "metric": "net_revenue_growth", "direction": "raise", "prior_value": null, "new_value": "about +6%", "materiality": 0.75}
+     ]},
+    {"t": 70, "speaker": "Jamie Caulfield (CFO)", "text": "We also now expect a core tax rate of about 21%.",
+     "claims": [
+       {"quote": "a core tax rate of about 21%", "claim_type": "guidance", "metric": "core_tax_rate", "direction": "cut", "prior_value": null, "new_value": "about 21%", "materiality": 0.62}
+     ]},
+    {"t": 84, "speaker": "Jamie Caulfield (CFO)", "text": "The quarter benefited from roughly 178 million dollars of tariff refunds, and we expect North America margin pressure to continue into the fourth quarter.",
+     "claims": [
+       {"quote": "we expect North America margin pressure to continue into the fourth quarter", "claim_type": "margin", "metric": "north_america_margin", "direction": "n/a", "prior_value": null, "new_value": "pressure continues into Q4", "materiality": 0.7},
+       {"quote": "roughly 178 million dollars of tariff refunds", "claim_type": "tariffs", "metric": "tariffs", "direction": "new", "prior_value": null, "new_value": "~$178M refund benefit in Q3", "materiality": 0.55}
+     ]},
+    {"t": 112, "speaker": "Analyst", "text": "And on 2027, any early framework?"},
+    {"t": 120, "speaker": "Ramon Laguarta (CEO)", "text": "We'll give you the full 2027 picture in February. What I can say is we're investing in affordability and the portfolio transformation.",
+     "claims": [
+       {"quote": "We'll give you the full 2027 picture in February", "claim_type": "guidance", "metric": "outlook_next_year", "direction": "n/a", "prior_value": null, "new_value": "2027 detail deferred to February", "materiality": 0.6}
+     ]},
+    {"t": 150, "speaker": "Operator", "text": "Our next question comes from another analyst."},
+    {"t": 156, "speaker": "Analyst", "text": "Just to confirm, the EPS growth for the year is now 2.5 to 3.5 percent?"},
+    {"t": 164, "speaker": "Jamie Caulfield (CFO)", "text": "That's right, 2.5% to 3.5% core EPS growth.",
+     "claims": [
+       {"quote": "2.5% to 3.5% core EPS growth", "claim_type": "guidance", "metric": "core_eps_growth", "direction": "cut", "prior_value": null, "new_value": "+2.5% to +3.5%", "materiality": 0.9}
+     ]},
+    {"t": 180, "speaker": "Ramon Laguarta (CEO)", "text": "Consumers remain value-seeking, and we're seeing that across the categories."},
+    {"t": 220, "speaker": "Jamie Caulfield (CFO)", "text": "Net revenue for the quarter was 25.27 billion dollars, up 5.6%."},
+    {"t": 260, "speaker": "Operator", "text": "Thank you. That concludes our question-and-answer session."}
+  ]
+}

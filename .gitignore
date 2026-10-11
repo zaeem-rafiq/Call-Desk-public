@@ -1,0 +1,20 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# downloads, models, large raw data
+data/raw/
+data/seed_state.json
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/
+data/replay/runs/

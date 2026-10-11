@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "call-desk",
+      "runtimeExecutable": "/Users/raikhan/Documents/Projects/Call Desk/.venv/bin/python",
+      "runtimeArgs": ["-m", "app.main", "--port", "8000"],
+      "port": 8000
+    },
+    {
+      "name": "call-desk-replay",
+      "runtimeExecutable": "/Users/raikhan/Documents/Projects/Call Desk/.venv/bin/python",
+      "runtimeArgs": ["-m", "app.main", "--replay", "--port", "8001"],
+      "port": 8001
+    }
+  ]
+}
