@@ -2,9 +2,43 @@
 
 **Hears earnings calls live and fact-checks every market-moving line in seconds.**
 
+![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white) ![Built at AI Engineer NYC 2026](docs/media/badge-built-at.svg)
+
+![Call Desk replaying PepsiCo's Q3 2026 earnings call. The live transcript fills in on the left. A red CUT card for core EPS growth appears, then fills in with the old and new guidance, the guidance table, the guidance history, the price move against XLP and a confidence of 0.92.](docs/media/demo.gif)
+
+<sub>Replay of a recorded live run at 3× speed. The CFO says "it's the margin piece that's driving the guide down in EPS", and the card shows core EPS growth cut from the low end of +5% to +7% to +2.5% to +3.5%.</sub>
+
+> Research demo built in one day. Not investment advice.
+
 Corporate IR and FP&A teams track their peers' earnings calls. On a live Q&A call, executives rarely restate the numbers. They say "it's the margin piece that's driving the guide down in EPS" and move on. Call Desk catches that line as it is spoken. Within seconds it puts a flag in front of the team: what changed, why it matters, the evidence, the market reaction, and a confidence score.
 
 **Demo:** PepsiCo (PEP) Q3 2026 earnings Q&A, October 8, 2026, using the real call audio. When the CFO says "guide down in EPS", a red flag appears. It reads: core EPS growth cut to +2.5% to +3.5%, from the low end of +5% to +7%. The new number comes from the 6 AM release (found live on the web) and the old one from last quarter's guidance (from the warehouse). The flag also shows PEP's move against XLP, the full guidance table, the guidance history since December, and a Sentry trace. Seconds later, Snowflake's Cortex Agent and a Nimble Web Search Agent re-check the claim on their own, Gemini reads the cut aloud, and when the call ends Snowflake writes a short brief for the IR team.
+
+## Try it in one minute
+
+Replay mode plays a recorded live run of the demo call. It needs no API keys.
+
+```bash
+git clone https://github.com/zaeem-rafiq/Call-Desk.git && cd Call-Desk
+uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python -m app.main --replay     # open http://localhost:8000/?start=132 and press "Play call"
+```
+
+`?start=132` starts 15 seconds before the CFO's guidance line. Replay plays without the call audio; to hear the call, rebuild it with `scripts/fetch_audio.py` (see [Run it](#run-it)). To run the live pipeline on your own keys, see [Run it](#run-it) too.
+
+## Results
+
+From the recorded live run in `data/replay/latest/` (run `20261011-115458`): all five sponsor services live, real-time speed, one call.
+
+| Measure | Result |
+|---|---|
+| Golden checks passed (`tests/golden.json`) | 8 of 8 |
+| CFO's "guide down in EPS" to a red flag on screen | about 11 s |
+| CFO's line to the verdict with the old and new numbers | about 21 s |
+| Confidence on the EPS cut | 0.92 |
+| Flags raised, errors, degraded flags | 5, 0, 0 |
+
+Latency varies with the network and model load. This is one run of one call, not a benchmark.
 
 ## How it works
 
@@ -89,6 +123,7 @@ cp .env.example .env        # fill in keys; any blank key runs that integration 
 - **Unit tests.** Run `.venv/bin/python -m pytest -q`.
 - **Live self-check.** Run `.venv/bin/python scripts/verify_live.py`. It sends three claims at once through every sponsor, live, and prints PASS, WARN or FAIL for each check (`--only tiger,voice,brief,sentry` runs just those). With the stored Nimble results it starts no agent runs.
 - **Last-resort demo.** Run `.venv/bin/python -m app.main --replay`. It replays `data/replay/latest/` (the cached flags and transcript) with the original timing.
+- **Demo media.** Run `.venv/bin/python scripts/record_demo.py` after a UI change or a new replay cache. It records `docs/media/demo.gif` from replay mode with headless Chromium, plus a local `demo.mp4` with the call audio, which stays out of Git.
 
 ### Environment
 
@@ -131,7 +166,7 @@ MLH asks every team to name the AI tools it used. This section lists every AI to
 [Sponsor tools](#sponsor-tools) describes each one in detail.
 
 - **Gemini API (`gemini-3.8-flash`)** transcribes the call, extracts claims, runs the fact-check agent, and writes the verdicts. Gemini TTS (`gemini-3.8-flash-tts`) speaks a voice alert for each guidance cut or raise.
-- **Snowflake Cortex** finds last quarter's guidance with Cortex Search. Its Cortex Agent, `GUIDANCE_AGENT`, re-checks each claim with Cortex Analyst. When the call ends, `AI_COMPLETE` writes the IR brief inside Snowflake with Claude Sonnet 4.6 (`claude-sonnet-4-6`), or with Llama 3.3 70B (`llama3.3-70b`) if that model errors.
+- **Snowflake Cortex** finds last quarter's guidance with Cortex Search. Its Cortex Agent, `GUIDANCE_AGENT`, re-checks each claim with Cortex Analyst; its orchestration model is `auto`, so Snowflake chooses the model (set `SNOWFLAKE_AGENT_MODEL` to pin one). When the call ends, `AI_COMPLETE` writes the IR brief inside Snowflake with Claude Sonnet 4.6 (`claude-sonnet-4-6`), or with Llama 3.3 70B (`llama3.3-70b`) if that model errors.
 - **Nimble** searches and reads the live web. Its Web Search Agent returns a trust report with citations for each claim.
 
 ### Other services and libraries

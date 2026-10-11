@@ -1,0 +1,83 @@
+<!doctype html>
+<!--
+  Source of docs/media/social-preview.png, the 1280x640 image GitHub shows when the repository link is shared.
+  Re-render with any Chromium, for example the Playwright headless shell:
+    "$CHROME" --headless --hide-scrollbars --window-size=1280,640 \
+      --screenshot="$PWD/docs/media/social-preview.png" "file://$PWD/docs/media/social-preview.html"
+  Then upload it in the repository's Settings > General > Social preview (GitHub has no API for this).
+  Colors match static/styles.css. Numbers come from the recorded live run in data/replay/latest/.
+  It names no event: under MLH's Contest Terms, shared material may mention the event only with MLH's permission.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Call Desk social preview</title>
+<style>
+  :root {
+    --bg: #06080b; --panel: #0c1015; --line: #1d2633; --line-2: #273242;
+    --text: #dbe3ec; --muted: #7c8a9b; --faint: #4b5868;
+    --red: #ff4d5e; --red-bg: rgba(255, 77, 94, 0.12);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; background: var(--bg); color: var(--text); }
+  body {
+    font-family: var(--sans);
+    display: grid; grid-template-columns: 560px 1fr; grid-template-rows: 1fr auto; column-gap: 56px; row-gap: 0;
+    padding: 64px 72px;
+  }
+  .left { display: flex; flex-direction: column; }
+  .mark { display: flex; align-items: center; gap: 14px; }
+  .mark svg { width: 44px; height: 44px; }
+  .mark span { font-size: 28px; font-weight: 650; letter-spacing: -0.01em; }
+  h1 {
+    margin-top: 52px; text-wrap: balance;
+    font-size: 50px; line-height: 1.12; font-weight: 700; letter-spacing: -0.025em;
+  }
+  .stack { grid-column: 1 / -1; font-size: 19px; line-height: 1.45; color: var(--muted); }
+  .stack b { color: var(--text); font-weight: 560; }
+
+  .card {
+    align-self: center;
+    background: var(--panel); border: 1px solid var(--line-2); border-left: 4px solid var(--red);
+    border-radius: 10px; padding: 30px 32px 28px;
+    box-shadow: 0 0 0 1px rgba(255, 77, 94, 0.18), 0 24px 60px rgba(0, 0, 0, 0.55);
+  }
+  .head { display: flex; align-items: center; gap: 14px; }
+  .badge {
+    font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--red);
+    background: var(--red-bg); border: 1px solid rgba(255, 77, 94, 0.45); border-radius: 4px; padding: 3px 9px;
+  }
+  .metric { font-size: 26px; font-weight: 650; }
+  .change { margin-top: 26px; font-family: var(--mono); }
+  .old { font-size: 24px; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2px; }
+  .new { display: block; margin-top: 6px; font-size: 54px; font-weight: 700; color: var(--red); letter-spacing: -0.02em; }
+  blockquote {
+    margin-top: 24px; padding-left: 16px; border-left: 2px solid var(--line-2);
+    font-size: 21px; line-height: 1.4; font-style: italic; color: var(--text);
+  }
+  cite { display: block; margin-top: 8px; font-size: 16px; font-style: normal; color: var(--muted); }
+  .facts { display: flex; gap: 28px; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 17px; color: var(--muted); }
+  .facts b { color: var(--text); font-family: var(--mono); font-weight: 600; }
+</style>
+</head>
+<body>
+  <section class="left">
+    <div class="mark">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#0c1015" stroke="#273242"/><path d="M6 20 L12 12 L17 17 L26 8" stroke="#ff4d5e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Call Desk</span>
+    </div>
+    <h1>Hears earnings calls live and fact-checks every market-moving line in seconds.</h1>
+  </section>
+
+  <section class="card">
+    <div class="head"><span class="badge">CUT</span><span class="metric">Core EPS growth</span></div>
+    <p class="change"><span class="old">low end of +5% to +7%</span><span class="new">+2.5% to +3.5%</span></p>
+    <blockquote>“it’s the margin piece that’s driving the guide down in EPS”<cite>CFO, PepsiCo Q3 2026 earnings call</cite></blockquote>
+    <div class="facts"><span>Flagged <b>11</b> s after the line</span><span>Confidence <b>0.92</b></span></div>
+  </section>
+
+  <p class="stack">Built with <b>Gemini</b>, <b>Snowflake Cortex</b>, <b>Nimble</b>, <b>Tiger Data</b> and <b>Sentry</b>.</p>
+</body>
+</html>

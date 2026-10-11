@@ -11,6 +11,8 @@ Built for AI Engineer NYC (MLH), October 11, 2026. Demo target: PepsiCo (PEP) Q3
 - Which integrations are live: `.venv/bin/python scripts/check_env.py`
 - Unit tests: `.venv/bin/python -m pytest -q`
 - Golden eval on the audio: `.venv/bin/python tests/eval.py`
+- Re-record the README demo after a UI change or a new replay cache: `.venv/bin/python scripts/record_demo.py` (no keys; needs ffmpeg and a Chromium such as Playwright's headless shell). It writes `docs/media/demo.gif` and a local `docs/media/demo.mp4`. The MP4 carries the call audio, so it stays out of Git.
+- Re-render the GitHub share image: see the comment at the top of `docs/media/social-preview.html`. The owner uploads `social-preview.png` in the repository's Settings, because GitHub has no API for it.
 
 The preview pane cannot launch servers from this folder (the space in "Call Desk" breaks it). Start the server with Bash in the background and navigate the browser pane to http://localhost:8000.
 
@@ -48,4 +50,4 @@ To update one, copy its folder again from the official GitHub repository. Do not
 - Work on a task branch and commit verified units.
 - Task branches may be pushed to the project's private GitHub repository, and pull requests may be opened, without asking.
 - Merging into `main`, publishing, or making the repository public needs the owner's approval.
-- Never send project code or documents to another AI provider unless the owner approves that destination. Gemini is approved for this product's pipeline.
+- Never send project code or documents to another AI provider unless the owner approves that destination. Gemini is approved for this product's pipeline. Snowflake Cortex AI is approved too (owner, October 11, 2026): Cortex Search, Cortex Analyst, the Cortex Agent, and `AI_COMPLETE` with its Snowflake-hosted models (`claude-sonnet-4-6`, `llama3.3-70b`).
