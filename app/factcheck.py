@@ -189,7 +189,8 @@ async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tool
         found = web_res.data if web_res and web_res.ok and isinstance(web_res.data, dict) else {}
         try:
             await web_desk.enrich(flag.web_desk, company=info.company, ticker=info.ticker, metric_label=flag.metric_label,
-                                  new_value=flag.new_value, found=found, mock=bool(found.get("mock")), on_change=lambda: publish(flag))
+                                  new_value=flag.new_value, metric=flag.metric, found=found, mock=bool(found.get("mock")),
+                                  on_change=lambda: publish(flag))
         except Exception as exc:  # noqa: BLE001 - the verdict is already out; an enrichment bug must not undo it
             observability.capture(exc)
             for st in flag.web_desk.steps:

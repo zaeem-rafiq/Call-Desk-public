@@ -344,3 +344,15 @@ def test_listener_slugs_and_periods_map_to_each_companys_guidance_lines():
     for (ticker, metric, period), want in cases.items():
         assert g.resolve_metric(ticker, metric, period) == want, (ticker, metric, period)
     assert g.resolve_metric("PEP", "operating_margin", "Q4 2026") == "operating_margin"  # no line: unchanged, history empty
+
+
+def test_only_unit_bearing_guidance_numbers_can_start_a_billed_agent_run():
+    from app.tools.web_desk import verifiable
+
+    assert not verifiable("outlook_next_year", "detailed expectations to 2027"), "a year is not a guidance number"
+    assert not verifiable("eps", "detailed expectations to 2027")
+    assert not verifiable("other", "+3%") and not verifiable("macro", "+3%")
+    assert not verifiable("organic_revenue_growth", "robust") and not verifiable("eps", "Q4 2026")
+    for metric, value in [("core_eps_growth", "+2.5% to +3.5%"), ("eps", "$5.10 to $5.60"), ("leverage", "2.2x"),
+                          ("free_cash_flow", "approximately $2.5 billion"), ("organic_revenue_growth", "approximately +3%")]:
+        assert verifiable(metric, value), (metric, value)

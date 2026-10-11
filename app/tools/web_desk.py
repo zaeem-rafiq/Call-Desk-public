@@ -437,14 +437,29 @@ def _reddit_items(parsed) -> list[WebItem]:
     return out
 
 
-async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str, new_value: str | None,
+NO_VERIFY_METRICS = {"outlook_next_year", "other", "macro"}  # commentary, not a guided number
+_UNIT_NUMBER = re.compile(r"(?i)(\$\s?\d|\d(\.\d+)?\s?(%|percent|pp|bps|basis points|points?\b|x\b|times\b|billion|million|cents?\b))")
+
+
+def verifiable(metric: str, value: str | None) -> bool:
+    """Worth a billed agent run: a guided number with a unit ("+2.5% to +3.5%", "$5.10 to $5.60", "2.2x").
+
+    A bare year ("detailed expectations to 2027") or words never qualify, nor do commentary metrics.
+    """
+    if metric in NO_VERIFY_METRICS or not value:
+        return False
+    text = re.sub(r"\b(19|20)\d\d\b", " ", value)  # a year is not a guidance number
+    return bool(_UNIT_NUMBER.search(text)) and parse_range(text) is not None
+
+
+async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str, new_value: str | None, metric: str = "",
                  found: dict, mock: bool, on_change: Callable[[], None]) -> None:
     """Run the enrich specialists in parallel; each one updates `desk` and calls on_change as it lands.
 
     `found` is the verdict phase's output: the primary document URL feeds `verify`, its news and broad hits feed `wall`.
     """
     if mock:
-        return await _mock_enrich(desk, metric_label=metric_label, new_value=new_value, on_change=on_change)
+        return await _mock_enrich(desk, metric_label=metric_label, new_value=new_value, metric=metric, on_change=on_change)
     steps = {sid: _step(sid) for sid in ("verify", "wall", "social", "newswire")}
     primary_url = found.get("primary_url") or ""
     steps["verify"].feeds = ["primary"] if primary_url else []
@@ -454,7 +469,7 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
 
     async with nimble.client(timeout=15.0) as http:
         async def verify():
-            if not parse_range(new_value):  # the agent is reliable on numeric guidance lines only, and each run is billed
+            if not verifiable(metric, new_value):  # the agent is reliable on numeric guidance lines only, and each run is billed
                 steps["verify"].status, steps["verify"].summary = "skipped", "not a numeric guidance line; agent not run"
                 return
             key = _verify_key(company, metric_label)
@@ -567,7 +582,8 @@ def _mock() -> dict:
     return json.loads(MOCK_FILE.read_text())
 
 
-async def _mock_enrich(desk: WebDesk, *, metric_label: str, new_value: str | None, on_change: Callable[[], None]) -> None:
+async def _mock_enrich(desk: WebDesk, *, metric_label: str, new_value: str | None, metric: str = "",
+                       on_change: Callable[[], None]) -> None:
     m = _mock()
     order = ("newswire", "wall", "social", "verify")
     steps = {sid: _step(sid, mock=True) for sid in order}
@@ -584,7 +600,7 @@ async def _mock_enrich(desk: WebDesk, *, metric_label: str, new_value: str | Non
             desk.social = [WebItem(**x) for x in m["social"]]
         elif sid == "wall":
             desk.wall = m["wall"]
-        elif sid == "verify" and not parse_range(new_value):  # same rule as live: numeric guidance lines only
+        elif sid == "verify" and not verifiable(metric, new_value):  # same rule as live: numeric guidance lines only
             s.status, s.summary = "skipped", "not a numeric guidance line; agent not run"
         elif sid == "verify":
             v = m["verify"].get(metric_label) or m["verify"]["default"]
