@@ -69,3 +69,18 @@ def test_snowflake_agent_response_parse():
     assert out.tools == ["Cortex Analyst · semantic view", "Cortex Search", "SQL on warehouse"]
     assert out.sql.startswith("SELECT as_of_date") and out.rows[-1] == {"AS_OF_DATE": "2026-07-09", "VALUE_TEXT": "+2% to +4%"}
     assert out.citations == ["PepsiCo Q2 2026 earnings release outlook"]
+
+
+def test_sentry_starts_when_its_key_appears_after_server_start(monkeypatch):
+    from app import observability
+
+    calls = []
+    monkeypatch.setattr(observability, "_enabled", False)
+    monkeypatch.setattr(observability, "init_sentry", lambda: calls.append(1) or setattr(observability, "_enabled", True) or True)
+    monkeypatch.setenv("MOCK_SENTRY", "1")
+    assert observability.trace_url("abc") is None and not calls  # still mocked: never started
+    monkeypatch.setenv("MOCK_SENTRY", "0")
+    monkeypatch.setenv("SENTRY_DSN", "https://public@o0.ingest.sentry.io/0")
+    monkeypatch.setenv("SENTRY_ORG", "acme")
+    assert observability.trace_url("abc") == "https://acme.sentry.io/explore/traces/trace/abc/"
+    assert observability.trace_url("def") and calls == [1]  # started once
