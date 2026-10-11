@@ -41,6 +41,7 @@ def test_confidence_failed_tools_lower_score():
     assert comps.prior == 0 and "failed" in rationale
 
 
+@pytest.mark.skipif(not (config.DATA / "prices.csv").exists(), reason="vendor price data is not redistributed; run scripts/fetch_prices.py")
 def test_price_reaction_from_csv():
     since = datetime(2026, 10, 8, 8, 20, tzinfo=config.ET).isoformat()
     r = asyncio.run(prices.mock_price_reaction("PEP", since, "XLP"))
