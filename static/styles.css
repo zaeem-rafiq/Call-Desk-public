@@ -252,6 +252,9 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .what { margin: 8px 0 0; font-weight: 600; }
 .why { margin: 4px 0 0; color: var(--muted); }
 .what:empty, .why:empty { display: none; }
+/* Folded card: the other-forecasts table, the forecast history and the agents' answers wait for "Evidence & trace",
+   so a whole card fits on a laptop screen. */
+.flag:has(> .detail[hidden]) :is(.related, .trajectory, .agent-answer) { display: none; }
 
 .checking { display: flex; align-items: center; gap: 8px; margin-top: 10px; font: 11px var(--mono); color: var(--muted); }
 .spinner { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line-2); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
@@ -408,6 +411,12 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 }
 @media (max-width: 640px) {
   .topbar { padding: 10px 16px; }
+  /* other-forecasts table: the name on its own line, then before → now and the label */
+  .related, .related tbody { display: block; }
+  .related caption { display: block; }
+  .related tr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; padding: 4px 0; border-top: 1px solid var(--line); }
+  .related td { border-top: 0; padding: 0; }
+  .related td:first-child { grid-column: 1 / -1; padding-bottom: 2px; }
   .brand { gap: 8px; }
   .brand-name { letter-spacing: 0.12em; }
   .controls { gap: 6px; }
