@@ -1,14 +1,18 @@
 {
-  "run_id": "20261011-100557",
+  "run_id": "20261011-111534",
   "state": "done",
   "mode": "live",
-  "transcriber": "mock",
+  "transcriber": "gemini",
   "integrations": {
-    "gemini": "mock",
-    "nimble": "mock",
-    "tiger": "mock",
-    "snowflake": "mock",
-    "sentry": "mock"
+    "gemini": "live",
+    "nimble": "live",
+    "tiger": "live",
+    "snowflake": "live",
+    "sentry": "live"
   },
-  "flags": 7
+  "flags": 7,
+  "errors": 0,
+  "degraded": 0,
+  "speed": 1.0,
+  "start_s": 0.0
 }
