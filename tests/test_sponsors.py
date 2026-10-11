@@ -93,7 +93,7 @@ def _slow_nimble(monkeypatch, seconds=5.0):
     async def slow(*a, **k):
         await asyncio.sleep(seconds)
         return {}
-    for name in ("agent_run", "domain_knowledge", "template_run", "search", "extract"):
+    for name in ("agent_start", "agent_wait", "domain_knowledge", "template_run", "search", "extract"):
         monkeypatch.setattr(nimble, name, slow)
 
 
@@ -145,7 +145,7 @@ def test_nimble_billing_limit_shows_as_unavailable(monkeypatch):
 
     async def billing(*a, **k):
         raise nimble.NimbleError("POST /v2/agents/runs -> 402: {'detail': {'message': 'This account cannot be billed'}}")
-    monkeypatch.setattr(nimble, "agent_run", billing)
+    monkeypatch.setattr(nimble, "agent_start", billing)
     monkeypatch.setattr(web_desk, "_agents_unbillable_until", 0.0)
     monkeypatch.setattr(web_desk, "VERIFY_CACHE", Path("/nonexistent/verify.json"))
     desk = WebDesk()
@@ -165,12 +165,16 @@ def test_verification_agent_runs_only_on_numeric_lines_and_reuses_stored_results
     _slow_nimble(monkeypatch, seconds=0.01)
     runs = []
 
-    async def agent(*a, **k):
+    async def start(*a, **k):
         runs.append(1)
+        return "wsa_1", f"run_{len(runs)}"
+
+    async def wait(*a, **k):
         return {"output": {"type": "json", "content": {"guidance_in_oct_8_2026_release": "+2.5% to +3.5%"},
                            "trust": {"confidence": "high", "sources": [{"type": "primary", "url": "https://investors.pepsico.com/x"}]}},
                 "run_s": 12.0}
-    monkeypatch.setattr(nimble, "agent_run", agent)
+    monkeypatch.setattr(nimble, "agent_start", start)
+    monkeypatch.setattr(nimble, "agent_wait", wait)
     monkeypatch.setattr(web_desk, "_agents_unbillable_until", 0.0)
     monkeypatch.setattr(web_desk, "VERIFY_CACHE", tmp_path / "verify.json")
 
@@ -244,3 +248,85 @@ def test_tagged_cortex_verdict_line_wins_over_prose():
 
     out = snowflake_agent.parse({"content": [{"type": "text", "text": "VERDICT: CONSISTENT\nIt does not CONTRADICT; the range +2% to +4% holds."}]})
     assert out.verdict == "CONSISTENT" and out.answer.startswith("It does not")
+
+
+def test_a_billed_run_past_its_deadline_is_collected_not_repeated(monkeypatch, tmp_path):
+    """A run still working at the flag's deadline keeps its ids; the next flag collects it instead of paying again.
+    Low-confidence results are stored too."""
+    import json
+
+    from app.models import WebDesk
+    from app.tools import nimble, web_desk
+
+    _slow_nimble(monkeypatch, seconds=0.01)
+    started, polls = [], []
+
+    async def start(*a, **k):
+        started.append(1)
+        return "wsa_1", "run_1"
+
+    async def wait(http, agent_id, run_id, **k):
+        polls.append(run_id)
+        if len(polls) == 1:
+            raise nimble.AgentPending(agent_id, run_id, "running")
+        return {"output": {"type": "json", "content": {"guidance_in_oct_8_2026_release": "+2.5% to +3.5%"},
+                           "trust": {"confidence": "low", "sources": []}}, "run_s": 3.0}
+
+    async def no_background(*a, **k):  # keep the test deterministic: the next flag does the collecting
+        return None
+    monkeypatch.setattr(nimble, "agent_start", start)
+    monkeypatch.setattr(nimble, "agent_wait", wait)
+    monkeypatch.setattr(web_desk, "_finish_pending", no_background)
+    monkeypatch.setattr(web_desk, "_agents_unbillable_until", 0.0)
+    monkeypatch.setattr(web_desk, "VERIFY_CACHE", tmp_path / "verify.json")
+
+    def run():
+        desk = WebDesk()
+        asyncio.run(web_desk.enrich(desk, company="PepsiCo", ticker="PEP", metric_label="Core EPS growth", new_value="+2.5% to +3.5%",
+                                    found={"broad": []}, mock=False, on_change=lambda: None))
+        return desk, next(s for s in desk.steps if s.id == "verify")
+
+    _, step = run()
+    assert step.status == "skipped" and "still working" in step.summary
+    assert json.loads((tmp_path / "verify.json").read_text())["pepsico|core eps growth"]["pending"]["run_id"] == "run_1"
+    desk, step = run()
+    assert started == [1], "the pending run was collected, not paid for again"
+    assert polls == ["run_1", "run_1"] and desk.verify.confidence == "low"
+    stored = json.loads((tmp_path / "verify.json").read_text())["pepsico|core eps growth"]
+    assert stored["confidence"] == "low" and "pending" not in stored
+    run()
+    assert started == [1] and len(polls) == 2, "a stored low-confidence result is reused too"
+
+
+def test_concurrent_flags_share_one_fresh_agent_run(monkeypatch, tmp_path):
+    """On stage (NIMBLE_VERIFY_FRESH=1) two flags for the same metric at once must pay for one run, not two."""
+    from app.models import WebDesk
+    from app.tools import nimble, web_desk
+
+    _slow_nimble(monkeypatch, seconds=0.01)
+    started = []
+
+    async def start(*a, **k):
+        started.append(1)
+        await asyncio.sleep(0.05)
+        return "wsa_1", "run_1"
+
+    async def wait(*a, **k):
+        await asyncio.sleep(0.2)
+        return {"output": {"type": "json", "content": {"guidance_in_oct_8_2026_release": "+2.5% to +3.5%"},
+                           "trust": {"confidence": "high", "sources": []}}, "run_s": 0.2}
+    monkeypatch.setattr(nimble, "agent_start", start)
+    monkeypatch.setattr(nimble, "agent_wait", wait)
+    monkeypatch.setattr(web_desk, "_agents_unbillable_until", 0.0)
+    monkeypatch.setattr(web_desk, "VERIFY_CACHE", tmp_path / "verify.json")
+    monkeypatch.setenv("NIMBLE_VERIFY_FRESH", "1")
+
+    async def two():
+        desks = [WebDesk(), WebDesk()]
+        await asyncio.gather(*(web_desk.enrich(d, company="PepsiCo", ticker="PEP", metric_label="Core EPS growth", new_value="+2.5% to +3.5%",
+                                               found={"broad": []}, mock=False, on_change=lambda: None) for d in desks))
+        return desks
+
+    desks = asyncio.run(two())
+    assert started == [1], f"{len(started)} billed runs for one metric"
+    assert all(d.verify and d.verify.confidence == "high" for d in desks)

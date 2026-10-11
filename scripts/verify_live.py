@@ -6,6 +6,8 @@ Usage:
   .venv/bin/python scripts/verify_live.py --only tiger,voice,brief,sentry
                                                        only the named feature self-checks (cheap, ~10-30 s)
 Exit status 1 if any check FAILs. WARN = an external service limit (e.g. Nimble 402) the app already handles.
+Nimble agent runs are billed: the full check starts one only for a numeric metric with nothing stored in
+data/cache/nimble_verify.json (today: none, so 0 runs). Never set NIMBLE_VERIFY_FRESH=1 for this check.
 Never prints secrets. Needs keys in .env; mocked integrations are reported as FAIL in the full check.
 """
 
@@ -92,10 +94,10 @@ async def full_check() -> None:
                 continue
             limited = s.status == "skipped"  # dropped for time, a service limit, or nothing to do: the app handles it
             row("nimble", f"{s.id} · {f.metric}", None if limited else False, f"{s.status}: {s.summary[:90]}")
-        ok_steps = sum(s.status == "ok" for s in desk.steps)
-        unavailable = sum(s.status == "skipped" and s.summary.startswith("unavailable") for s in desk.steps)
-        row("nimble", f"specialists ok · {f.metric}", ok_steps >= len(desk.steps) - unavailable - 2,
-            f"{ok_steps}/{len(desk.steps)}" + (f" ({unavailable} unavailable)" if unavailable else ""))
+        ran = [s for s in desk.steps if s.status != "skipped"]
+        failed = sum(s.status != "ok" for s in ran)
+        row("nimble", f"specialists · {f.metric}", failed <= 1,
+            f"{len(ran) - failed}/{len(ran)} ran ok, {len(desk.steps) - len(ran)} skipped")
     primary = next((s for s in eps.web_desk.steps if s.id == "primary"), None) if eps.web_desk else None
     row("nimble", "EPS primary source has the guidance table", bool(primary and primary.status == "ok" and "guidance table" in primary.summary),
         primary.summary if primary else "missing")
@@ -134,11 +136,10 @@ def main() -> int:
     parser.add_argument("--only", default="", help="comma list of feature self-checks: tiger,voice,brief,sentry")
     args = parser.parse_args()
     only = {x.strip() for x in args.only.split(",") if x.strip()}
-    if only:
-        asyncio.run(feature_checks(only))
-    else:
-        asyncio.run(full_check())
-        asyncio.run(feature_checks(set()))
+    async def everything():  # one event loop: cached async clients (Gemini) are bound to the loop that made them
+        await full_check()
+        await feature_checks(set())
+    asyncio.run(feature_checks(only) if only else everything())
     width = max(len(r[1]) for r in ROWS) if ROWS else 10
     for area, check, status, detail in ROWS:
         print(f"{status:<5} {area:<9} {check:<{width}}  {detail}")

@@ -189,6 +189,11 @@ async def live_verdict(query: str, metric_label: str = "", new_value: str | None
                 except asyncio.TimeoutError:
                     steps["sitemap"].status, steps["sitemap"].summary = "skipped", "map still running; later flags use it"
                     return
+                except nimble.NimbleError as exc:
+                    if "-> 5" not in str(exc):
+                        raise
+                    steps["sitemap"].status, steps["sitemap"].summary = "skipped", "unavailable: Nimble map returned a server error"
+                    return
             links = _ir_links or []
             urls = _release_urls(links)
             hits["sitemap"] = [{"title": u.rstrip("/").rsplit("/", 1)[-1], "url": u, "source": nimble.domain(u),
@@ -244,16 +249,84 @@ def load_verify_cache() -> dict:
         return {}
 
 
-def save_verify(company: str, metric_label: str, v: WebVerify) -> None:
-    from datetime import datetime
-
+def _store(key: str, entry: dict | None) -> None:
+    """Write one cache entry (a stored result, or {"pending": {...}} for a billed run still working)."""
     cache = load_verify_cache()
-    cache[_verify_key(company, metric_label)] = {**v.model_dump(), "cached_at": datetime.now(config.ET).strftime("%b %d %H:%M ET")}
+    if entry is None:
+        cache.pop(key, None)
+    else:
+        cache[key] = entry
     try:
         VERIFY_CACHE.parent.mkdir(parents=True, exist_ok=True)
         VERIFY_CACHE.write_text(json.dumps(cache, indent=1))
     except OSError:
         pass
+
+
+def _now_et() -> str:
+    from datetime import datetime
+
+    return datetime.now(config.ET).strftime("%b %d %H:%M ET")
+
+
+def save_verify(company: str, metric_label: str, v: WebVerify) -> None:
+    """Store every completed result, whatever its confidence: a paid run is never thrown away."""
+    _store(_verify_key(company, metric_label), {**v.model_dump(), "cached_at": _now_et()})
+
+
+async def _start_or_collect(key: str, pending: dict | None, company: str, ticker: str, metric_label: str, primary_url: str,
+                            step: WebStep) -> WebVerify | None:
+    """Collect an already-billed run, or start exactly one new run (never retried). Returns None when skipped."""
+    global _agents_unbillable_until
+    async with nimble.client(timeout=15.0) as agent_http:
+        if pending:  # billed earlier: collect it, never start a second run for the same metric
+            agent_id, run_id = pending["agent_id"], pending["run_id"]
+        else:
+            if time.monotonic() < _agents_unbillable_until:
+                step.status, step.summary = "skipped", "unavailable: Nimble account cannot be billed for agent runs (402)"
+                return None
+            try:
+                agent_id, run_id = await nimble.agent_start(agent_http, _verify_prompt(company, ticker, metric_label, primary_url),
+                                                            output_schema=_verify_schema(), sources=_verify_sources(primary_url), effort="low")
+            except nimble.NimbleError as exc:
+                if "-> 402" not in str(exc):
+                    raise
+                _agents_unbillable_until = time.monotonic() + 600
+                step.status, step.summary = "skipped", "unavailable: Nimble account cannot be billed for agent runs (402)"
+                return None
+            _store(key, {"pending": {"agent_id": agent_id, "run_id": run_id, "started": _now_et()}})
+        try:
+            out = await nimble.agent_wait(agent_http, agent_id, run_id, deadline_s=ENRICH_BUDGET_S - 3)
+        except nimble.AgentPending:
+            task = asyncio.get_running_loop().create_task(_finish_pending(agent_id, run_id, company, metric_label))
+            _finishers.add(task)
+            task.add_done_callback(_finishers.discard)
+            since = pending["started"] if pending else _now_et()
+            step.status, step.summary = "skipped", f"agent still working (run started {since}); its result will be stored"
+            return None
+        except nimble.NimbleError:
+            _store(key, None)  # the run failed: a later flag may start a new one
+            raise
+    result = to_verify(out["output"], out["run_s"])
+    save_verify(company, metric_label, result)
+    return result
+
+
+_finishers: set[asyncio.Task] = set()
+_inflight: dict[str, asyncio.Future] = {}  # metric key -> the running agent run's result, shared by concurrent flags
+
+
+async def _finish_pending(agent_id: str, run_id: str, company: str, metric_label: str) -> None:
+    """Collect a run that missed the flag's deadline (status polls are free) and store its result for later flags."""
+    try:
+        async with nimble.client(timeout=15.0) as http:
+            out = await nimble.agent_wait(http, agent_id, run_id, deadline_s=360)
+        save_verify(company, metric_label, to_verify(out["output"], out["run_s"]))
+    except nimble.AgentPending:
+        pass  # still pending: the stored ids let the next flag collect it
+    except Exception as exc:  # noqa: BLE001 - a failed run frees the slot; nothing else to do
+        if not isinstance(exc, asyncio.CancelledError):
+            _store(_verify_key(company, metric_label), None)
 def _verify_schema() -> dict:
     s = {"type": "string"}
     return {"type": "object", "properties": {
@@ -339,37 +412,50 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
 
     async with nimble.client(timeout=15.0) as http:
         async def verify():
-            global _agents_unbillable_until
             if not parse_range(new_value):  # the agent is reliable on numeric guidance lines only, and each run is billed
                 steps["verify"].status, steps["verify"].summary = "skipped", "not a numeric guidance line; agent not run"
                 return
-            cached = load_verify_cache().get(_verify_key(company, metric_label))
-            if cached and os.environ.get("NIMBLE_VERIFY_FRESH") != "1":
-                desk.verify = WebVerify(**cached)
+            key = _verify_key(company, metric_label)
+            joined = _inflight.get(key)
+            if joined is not None and not joined.done():  # another flag is already paying for this metric's run: share it
+                try:
+                    desk.verify = WebVerify(**(await asyncio.shield(joined)))
+                except Exception:  # noqa: BLE001 - that flag reports the failure; this one just has no result
+                    steps["verify"].status, steps["verify"].summary = "skipped", "shared run did not finish in time"
+                    return
+                steps["verify"].summary = f"confidence {desk.verify.confidence or '?'} · shared the run started by an earlier flag"
+                return
+            entry = load_verify_cache().get(key)
+            pending = (entry or {}).get("pending")
+            fresh = (os.environ.get("NIMBLE_VERIFY_FRESH") or config.get("NIMBLE_VERIFY_FRESH") or "0") == "1"
+            if entry and not pending and not fresh:
+                desk.verify = WebVerify(**entry)
                 v = desk.verify
                 steps["verify"].summary = (f"confidence {v.confidence or '?'} · {v.official_sources} official sources · "
                                            f"cached result of the {v.cached_at} live run")
                 return
-            if time.monotonic() < _agents_unbillable_until:
-                steps["verify"].status, steps["verify"].summary = "skipped", "unavailable: Nimble account cannot be billed for agent runs (402)"
-                return
+            shared = asyncio.get_running_loop().create_future()  # registered before the billed call, so concurrent flags join it
+            _inflight[key] = shared
             try:
-                async with nimble.client(timeout=15.0) as agent_http:
-                    out = await nimble.agent_run(agent_http, _verify_prompt(company, ticker, metric_label, primary_url),
-                                                 output_schema=_verify_schema(), sources=_verify_sources(primary_url), effort="low",
-                                                 deadline_s=ENRICH_BUDGET_S - 3)
-            except nimble.NimbleError as exc:
-                if "-> 402" not in str(exc):
-                    raise
-                _agents_unbillable_until = time.monotonic() + 600
-                steps["verify"].status, steps["verify"].summary = "skipped", "unavailable: Nimble account cannot be billed for agent runs (402)"
-                return
-            desk.verify = to_verify(out["output"], out["run_s"])
-            v = desk.verify
-            if v.confidence in ("high", "medium"):
-                save_verify(company, metric_label, v)
-            steps["verify"].summary = (f"confidence {v.confidence or '?'} · {v.official_sources} official sources · "
-                                       f"{len(v.claims)} cited claims · {v.run_s:.0f}s")
+                result = await _start_or_collect(key, pending, company, ticker, metric_label, primary_url, steps["verify"])
+            except BaseException as exc:
+                if not shared.done():
+                    shared.set_exception(RuntimeError(f"{type(exc).__name__}"))
+                    shared.exception()  # retrieved: nobody may be waiting
+                raise
+            finally:
+                _inflight.pop(key, None)
+            if not shared.done():
+                if result is None:
+                    shared.set_exception(RuntimeError("no result"))
+                    shared.exception()
+                else:
+                    shared.set_result(result.model_dump())
+            if result is not None:
+                desk.verify = result
+                v = desk.verify
+                steps["verify"].summary = (f"confidence {v.confidence or '?'} · {v.official_sources} official sources · "
+                                           f"{len(v.claims)} cited claims · {v.run_s:.0f}s")
 
         async def wall():
             candidates, seen = [], set()

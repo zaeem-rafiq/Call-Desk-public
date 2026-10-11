@@ -134,13 +134,17 @@ async def template_run(http: httpx.AsyncClient, template: str, params: dict) -> 
     return (data.get("data") or {}).get("parsing")
 
 
-async def agent_run(http: httpx.AsyncClient, prompt: str, *, output_schema: dict | None = None, sources: dict | None = None,
-                    effort: str = "low", deadline_s: float = 40.0, poll_s: float = 2.0) -> dict:
-    """POST /v2/agents/runs, poll until done, then GET .../result.
+class AgentPending(NimbleError):
+    """The run is still working at the deadline. It is already billed: keep its ids and collect the result later."""
 
-    Returns {"output": {type, content, trust}, "run_s": seconds}. Effort "low" is documented at 10-30 s.
-    """
-    started = time.monotonic()
+    def __init__(self, agent_id: str, run_id: str, status: str) -> None:
+        super().__init__(f"agent run still {status}")
+        self.agent_id, self.run_id = agent_id, run_id
+
+
+async def agent_start(http: httpx.AsyncClient, prompt: str, *, output_schema: dict | None = None, sources: dict | None = None,
+                      effort: str = "low") -> tuple[str, str]:
+    """POST /v2/agents/runs: the one billed call (per task). Never retried or hedged. Returns (agent_id, run_id)."""
     body: dict[str, Any] = {"input": prompt, "effort": effort}
     if output_schema:
         body["output_schema"] = output_schema
@@ -150,12 +154,23 @@ async def agent_run(http: httpx.AsyncClient, prompt: str, *, output_schema: dict
     agent_id, run_id = run.get("web_search_agent_id"), run.get("id")
     if not (agent_id and run_id):
         raise NimbleError(f"agent run not created: {str(run)[:200]}")
+    return agent_id, run_id
+
+
+async def agent_wait(http: httpx.AsyncClient, agent_id: str, run_id: str, *, deadline_s: float = 40.0, poll_s: float = 2.0) -> dict:
+    """Poll a started run (free status calls) and GET its result. Raises AgentPending at the deadline.
+
+    Returns {"output": {type, content, trust}, "run_s": seconds spent waiting here}.
+    """
+    started = time.monotonic()
     path = f"/v2/agents/{agent_id}/runs/{run_id}"
-    while run.get("is_active", True):
-        if time.monotonic() - started > deadline_s:
-            raise NimbleError(f"agent run still {run.get('status')} after {deadline_s:.0f}s")
-        await asyncio.sleep(poll_s)
+    while True:
         run = _check(await http.get(path))
+        if not run.get("is_active", True):
+            break
+        if time.monotonic() - started > deadline_s:
+            raise AgentPending(agent_id, run_id, str(run.get("status")))
+        await asyncio.sleep(poll_s)
     if run.get("status") != "completed":
         raise NimbleError(f"agent run {run.get('status')}: {str(run.get('error'))[:200]}")
     result = _check(await http.get(f"{path}/result"))
