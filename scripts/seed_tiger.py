@@ -115,6 +115,17 @@ def main() -> int:
                     (session_day, r.ticker, kind, float(r.close)),
                 )
         conn.execute("CALL refresh_continuous_aggregate('bars_1m', NULL, NULL)")
+        # Historical demo data is immutable: move it to the columnstore now instead of waiting for the policy.
+        for (chunk,) in conn.execute("SELECT c::text FROM show_chunks('price_ticks') c").fetchall():
+            try:
+                conn.execute(f"CALL convert_to_columnstore('{chunk}', if_not_columnstore => true)")
+            except psycopg.Error:
+                conn.execute(f"SELECT compress_chunk('{chunk}', if_not_compressed => true)")
+        stats = conn.execute(
+            "SELECT before_compression_total_bytes, after_compression_total_bytes FROM hypertable_compression_stats('price_ticks')"
+        ).fetchone()
+        if stats and stats[0] and stats[1]:
+            print(f"columnstore: {stats[0] // 1024} kB -> {stats[1] // 1024} kB ({stats[0] / stats[1]:.1f}x smaller)")
         try:
             # Live ticks newer than end_offset are still served by real-time aggregation (materialized_only = false).
             conn.execute("SELECT add_continuous_aggregate_policy('bars_1m', start_offset => NULL, "
