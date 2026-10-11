@@ -1,5 +1,11 @@
 [
-  {"title": "MOCK · PepsiCo Q3 2026 results press release (placeholder)", "url": "https://www.pepsico.com/investors", "source": "mock", "snippet": "MOCK placeholder: PepsiCo now expects core constant currency EPS growth of 1 to 2 percent and core EPS growth of 2.5 to 3.5 percent for fiscal 2026; organic revenue growth of approximately 3 percent; net revenue growth of approximately 6 percent; core tax rate of approximately 21 percent."},
-  {"title": "MOCK · Wire report on PepsiCo guidance cut (placeholder)", "url": "https://example.com/mock-wire", "source": "mock", "snippet": "MOCK placeholder: PepsiCo lowered its full-year core EPS growth outlook to 2.5 to 3.5 percent while lifting its reported revenue growth outlook to about 6 percent."},
-  {"title": "MOCK · Q3 net revenue (placeholder)", "url": "https://example.com/mock-q3", "source": "mock", "snippet": "MOCK placeholder: Third-quarter net revenue rose 5.6 percent to 25.27 billion dollars; results included about 178 million dollars of tariff refunds."}
+  {"title": "PepsiCo Reports Third Quarter 2026 Results; Updates Fiscal 2026 Guidance (earnings release, p.5)",
+   "url": "https://www.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-earnings-release.pdf", "source": "pepsico.com",
+   "snippet": "Fiscal 2026 guidance, current vs previous: Core EPS +2.5% to +3.5% (previous: low-end of +5% to +7%); Core constant currency EPS +1% to +2% (previous: low-end of +4% to +6%); Organic revenue approximately +3% (previous: +2% to +4%); Net revenue approximately +6% (previous: +4% to +6%); Core annual effective tax rate approximately 21% (previous: approximately 22%)."},
+  {"title": "PepsiCo Q3 2026 earnings release (SEC Form 8-K, Exhibit 99.1)",
+   "url": "https://www.sec.gov/Archives/edgar/data/0000077476/000007747626000050/q320268-kxexhibit991.htm", "source": "sec.gov",
+   "snippet": "Net revenue increased 5.6 percent to $25,274 million; organic revenue increased 3.1 percent. Core EPS of $2.34 increased 2 percent. Core operating profit performance reflects productivity savings, effective net pricing and a 4-percentage-point favorable impact of tariff refunds."},
+  {"title": "PepsiCo Q3 2026 prepared management remarks (CFO commentary and outlook)",
+   "url": "https://www.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf", "source": "pepsico.com",
+   "snippet": "Tariff refunds amounted to $178 million in the third quarter. We expect North America's core operating margin performance to remain under pressure in the fourth quarter. We now expect organic revenue growth of approximately 3 percent, implying net revenue growth of approximately 6 percent; we are also moderating PepsiCo's core constant currency EPS growth outlook, which reflects the margin pressures we expect in the North America business."}
 ]

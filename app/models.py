@@ -35,6 +35,9 @@ class PriceReaction(BaseModel):
     until_ts: str | None = None
     day_pct_move: float | None = None  # vs prior close, as of until_ts
     day_vs_benchmark: float | None = None
+    close_pct_move: float | None = None  # official close vs prior close
+    close_benchmark_pct_move: float | None = None
+    close_vs_benchmark: float | None = None
     series: list[PricePoint] = Field(default_factory=list)
     source: str = ""
     mock: bool = False
@@ -56,6 +59,15 @@ class ToolCall(BaseModel):
     error: str | None = None
 
 
+class RelatedChange(BaseModel):
+    """One row of the guidance table the agent found (e.g. in the morning release)."""
+
+    metric_label: str
+    prior_value: str | None = None
+    new_value: str
+    direction: Direction
+
+
 class Flag(BaseModel):
     id: str
     status: Literal["checking", "checked"] = "checking"
@@ -69,9 +81,11 @@ class Flag(BaseModel):
     direction: Direction
     prior_value: str | None = None
     new_value: str | None = None
+    new_value_source: str = "spoken"  # "spoken", or where the agent found the number
     what_changed: str = ""
     why_it_matters: str = ""
     evidence: list[Evidence] = Field(default_factory=list)
+    related_changes: list[RelatedChange] = Field(default_factory=list)
     price_reaction: PriceReaction | None = None
     confidence: float | None = None
     confidence_components: ConfidenceComponents | None = None

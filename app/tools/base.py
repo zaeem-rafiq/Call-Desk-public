@@ -43,7 +43,8 @@ async def run_tool(
             "gen_ai.operation.name": "execute_tool",
             "gen_ai.tool.name": name,
             "gen_ai.tool.type": "function",
-            "gen_ai.tool.input": json.dumps(args, default=str),
+            "gen_ai.agent.name": "call-desk-fact-checker",
+            "gen_ai.tool.call.arguments": json.dumps(args, default=str),
             "calldesk.backend": backend,
             "calldesk.mock": is_mock,
         },
@@ -60,7 +61,7 @@ async def run_tool(
                     observability.capture(exc)
                 else:
                     await asyncio.sleep(0.5 * (attempt + 1))
-        span.set_data("gen_ai.tool.output", json.dumps(data, default=str)[:2000] if error is None else error)
+        span.set_data("gen_ai.tool.call.result", json.dumps(data, default=str)[:2000] if error is None else error)
         span.set_status("ok" if error is None else "internal_error")
     call = ToolCall(
         tool=name,

@@ -72,6 +72,17 @@ def fetch_prior_close(ticker: str, day: date) -> dict:
     }
 
 
+def fetch_day_close(ticker: str, day: date) -> dict:
+    """Return the official regular-session close on `day` (1m bars miss the closing auction)."""
+    hist = yf.Ticker(ticker).history(
+        start=day.isoformat(), end=(day + timedelta(days=1)).isoformat(), interval="1d", auto_adjust=False
+    )
+    hist = hist[hist.index.tz_convert(EXCHANGE_TZ).date == day]
+    if hist.empty:
+        raise RuntimeError(f"No daily close for {ticker} on {day}")
+    return {"ticker": ticker, "date": day.isoformat(), "close": float(hist.iloc[-1]["Close"])}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--date", required=True, type=date.fromisoformat, help="YYYY-MM-DD")
@@ -85,18 +96,21 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     prior_out = args.prior_out or args.out.with_name("prior_close.csv")
+    day_out = args.out.with_name("day_close.csv")
 
     bars = pd.concat([fetch_intraday(t, args.date) for t in args.tickers], ignore_index=True)
     prior = pd.DataFrame([fetch_prior_close(t, args.date) for t in args.tickers])
+    day_close = pd.DataFrame([fetch_day_close(t, args.date) for t in args.tickers])
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     bars.to_csv(args.out, index=False)
     prior.to_csv(prior_out, index=False)
+    day_close.to_csv(day_out, index=False)
 
     for ticker, group in bars.groupby("ticker", sort=False):
         print(f"{ticker}: {len(group)} bars at {group['interval'].iloc[0]} "
               f"({group['ts'].iloc[0]} .. {group['ts'].iloc[-1]})")
-    print(f"Wrote {args.out} and {prior_out}")
+    print(f"Wrote {args.out}, {prior_out} and {day_out}")
     return 0
 
 

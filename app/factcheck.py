@@ -16,7 +16,7 @@ from typing import Callable
 
 from . import confidence, config, observability, tools
 from .claims import Claim, numeric_direction, parse_range
-from .models import Evidence, Flag, PriceReaction
+from .models import Evidence, Flag, PriceReaction, RelatedChange
 
 log = logging.getLogger("calldesk")
 MOCKS = Path(__file__).resolve().parent / "mocks"
@@ -37,22 +37,26 @@ async def run_tools(calls: list[tuple[str, dict]]) -> dict[str, tools.ToolResult
 
 
 def _mock_synthesis(claim: Claim, label: str, prior_hits: list[dict], web_hits: list[dict]) -> dict:
-    canned = json.loads((MOCKS / "synthesis.json").read_text()) if (MOCKS / "synthesis.json").exists() else {}
+    canned = json.loads((MOCKS / "synthesis.json").read_text())
     c = canned.get(claim.metric, {})
+    new_value = claim.new_value or c.get("new_value")
     prior_value = claim.prior_value or c.get("prior_value")
-    nums = [f"{x:g}" for x in (parse_range(claim.new_value) or ())]
+    nums = [f"{x:g}" for x in (parse_range(new_value) or ())]
 
     def stance(snippet: str) -> str:
         return "supports" if nums and all(n in snippet for n in nums) else "neutral"
 
     return {
         "direction": claim.direction,
+        "new_value": new_value,
+        "new_value_source": c.get("new_value_source", "spoken") if not claim.new_value else "spoken",
         "prior_value": prior_value,
         "prior_found": bool(prior_value and prior_hits),
-        "what_changed": c.get("what_changed") or f"{label}: {prior_value or 'n/a'} → {claim.new_value or 'n/a'}",
-        "why_it_matters": c.get("why_it_matters") or f"{label} moved to {claim.new_value}; peers' models need to reflect it.",
-        "prior_evidence": [{"index": i, "stance": "supports" if prior_value else "neutral"} for i in range(min(2, len(prior_hits)))],
-        "web_evidence": [{"index": i, "stance": stance(h.get("snippet", ""))} for i, h in enumerate(web_hits[:4])],
+        "what_changed": c.get("what_changed") or f"{label}: {prior_value or 'n/a'} → {new_value or 'n/a'}",
+        "why_it_matters": c.get("why_it_matters") or f"{label} moved to {new_value}; peers' models need to reflect it.",
+        "evidence": [{"source": "prior", "index": i, "stance": "supports" if prior_value else "neutral"} for i in range(min(2, len(prior_hits)))]
+        + [{"source": "web", "index": i, "stance": stance(h.get("snippet", ""))} for i, h in enumerate(web_hits[:4])],
+        "related_changes": canned["release_table"] if c.get("with_release_table") else [],
     }
 
 
@@ -60,8 +64,8 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
     from . import gemini  # local import: gemini imports google-genai lazily
 
     with observability.agent_transaction(
-        f"fact-check {flag.metric_label}",
-        {"calldesk.flag_id": flag.id, "calldesk.quote": claim.quote, "calldesk.metric": claim.metric},
+        "invoke_agent call-desk-fact-checker",
+        {"calldesk.flag_id": flag.id, "calldesk.quote": claim.quote, "calldesk.metric": claim.metric, "calldesk.metric_label": flag.metric_label},
     ) as (trace_id, _txn):
         flag.sentry_trace_id = trace_id
         flag.sentry_trace_url = observability.trace_url(trace_id)
@@ -98,27 +102,31 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
 
 
 def _apply_synthesis(flag, claim, s, prior_hits, web_hits, prior_res, web_res) -> None:
-    direction = s.get("direction") or claim.direction
+    flag.new_value = s.get("new_value") or claim.new_value
+    flag.new_value_source = s.get("new_value_source") or ("spoken" if claim.new_value else "")
     prior_value = s.get("prior_value") or claim.prior_value
-    numeric = numeric_direction(prior_value, claim.new_value)
+    direction = s.get("direction") or claim.direction
+    numeric = numeric_direction(prior_value, flag.new_value)
     if numeric and direction in ("cut", "raise", "reaffirm") and numeric != direction:
-        log.info("direction %s overridden by numbers -> %s (%s vs %s)", direction, numeric, prior_value, claim.new_value)
+        log.info("direction %s overridden by numbers -> %s (%s vs %s)", direction, numeric, prior_value, flag.new_value)
         direction = numeric
     flag.direction = direction
     flag.prior_value = prior_value
     flag.what_changed = s.get("what_changed", "")
     flag.why_it_matters = s.get("why_it_matters", "")
+    flag.related_changes = [RelatedChange(**r) for r in s.get("related_changes", []) if r.get("new_value")]
     ev: list[Evidence] = []
-    for item in s.get("prior_evidence", []):
-        if 0 <= item.get("index", -1) < len(prior_hits):
-            h = prior_hits[item["index"]]
-            ev.append(Evidence(source=f"Snowflake Cortex Search · {h.get('doc_title', 'prior quarter')}", ref=h.get("source_url") or h.get("doc_title", ""),
-                               snippet=h.get("snippet", "")[:400], stance=item.get("stance", "neutral"), mock=prior_res.call.mock))
-    for item in s.get("web_evidence", []):
-        if 0 <= item.get("index", -1) < len(web_hits):
-            h = web_hits[item["index"]]
-            ev.append(Evidence(source=f"Nimble · {h.get('source') or h.get('domain') or 'web'}", ref=h.get("url", ""),
-                               snippet=h.get("snippet", "")[:400], stance=item.get("stance", "neutral"), mock=web_res.call.mock))
+    for item in s.get("evidence", []):
+        hits, res, prefix = (prior_hits, prior_res, "Snowflake Cortex Search") if item.get("source") == "prior" else (web_hits, web_res, "Nimble")
+        idx = item.get("index", -1)
+        if not (0 <= idx < len(hits)):
+            continue
+        h = hits[idx]
+        if prefix == "Nimble":
+            src, ref = f"Nimble · {h.get('source') or h.get('domain') or 'web'}", h.get("url", "")
+        else:
+            src, ref = f"{prefix} · {h.get('doc_title', 'prior quarter')}", h.get("source_url") or h.get("doc_title", "")
+        ev.append(Evidence(source=src, ref=ref, snippet=(h.get("snippet") or "")[:420], stance=item.get("stance", "neutral"), mock=res.call.mock))
     flag.evidence = ev
 
 

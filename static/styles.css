@@ -150,7 +150,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .marker.new, .marker.na { background: var(--blue); }
 
 /* ---------- transcript ---------- */
-.transcript { list-style: none; margin: 0; padding: 8px 0 24px; overflow-y: auto; flex: 1; scroll-behavior: smooth; }
+.transcript { list-style: none; margin: 0; padding: 8px 0 24px; overflow-y: auto; flex: 1; }
 .line { display: grid; grid-template-columns: 62px 1fr; gap: 10px; padding: 6px 16px; }
 .line-time { font: 11px/1.9 var(--mono); color: var(--faint); font-variant-numeric: tabular-nums; }
 .line-speaker { display: block; font: 600 11px/1.6 var(--mono); color: var(--muted); letter-spacing: 0.04em; }
@@ -210,6 +210,18 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .chip .arrow { color: var(--faint); }
 .chip .new { color: var(--accent); }
 .speaker { font: 11px var(--mono); color: var(--muted); }
+.value-source { font: 600 9px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue); border: 1px solid color-mix(in srgb, var(--blue) 45%, transparent); padding: 3px 5px; border-radius: 3px; }
+.chip .new.pending { color: var(--faint); font-weight: 500; }
+.related { width: 100%; margin-top: 10px; border-collapse: collapse; font: 12px var(--mono); font-variant-numeric: tabular-nums; }
+.related caption { text-align: left; font: 600 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); padding-bottom: 6px; }
+.related td { padding: 4px 6px; border-top: 1px solid var(--line); }
+.related td:first-child { color: var(--text); padding-left: 0; }
+.related .r-prior { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent); }
+.related .r-dir { font-weight: 700; font-size: 10px; letter-spacing: 0.08em; text-align: right; padding-right: 0; }
+.related .r-dir.cut { color: var(--red); }
+.related .r-dir.raise { color: var(--green); }
+.related .r-dir.reaffirm { color: var(--amber); }
+.related .r-dir.new, .related .r-dir.na { color: var(--blue); }
 .quote {
   margin: 10px 0 0; padding: 0 0 0 10px;
   border-left: 2px solid var(--line-2);
@@ -236,6 +248,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .pos { color: var(--green); }
 .neg { color: var(--red); }
 .market-stats .lbl { color: var(--faint); font-size: 10px; letter-spacing: 0.08em; }
+.close-line { margin-top: 2px; font-size: 12px; }
 
 .conf { display: flex; align-items: center; gap: 10px; margin-top: 12px; font: 11px var(--mono); }
 .conf-label { color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; font-size: 10px; }

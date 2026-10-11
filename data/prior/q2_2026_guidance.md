@@ -1,6 +1,6 @@
 # PepsiCo FY2026 guidance as of Q2 2026 (July 9, 2026)
 
-This is the guidance in force before the Q3 2026 call on October 8, 2026.
+This is PepsiCo's fiscal 2026 guidance as of the Q2 2026 report on July 9, 2026 (the latest guidance before the Q3 2026 report).
 
 ## Sources
 
@@ -55,12 +55,14 @@ The release headline bullet reads: "Company affirms fiscal 2026 financial guidan
 
 The prepared remarks repeat the same guidance list and the same "imply ... core EPS growth of approximately 5 to 7 percent" sentence. The written documents do not say "low end".
 
-## The "low end" steer was spoken on the Q2 live call only
+## The "low end" steer was spoken on the Q2 live call
 
-The Q3 2026 guidance table lists the previous EPS guidance as "Low-end of +4% to +6%" (core constant currency) and "Low-end of +5% to +7%" (core). That "low end" wording comes from the Q2 live Q&A, not from the Q2 written guidance.
+The written Q2 documents do not say "low end". On the Q2 live Q&A call (July 9, 2026) the CFO steered EPS toward the low end of the range:
 
-- Steve Schmitt (CFO), Q2 call, answer to Filippo Falorni (Citi): "When we add it all up, we're in a position to reaffirm our full-year guidance, and as Ramon said, it may be towards the low end of the EPS range that we've given."
+- Steve Schmitt (CFO), answer to Filippo Falorni (Citi): "When we add it all up, we're in a position to reaffirm our full-year guidance, and as Ramon said, it may be towards the low end of the EPS range that we've given."
 - Steve Schmitt, same answer, on tariffs: "The refund claims on the tariffs paid last year will be about 1 full point of EPS growth for the year."
+
+So, going into Q3, core EPS growth was guided to approximately +5% to +7%, steered to the low end of that range, and core constant currency EPS growth to +4% to +6%, also steered to the low end.
 
 ## FY2026 guidance history
 
@@ -70,10 +72,8 @@ The Q3 2026 guidance table lists the previous EPS guidance as "Low-end of +4% to
 | Feb 3, 2026 | Q4 2025 release | +2% to +4% | +4% to +6% | ~+5% to +7% | ~22% | "continues to expect"; added $8.9B cash returns and implied net revenue +4% to +6% |
 | Apr 16, 2026 | Q1 2026 release | +2% to +4% | +4% to +6% | ~+5% to +7% | ~22% | Affirmed |
 | Jul 9, 2026 | Q2 2026 release and prepared remarks | +2% to +4% | +4% to +6% | ~+5% to +7% | ~22% | Affirmed in writing; CFO said on the live call EPS "may be towards the low end" |
-| Oct 8, 2026 | Q3 2026 release and prepared remarks | ~+3% | +1% to +2% | +2.5% to +3.5% | ~21% | First formal EPS cut; net revenue now ~+6% |
 
 Sources for the history rows:
 - Dec 8, 2025: https://www.pepsico.com/newsroom/press-releases/2025/pepsico-announces-priorities-to-enhance-shareholder-value-and-provides-preliminary-2026-outlook (local copy `data/raw/pepsico_2025_12_08_preliminary_2026_outlook.html`)
 - Feb 3, 2026: https://www.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q4-2025-earnings-release.pdf (local copy `data/raw/pepsico_q4_2025_earnings_release.pdf`)
 - Apr 16, 2026: https://www.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q1-2026-earnings-release.pdf (local copy `data/raw/pepsico_q1_2026_earnings_release.pdf`)
-- Oct 8, 2026: https://www.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-earnings-release.pdf (local copy `data/raw/pepsico_q3_2026_earnings_release.pdf`)

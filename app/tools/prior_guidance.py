@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -32,6 +33,34 @@ def _doc_meta(path: Path) -> dict:
     return {"DOC_TITLE": title, "QUARTER": quarter, "DOC_TYPE": doc_type, "SOURCE_URL": url}
 
 
+def _table_rows(text: str) -> list[list[str]]:
+    rows = []
+    for line in text.splitlines():
+        if line.startswith("|") and not re.match(r"^\|[-\s|:]+\|$", line):
+            rows.append([c.strip() for c in line.strip("|").split("|")])
+    return rows
+
+
+def _guidance_row_chunks(path: Path, meta: dict) -> list[dict]:
+    """One short chunk per guidance-table row, so search hits land on the exact line."""
+    text = path.read_text(errors="ignore")
+    section = text.split("## Guidance table", 1)[-1].split("\n## ", 1)[0] if "## Guidance table" in text else ""
+    rows = _table_rows(section)[1:]  # skip header
+    low_end = "low end of the EPS range" in text
+    out = []
+    for cells in rows:
+        if len(cells) < 2:
+            continue
+        metric, value = cells[0], cells[1]
+        basis = f" ({cells[2].lower()})" if len(cells) > 2 else ""
+        note = ""
+        if low_end and "EPS" in metric:
+            note = " On the Q2 call the CFO said EPS may be towards the low end of the range."
+        out.append({"CHUNK": f"PepsiCo fiscal 2026 guidance as of {meta['QUARTER']} (July 9, 2026): {metric}: {value}{basis}.{note}",
+                    **meta, "DOC_TITLE": f"PepsiCo {meta['QUARTER']} guidance table", "DOC_ID": f"{path.name}#row-{len(out)}"})
+    return out
+
+
 def load_prior_chunks(max_chars: int = 1200) -> list[dict]:
     """Split data/prior/* into paragraph-packed chunks. Shared by the seed script and the mock."""
     chunks: list[dict] = []
@@ -39,6 +68,8 @@ def load_prior_chunks(max_chars: int = 1200) -> list[dict]:
         if path.suffix.lower() not in {".txt", ".md"}:
             continue
         meta = _doc_meta(path)
+        if meta["DOC_TYPE"] == "guidance":
+            chunks.extend(_guidance_row_chunks(path, meta))
         paras = [p.strip() for p in re.split(r"\n\s*\n", path.read_text(errors="ignore")) if p.strip()]
         buf = ""
         for p in paras:
@@ -74,27 +105,43 @@ async def mock_search_prior_guidance(query: str, limit: int = 4) -> list[dict]:
     boost = {"guidance", "outlook", "expect", "expects", "now", "core", "eps", "organic", "tax", "rate"}
     scored = []
     for words, chunk in _mock_index():
-        score = len(q & words) + 0.5 * len(boost & words & q) + (1.5 if chunk["DOC_TYPE"] == "guidance" else 0)
-        if score > 0:
-            scored.append((score, chunk))
+        overlap = len(q & words)
+        if not overlap:
+            continue
+        # Favour short, precise chunks (guidance-table rows) over long transcript passages.
+        score = (overlap + 0.5 * len(boost & words & q) + (1.5 if chunk["DOC_TYPE"] == "guidance" else 0)) / math.log(len(words) + 8)
+        scored.append((score, chunk))
     scored.sort(key=lambda x: -x[0])
     return _shape([c for _, c in scored[:limit]])
 
 
-def _cortex_query(query: str, limit: int) -> list[dict]:
+_UNSET = object()
+
+
+def connect(database=_UNSET, schema=_UNSET):
+    """Snowflake connection from .env. SNOWFLAKE_PASSWORD may hold a password or a programmatic access token."""
     import snowflake.connector
 
     e = config.env()
-    with snowflake.connector.connect(
-        account=e["SNOWFLAKE_ACCOUNT"],
+    kwargs = dict(
+        account=e["SNOWFLAKE_ACCOUNT"].removesuffix(".snowflakecomputing.com"),
         user=e["SNOWFLAKE_USER"],
         password=e["SNOWFLAKE_PASSWORD"],
         warehouse=e["SNOWFLAKE_WAREHOUSE"],
-        database=e["SNOWFLAKE_DATABASE"],
-        schema=e["SNOWFLAKE_SCHEMA"],
+        database=e["SNOWFLAKE_DATABASE"] if database is _UNSET else database,
+        schema=e["SNOWFLAKE_SCHEMA"] if schema is _UNSET else schema,
         login_timeout=15,
-        network_timeout=20,
-    ) as conn:
+        network_timeout=30,
+        client_session_keep_alive=False,
+    )
+    if e.get("SNOWFLAKE_ROLE"):
+        kwargs["role"] = e["SNOWFLAKE_ROLE"]
+    return snowflake.connector.connect(**{k: v for k, v in kwargs.items() if v is not None})
+
+
+def _cortex_query(query: str, limit: int) -> list[dict]:
+    e = config.env()
+    with connect() as conn:
         svc = f"{e['SNOWFLAKE_DATABASE']}.{e['SNOWFLAKE_SCHEMA']}.{SERVICE}"
         body = json.dumps({"query": query, "columns": COLUMNS, "limit": limit})
         cur = conn.cursor()

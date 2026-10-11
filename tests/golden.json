@@ -1,0 +1,15 @@
+{
+  "_source": "PepsiCo Q3 2026 release p.5 (current vs previous), verified in data/raw/GOLDEN_CHECK.md. Only the EPS guide-down and the top-line comment are spoken in data/call.mp3; the exact numbers come from the release via the agent.",
+  "spoken_flags": [
+    {"name": "EPS guidance cut heard on the call", "metric": "core_eps_growth", "direction": "cut", "quote_contains": "guide down"},
+    {"name": "Margin pressure flagged", "metric_any": ["operating_margin", "north_america_margin"]},
+    {"name": "2027 outlook deferred to February", "metric": "outlook_next_year"}
+  ],
+  "guidance_lines": [
+    {"name": "Core EPS growth", "label_all": ["core", "eps"], "label_none": ["constant", "currency", "cc"], "direction": "cut", "new": [2.5, 3.5], "prior_contains": ["5", "7"]},
+    {"name": "Core constant-currency EPS growth", "label_all": ["eps"], "label_any": ["constant", "currency"], "direction": "cut", "new": [1, 2], "prior_contains": ["4", "6"]},
+    {"name": "Organic revenue growth", "label_all": ["organic"], "direction": "reaffirm", "new": [3, 3], "prior_contains": ["2", "4"]},
+    {"name": "Net revenue growth", "label_all": ["net", "revenue"], "label_none": ["organic"], "direction": "raise", "new": [6, 6], "prior_contains": ["4", "6"]},
+    {"name": "Core tax rate", "label_all": ["tax"], "direction": "cut", "new": [21, 21], "prior_contains": ["22"]}
+  ]
+}

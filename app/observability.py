@@ -58,15 +58,14 @@ def trace_url(trace_id: str | None) -> str | None:
 
 
 @contextmanager
-def agent_transaction(name: str, data: dict[str, Any] | None = None) -> Iterator[tuple[str, Any]]:
-    """Start a fresh trace for one fact-check. Yields (trace_id, transaction)."""
+def agent_transaction(name: str, data: dict[str, Any] | None = None, agent: str = "call-desk-fact-checker") -> Iterator[tuple[str, Any]]:
+    """Start a fresh trace (one per flag or audio chunk). Yields (trace_id, transaction)."""
     trace_id = uuid.uuid4().hex
-    with sentry_sdk.isolation_scope():
-        with sentry_sdk.start_transaction(
-            op="gen_ai.invoke_agent", name=name, trace_id=trace_id, sampled=True
-        ) as txn:
+    with sentry_sdk.isolation_scope() as scope:
+        scope.set_tag("calldesk.agent", agent)
+        with sentry_sdk.start_transaction(op="gen_ai.invoke_agent", name=name, trace_id=trace_id, sampled=True) as txn:
             txn.set_data("gen_ai.operation.name", "invoke_agent")
-            txn.set_data("gen_ai.agent.name", "call-desk-fact-checker")
+            txn.set_data("gen_ai.agent.name", agent)
             for k, v in (data or {}).items():
                 txn.set_data(k, v)
             yield trace_id, txn

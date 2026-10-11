@@ -36,9 +36,9 @@ DEFAULTS = {
     "SNOWFLAKE_DATABASE": "CALLDESK",
     "SNOWFLAKE_SCHEMA": "PRIOR",
     # Model IDs are configurable; defaults come from docs/sdk_notes.md.
-    "GEMINI_MODEL_FAST": "gemini-2.5-flash",
-    "GEMINI_MODEL_AGENT": "gemini-2.5-flash",
-    "GEMINI_MODEL_TTS": "gemini-2.5-flash-preview-tts",
+    "GEMINI_MODEL_FAST": "gemini-3.8-flash",
+    "GEMINI_MODEL_AGENT": "gemini-3.8-flash",
+    "GEMINI_MODEL_TTS": "gemini-3.8-flash-tts",
     "CHUNK_SECONDS": "12",
     "MATERIALITY_THRESHOLD": "0.6",
     "REACTION_WINDOW_MIN": "30",

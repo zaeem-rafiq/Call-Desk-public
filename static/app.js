@@ -54,7 +54,7 @@ function setMode(mode) {
 // ---------- clock + progress ----------
 function currentOffset() {
   if (state.hasAudio && !audio.paused) state.lastOffset = audio.currentTime;
-  else if (state.running) state.lastOffset = (performance.now() - state.runStartedAt) / 1000;
+  else if (state.running) state.lastOffset = ((performance.now() - state.runStartedAt) / 1000) * (state.speed || 1);
   return state.lastOffset;
 }
 
@@ -87,9 +87,11 @@ function addLine(seg) {
   const body = el("div");
   body.append(el("span", `line-speaker${EXEC.test(seg.speaker) ? " exec" : ""}`, seg.speaker), el("span", "line-text", seg.text));
   li.append(body);
-  $("#transcript").append(li);
+  const pane = $("#transcript");
+  const atBottom = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 120;
+  pane.append(li);
   state.lines.push({ li, text: seg.text });
-  li.scrollIntoView({ block: "end", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  if (atBottom) pane.scrollTop = pane.scrollHeight;
 }
 
 function highlightQuote(quote, direction) {
@@ -121,7 +123,8 @@ function sparkline(svg, pr) {
   const mk = (tag, attrs) => { const n = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); svg.append(n); return n; };
   if (pr.since_ts) {
     const xs = x(new Date(pr.since_ts).getTime());
-    mk("rect", { class: "window", x: xs, y: 0, width: Math.max(1, W - P - xs), height: H });
+    const xe = pr.until_ts ? x(new Date(pr.until_ts).getTime()) : xs + 1;
+    mk("rect", { class: "window", x: xs, y: 0, width: Math.max(1, xe - xs), height: H });
     mk("line", { class: "quote-mark", x1: xs, x2: xs, y1: 0, y2: H });
   }
   mk("line", { class: "zero", x1: P, x2: W - P, y1: y(0), y2: y(0) });
@@ -153,7 +156,13 @@ function renderFlag(f) {
   const prior = node.querySelector(".prior");
   prior.textContent = f.prior_value || "no prior";
   prior.classList.toggle("none", !f.prior_value);
-  node.querySelector(".new").textContent = f.new_value || "—";
+  const newEl = node.querySelector(".new");
+  newEl.textContent = f.new_value || (f.status === "checked" ? "not stated" : "finding the number…");
+  newEl.classList.toggle("pending", !f.new_value);
+  const vs = node.querySelector(".value-source");
+  vs.hidden = !f.new_value || !f.new_value_source || f.new_value_source === "spoken";
+  vs.textContent = vs.hidden ? "" : `not spoken · ${f.new_value_source}`;
+  renderRelated(node, f);
   node.querySelector(".speaker").textContent = f.speaker;
   node.querySelector(".quote").textContent = `“${f.quote}”`;
   node.querySelector(".what").textContent = f.what_changed || "";
@@ -171,12 +180,15 @@ function renderFlag(f) {
     stats.replaceChildren();
     const ab = el("div", `big ${pr.vs_benchmark >= 0 ? "pos" : "neg"}`, `${signed(pr.vs_benchmark)}pp`);
     stats.append(
-      el("div", "lbl", `${pr.ticker} VS ${pr.benchmark} · ${pr.window}`),
+      el("div", "lbl", `${pr.ticker} VS ${pr.benchmark} · ${pr.window} AFTER QUOTE`),
       ab,
       el("div", null, `${pr.ticker} ${signed(pr.pct_move)}%  ${pr.benchmark} ${signed(pr.benchmark_pct_move)}%`),
     );
-    if (pr.day_pct_move !== null && pr.day_pct_move !== undefined) {
-      stats.append(el("div", "lbl", `DAY ${pr.ticker} ${signed(pr.day_pct_move)}% · ${signed(pr.day_vs_benchmark)}pp VS ${pr.benchmark}`));
+    if (pr.close_pct_move !== null && pr.close_pct_move !== undefined) {
+      const close = el("div", "close-line");
+      close.append(el("span", "lbl", "BY CLOSE "), el("span", pr.close_pct_move >= 0 ? "pos" : "neg", `${pr.ticker} ${signed(pr.close_pct_move)}%`),
+        el("span", "lbl", ` · `), el("span", pr.close_vs_benchmark >= 0 ? "pos" : "neg", `${signed(pr.close_vs_benchmark)}pp`), el("span", "lbl", ` vs ${pr.benchmark}`));
+      stats.append(close);
     }
     if (pr.mock) stats.firstChild.append(el("span", "mock-tag", "MOCK"));
   }
@@ -190,6 +202,24 @@ function renderFlag(f) {
   renderDetail(node, f);
   if (f.status === "checked") addMarker(f);
   updateTally();
+}
+
+function renderRelated(node, f) {
+  const table = node.querySelector(".related");
+  const rows = f.related_changes || [];
+  table.hidden = !rows.length;
+  const body = table.querySelector("tbody");
+  body.replaceChildren();
+  for (const r of rows) {
+    const tr = el("tr");
+    tr.append(
+      el("td", null, r.metric_label),
+      el("td", "r-prior", r.prior_value || "—"),
+      el("td", null, `→ ${r.new_value}`),
+      el("td", `r-dir ${dirClass(r.direction)}`, BADGE[r.direction] || r.direction),
+    );
+    body.append(tr);
+  }
 }
 
 function toggleDetail(node, open) {
@@ -317,10 +347,12 @@ function connect() {
   es.addEventListener("status", (e) => {
     const s = JSON.parse(e.data);
     if (s.integrations) renderPills(s.integrations);
+    if (s.speed) state.speed = s.speed;
     if (s.duration) { state.duration = s.duration; $("#duration").textContent = fmtTime(s.duration); }
     if (s.call?.clip_start) state.clipStart = new Date(s.call.clip_start);
     if (s.transcriber) $("#transcriber").textContent = s.transcriber === "gemini" ? `Gemini · ${s.chunk_s}s chunks` : "MOCK transcript (no Gemini key)";
     if (s.state === "running") { if (!state.running) state.runStartedAt = performance.now() - s.t * 1000; setRunning(true); }
+    if (s.state === "running" && s.speed && s.speed !== 1 && state.hasAudio) audio.playbackRate = Math.min(4, s.speed);
     if (s.state === "done") setRunning(false, s.mode === "replay" ? "REPLAY DONE" : "CALL ENDED");
     if (s.state === "stopped" || s.state === "error") setRunning(false, s.state.toUpperCase());
   });

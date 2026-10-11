@@ -1,41 +1,240 @@
 {
-  "_note": "MOCK transcript used only when GEMINI_API_KEY is missing. Paraphrased placeholder lines, not real quotes. Replaced by real Gemini output when live.",
-  "duration": 300,
-  "segments": [
-    {"t": 2, "speaker": "Operator", "text": "Our next question comes from an analyst. Please go ahead."},
-    {"t": 7, "speaker": "Analyst", "text": "Thanks. Can you walk us through the change to the full-year outlook, and how much of it is North America?"},
-    {"t": 20, "speaker": "Jamie Caulfield (CFO)", "text": "Sure. We now expect core constant currency EPS growth of 1% to 2%, and core EPS growth of 2.5% to 3.5% for the year, versus the low end of our prior range.",
-     "claims": [
-       {"quote": "We now expect core constant currency EPS growth of 1% to 2%", "claim_type": "guidance", "metric": "core_cc_eps_growth", "direction": "cut", "prior_value": null, "new_value": "+1% to +2%", "materiality": 0.95},
-       {"quote": "core EPS growth of 2.5% to 3.5% for the year", "claim_type": "guidance", "metric": "core_eps_growth", "direction": "cut", "prior_value": null, "new_value": "+2.5% to +3.5%", "materiality": 0.97}
-     ]},
-    {"t": 44, "speaker": "Jamie Caulfield (CFO)", "text": "On the top line, organic revenue growth is now about 3%, and reported net revenue growth is about 6%, helped by foreign exchange.",
-     "claims": [
-       {"quote": "organic revenue growth is now about 3%", "claim_type": "guidance", "metric": "organic_revenue_growth", "direction": "reaffirm", "prior_value": null, "new_value": "about +3%", "materiality": 0.8},
-       {"quote": "reported net revenue growth is about 6%", "claim_type": "guidance", "metric": "net_revenue_growth", "direction": "raise", "prior_value": null, "new_value": "about +6%", "materiality": 0.75}
-     ]},
-    {"t": 70, "speaker": "Jamie Caulfield (CFO)", "text": "We also now expect a core tax rate of about 21%.",
-     "claims": [
-       {"quote": "a core tax rate of about 21%", "claim_type": "guidance", "metric": "core_tax_rate", "direction": "cut", "prior_value": null, "new_value": "about 21%", "materiality": 0.62}
-     ]},
-    {"t": 84, "speaker": "Jamie Caulfield (CFO)", "text": "The quarter benefited from roughly 178 million dollars of tariff refunds, and we expect North America margin pressure to continue into the fourth quarter.",
-     "claims": [
-       {"quote": "we expect North America margin pressure to continue into the fourth quarter", "claim_type": "margin", "metric": "north_america_margin", "direction": "n/a", "prior_value": null, "new_value": "pressure continues into Q4", "materiality": 0.7},
-       {"quote": "roughly 178 million dollars of tariff refunds", "claim_type": "tariffs", "metric": "tariffs", "direction": "new", "prior_value": null, "new_value": "~$178M refund benefit in Q3", "materiality": 0.55}
-     ]},
-    {"t": 112, "speaker": "Analyst", "text": "And on 2027, any early framework?"},
-    {"t": 120, "speaker": "Ramon Laguarta (CEO)", "text": "We'll give you the full 2027 picture in February. What I can say is we're investing in affordability and the portfolio transformation.",
-     "claims": [
-       {"quote": "We'll give you the full 2027 picture in February", "claim_type": "guidance", "metric": "outlook_next_year", "direction": "n/a", "prior_value": null, "new_value": "2027 detail deferred to February", "materiality": 0.6}
-     ]},
-    {"t": 150, "speaker": "Operator", "text": "Our next question comes from another analyst."},
-    {"t": 156, "speaker": "Analyst", "text": "Just to confirm, the EPS growth for the year is now 2.5 to 3.5 percent?"},
-    {"t": 164, "speaker": "Jamie Caulfield (CFO)", "text": "That's right, 2.5% to 3.5% core EPS growth.",
-     "claims": [
-       {"quote": "2.5% to 3.5% core EPS growth", "claim_type": "guidance", "metric": "core_eps_growth", "direction": "cut", "prior_value": null, "new_value": "+2.5% to +3.5%", "materiality": 0.9}
-     ]},
-    {"t": 180, "speaker": "Ramon Laguarta (CEO)", "text": "Consumers remain value-seeking, and we're seeing that across the categories."},
-    {"t": 220, "speaker": "Jamie Caulfield (CFO)", "text": "Net revenue for the quarter was 25.27 billion dollars, up 5.6%."},
-    {"t": 260, "speaker": "Operator", "text": "Thank you. That concludes our question-and-answer session."}
-  ]
+ "_note": "MOCK transcription used only when GEMINI_API_KEY is missing: our own Whisper pass over data/call.mp3 with hand-labelled speakers and claims.",
+ "duration": 288.7,
+ "segments": [
+  {
+   "t": 0.0,
+   "speaker": "Dara Mohsenian (Morgan Stanley)",
+   "text": "And then Steve, if I can just slip in one on the margin side, obviously the earnings revision in Q4 is margin-driven with the top line expectations holding."
+  },
+  {
+   "t": 9.72,
+   "speaker": "Dara Mohsenian (Morgan Stanley)",
+   "text": "So just help us understand what change there. But I think really the context is when you have a big Q4 revision, it may imply further pressure in 2027."
+  },
+  {
+   "t": 20.72,
+   "speaker": "Dara Mohsenian (Morgan Stanley)",
+   "text": "So just as we look out the 2027, I know you won't give guidance, but just some of the key buckets of margin as we look out the 2027, reinvestment, reinvigorate North American volumes, commodity"
+  },
+  {
+   "t": 32.52,
+   "speaker": "Dara Mohsenian (Morgan Stanley)",
+   "text": "pressure given that's a big change for Q4, any incremental cost-saving thoughts, those would all be helpful just conceptually for 2027."
+  },
+  {
+   "t": 41.2,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "Great. Hey, Dara, this is Steve. Good morning. And thanks for the question. Good morning, everyone. Maybe I'll start with the second question and then kick it to Ramon for the State of the Union where you began your question."
+  },
+  {
+   "t": 53.48,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "So before I get into the guidance revision, maybe I'll talk a little bit about the quarter, at least from a highlight standpoint, and the reality is that we're pleased with many"
+  },
+  {
+   "t": 63.48,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "aspects of our Q3 performance. Organic revenue accelerated to 3.1% reported revenue was north of 5%, core operating profit",
+   "claims": [
+    {
+     "quote": "Organic revenue accelerated to 3.1%",
+     "claim_type": "kpi",
+     "metric": "organic_revenue_growth",
+     "direction": "new",
+     "new_value": "+3.1% in Q3",
+     "materiality": 0.66,
+     "prior_value": null
+    },
+    {
+     "quote": "reported revenue was north of 5%",
+     "claim_type": "kpi",
+     "metric": "net_revenue_growth",
+     "direction": "new",
+     "new_value": "north of +5% in Q3",
+     "materiality": 0.6,
+     "prior_value": null
+    }
+   ]
+  },
+  {
+   "t": 75.84,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "increased 3% and EPS increased 2%. And importantly, as we look at the health of the business around the world, global beverage volume was up 3%, global food volume was up 1%, and it's actually up 4% if you exclude"
+  },
+  {
+   "t": 89.8,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "the grains business in South Africa. And overall, international had really a stellar quarter. Organic revenue increased 8%, operating margin expanded 105 basis points."
+  },
+  {
+   "t": 101.36,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "Now, shifting to the North America business, our foods business in North America, organic sales improved from Q2 and our beverage business in North America decelerated."
+  },
+  {
+   "t": 111.96,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "So if I turn to guidance, there are always a number of factors that go into how we think about guidance."
+  },
+  {
+   "t": 118.68,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "The largest changes, and you mentioned we said in our prepared remarks, was margin performances below where we expected it to be.",
+   "claims": [
+    {
+     "quote": "margin performance is below where we expected it to be",
+     "claim_type": "margin",
+     "metric": "operating_margin",
+     "direction": "n/a",
+     "new_value": "below plan (input costs, mix)",
+     "materiality": 0.78,
+     "prior_value": null
+    }
+   ]
+  },
+  {
+   "t": 127.44,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "Input costs are trending higher, and mix has been a headwind in particular. But despite these pressures, I think it's important to note that we've decided to sustain key investments around the company to make sure that we stimulate growth and build momentum."
+  },
+  {
+   "t": 141.08,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "This includes A&M, which increased in international, it also increased in North America, importantly."
+  },
+  {
+   "t": 147.2,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "So it's the margin piece that's driving the guide down in EPS, but sales, as you mentioned, we expect to be robust.",
+   "claims": [
+    {
+     "quote": "it's the margin piece that's driving the guide down in EPS",
+     "claim_type": "guidance",
+     "metric": "core_eps_growth",
+     "direction": "cut",
+     "new_value": null,
+     "materiality": 0.97,
+     "prior_value": null
+    },
+    {
+     "quote": "sales, as you mentioned, we expect to be robust",
+     "claim_type": "guidance",
+     "metric": "organic_revenue_growth",
+     "direction": "reaffirm",
+     "new_value": "robust (top line holding)",
+     "materiality": 0.72,
+     "prior_value": null
+    }
+   ]
+  },
+  {
+   "t": 155.52,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "Another mention, we're also identifying structural cost reduction areas. And we're going to be using revenue management tools in the coming months to partially mitigate this margin pressure that we have in the fourth quarter.",
+   "claims": [
+    {
+     "quote": "using revenue management tools in the coming months to partially mitigate this margin pressure that we have in the fourth quarter",
+     "claim_type": "margin",
+     "metric": "north_america_margin",
+     "direction": "n/a",
+     "new_value": "pressure persists in Q4",
+     "materiality": 0.7,
+     "prior_value": null
+    }
+   ]
+  },
+  {
+   "t": 167.8,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "These benefits should start helping as we turn the calendar year. So that's how I think about guidance, the revision. You mentioned 2027, and so maybe I'll touch on that too."
+  },
+  {
+   "t": 177.08,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "In 2027, we have clear priorities. We certainly want North America to grow faster and more efficiently."
+  },
+  {
+   "t": 183.08,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "We're going to continue to fuel the international business and maintain momentum there. And we're going to be very disciplined with costs and capital allocation."
+  },
+  {
+   "t": 190.24,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "So as you imagine, we've been working through our 2027 plans for some time, which is not in the position today to provide a complete view of what our expectations might be, and I'd"
+  },
+  {
+   "t": 200.32,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "rather not give a partial view now. So we'll get more detailed on our 2027 expectations in February when we report the fourth quarter.",
+   "claims": [
+    {
+     "quote": "we'll get more detailed on our 2027 expectations in February when we report the fourth quarter",
+     "claim_type": "guidance",
+     "metric": "outlook_next_year",
+     "direction": "n/a",
+     "new_value": "2027 detail deferred to February",
+     "materiality": 0.7,
+     "prior_value": null
+    }
+   ]
+  },
+  {
+   "t": 208.2,
+   "speaker": "Steve Schmitt (CFO)",
+   "text": "So I know that was a lot, but now I take it over to Ramon and give a state of union."
+  },
+  {
+   "t": 211.96,
+   "speaker": "Ramon Laguarta (CEO)",
+   "text": "Okay, so you guys got a lot, you know, the framework there. Now, listen, we're pleased with the acceleration of the business."
+  },
+  {
+   "t": 222.24,
+   "speaker": "Ramon Laguarta (CEO)",
+   "text": "So where you, you know, going into the year, our priority number one was to accelerate top line across the company."
+  },
+  {
+   "t": 229.04,
+   "speaker": "Ramon Laguarta (CEO)",
+   "text": "And how do you think about the enterprise? We grew 3.1% in organic net revenue in Q3."
+  },
+  {
+   "t": 236.88,
+   "speaker": "Ramon Laguarta (CEO)",
+   "text": "That is the fastest rate of growth since Q4 2023. So clearly an important milestone for us to cross the 3%.",
+   "claims": [
+    {
+     "quote": "That is the fastest rate of growth since Q4 2023",
+     "claim_type": "tone",
+     "metric": "organic_revenue_growth",
+     "direction": "n/a",
+     "new_value": "fastest since Q4 2023",
+     "materiality": 0.5,
+     "prior_value": null
+    }
+   ]
+  },
+  {
+   "t": 246.84,
+   "speaker": "Ramon Laguarta (CEO)",
+   "text": "And we like the way that growth came, which was volume led. So if you think, as Steve mentioned, a 3% growth in beverages, global beverage volume,"
+  },
+  {
+   "t": 258.72,
+   "speaker": "Ramon Laguarta (CEO)",
+   "text": "and a 4% in snacks globally, in the snacks business, not the foods, we had some, you know, large business in South Africa that are very heavy kind of commodity type that impacted"
+  },
+  {
+   "t": 271.6,
+   "speaker": "Ramon Laguarta (CEO)",
+   "text": "the overall global. Good, good, I would say very positive threshold, we cross the threshold in 3%."
+  },
+  {
+   "t": 281.4,
+   "speaker": "Ramon Laguarta (CEO)",
+   "text": "And, you know, obviously it is a, it's on its way to the long term, you know, 4% that we want to get to."
+  }
+ ]
 }
