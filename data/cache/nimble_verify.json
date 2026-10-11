@@ -241,5 +241,456 @@
   "official_sources": 16,
   "run_s": 40.0,
   "cached_at": "Oct 11 12:15 ET"
+ },
+ "delta air lines|fuel price \u00b7 q4 2026": {
+  "confidence": "low",
+  "reasoning": "Low confidence - cells fill rate is 20%",
+  "answer": {},
+  "claims": [],
+  "sources": [
+   {
+    "title": "Delta Air Lines : Earnings Reports (Delta Air Lines Announces Third ...",
+    "url": "https://marketscreener.com/news/delta-air-lines-earnings-reports-delta-air-lines-announces-third-quarter-2026-ce785ddfd088f125",
+    "source": "marketscreener.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "Delta Air Lines (DAL) Q3 2026 earnings - CNBC",
+    "url": "https://cnbc.com/2026/10/09/delta-air-lines-dal-q3-2026-earnings.html",
+    "source": "cnbc.com",
+    "snippet": "primary \u00b7 news",
+    "published": ""
+   }
+  ],
+  "official_sources": 2,
+  "run_s": 18.6,
+  "cached_at": "Oct 11 13:25 ET"
+ },
+ "delta air lines|leverage": {
+  "confidence": "low",
+  "reasoning": "Low confidence - cells fill rate is 0% and trust per claim ratio is 0%",
+  "answer": {
+   "source": "none"
+  },
+  "claims": [
+   {
+    "claim": "source",
+    "confidence": "low",
+    "citations": []
+   }
+  ],
+  "sources": [],
+  "official_sources": 0,
+  "run_s": 20.8,
+  "cached_at": "Oct 11 13:25 ET"
+ },
+ "delta air lines|unit cost growth \u00b7 q4 2026": {
+  "confidence": "high",
+  "reasoning": "High confidence - cells fill rate is 100% and trust per claim ratio is 80%",
+  "answer": {
+   "change": "Prior (July 10) Q4 unit-cost guidance was qualitative \u2014 i.e., unit costs would improve further vs. Q3 \u2014 while the October 9 release quantified the Q4 sequential improvement as 1\u20132 percentage points.",
+   "source": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+   "now": "Non-fuel unit cost growth is expected to improve 1\u20132 percentage points sequentially vs. Q3 in Q4 2026",
+   "before": "Further progress/additional improvement vs. Q3 in the December quarter (no specific point quantification provided)"
+  },
+  "claims": [
+   {
+    "claim": "now",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Air Lines (DAL) Q3 2026 earnings summary",
+      "url": "https://quartr.com/events/delta-air-lines-inc-dal-q3-2026_3slajYQE",
+      "source": "quartr.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "DAL Q3 Earnings Miss Estimates as Higher Fuel Costs ...",
+      "url": "https://theglobeandmail.com/investing/markets/stocks/DAL-N/pressreleases/5439712/dal-q3-earnings-miss-estimates-as-higher-fuel-costs-hurt-margins",
+      "source": "theglobeandmail.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Delta Air Lines Earnings: Stock Plunges 8% as ...",
+      "url": "https://ainvest.com/news/delta-air-lines-earnings-stock-plunges-8-6-billion-fuel-shock-forces-major-profit-warning-2610",
+      "source": "ainvest.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   },
+   {
+    "claim": "before",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "DAL Delta Air Lines, Inc.",
+      "url": "https://secure.earningswhispers.com/transcript/DAL/Q22026",
+      "source": "secure.earningswhispers.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   },
+   {
+    "claim": "source",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "change",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Air Lines (DAL) Q3 2026 earnings summary",
+      "url": "https://quartr.com/events/delta-air-lines-inc-dal-q3-2026_3slajYQE",
+      "source": "quartr.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "DAL Delta Air Lines, Inc.",
+      "url": "https://secure.earningswhispers.com/transcript/DAL/Q22026",
+      "source": "secure.earningswhispers.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   }
+  ],
+  "sources": [
+   {
+    "title": "Delta Air Lines (DAL) Q3 2026 earnings summary",
+    "url": "https://quartr.com/events/delta-air-lines-inc-dal-q3-2026_3slajYQE",
+    "source": "quartr.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "DAL Q3 Earnings Miss Estimates as Higher Fuel Costs ...",
+    "url": "https://theglobeandmail.com/investing/markets/stocks/DAL-N/pressreleases/5439712/dal-q3-earnings-miss-estimates-as-higher-fuel-costs-hurt-margins",
+    "source": "theglobeandmail.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "Delta Air Lines Earnings: Stock Plunges 8% as ...",
+    "url": "https://ainvest.com/news/delta-air-lines-earnings-stock-plunges-8-6-billion-fuel-shock-forces-major-profit-warning-2610",
+    "source": "ainvest.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "DAL Delta Air Lines, Inc.",
+    "url": "https://secure.earningswhispers.com/transcript/DAL/Q22026",
+    "source": "secure.earningswhispers.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   }
+  ],
+  "official_sources": 4,
+  "run_s": 41.9,
+  "cached_at": "Oct 11 13:25 ET"
+ },
+ "delta air lines|operating margin \u00b7 q4 2026": {
+  "confidence": "low",
+  "reasoning": "Low confidence - trust per claim ratio is 33%",
+  "answer": {
+   "change": "...",
+   "source": "Delta's October 9, 2026 press release updated its Q4 2026 outlook after the September quarter results. Looking at full-text search results from the company and other sources, the Q4 2026 operating margin guidance is not present in any of the available text excerpts.",
+   "now": "..."
+  },
+  "claims": [
+   {
+    "claim": "source",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Air Lines Announces September Quarter 2026 Financial Results",
+      "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+      "source": "ir.delta.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   },
+   {
+    "claim": "change",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "now",
+    "confidence": "low",
+    "citations": []
+   }
+  ],
+  "sources": [
+   {
+    "title": "Delta Air Lines Announces September Quarter 2026 Financial Results",
+    "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+    "source": "ir.delta.com",
+    "snippet": "primary \u00b7 news",
+    "published": ""
+   }
+  ],
+  "official_sources": 1,
+  "run_s": 25.3,
+  "cached_at": "Oct 11 13:25 ET"
+ },
+ "delta air lines|adjusted eps \u00b7 q4 2026": {
+  "confidence": "medium",
+  "reasoning": "Medium confidence - trust per claim ratio is 50%",
+  "answer": {
+   "change": "Q4 2026 Adjusted EPS guidance",
+   "source": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+   "now": "$1.15 to $1.65"
+  },
+  "claims": [
+   {
+    "claim": "change",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "source",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Air Lines Announces September Quarter 2026 Financial Results",
+      "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+      "source": "ir.delta.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   },
+   {
+    "claim": "now",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Air Lines (NYSE:DAL) Announces FY 2026 Earnings Guidance - MarketBeat",
+      "url": "https://marketbeat.com/instant-alerts/guidance-delta-air-lines-nyse-dal-announces-fy-2026-earnings-guidance-2026-10-09",
+      "source": "marketbeat.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   }
+  ],
+  "sources": [
+   {
+    "title": "Delta Air Lines Announces September Quarter 2026 Financial Results",
+    "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+    "source": "ir.delta.com",
+    "snippet": "primary \u00b7 news",
+    "published": ""
+   },
+   {
+    "title": "Delta Air Lines (NYSE:DAL) Announces FY 2026 Earnings Guidance - MarketBeat",
+    "url": "https://marketbeat.com/instant-alerts/guidance-delta-air-lines-nyse-dal-announces-fy-2026-earnings-guidance-2026-10-09",
+    "source": "marketbeat.com",
+    "snippet": "primary \u00b7 news",
+    "published": ""
+   }
+  ],
+  "official_sources": 2,
+  "run_s": 22.9,
+  "cached_at": "Oct 11 13:25 ET"
+ },
+ "delta air lines|outlook commentary": {
+  "confidence": "low",
+  "reasoning": "Low confidence - cells fill rate is 0% and trust per claim ratio is 0%",
+  "answer": {},
+  "claims": [],
+  "sources": [],
+  "official_sources": 0,
+  "run_s": 33.3,
+  "cached_at": "Oct 11 13:26 ET"
+ },
+ "delta air lines|adjusted eps": {
+  "confidence": "high",
+  "reasoning": "High confidence - cells fill rate is 80% and trust per claim ratio is 80%",
+  "answer": {
+   "change": "first raised guidance to at least 6.50 to 7.50",
+   "source": "none",
+   "now": "$5.10 to $5.60",
+   "before": "$6.50 to $7.50"
+  },
+  "claims": [
+   {
+    "claim": "now",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Air Lines Announces September Quarter 2026 Financial Results",
+      "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+      "source": "ir.delta.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Delta Air Lines announces September quarter 2026 financial results",
+      "url": "https://news.delta.com/delta-air-lines-announces-september-quarter-2026-financial-results",
+      "source": "news.delta.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Delta Air Lines (NYSE:DAL) Announces FY 2026 Earnings Guidance - MarketBeat",
+      "url": "https://marketbeat.com/instant-alerts/guidance-delta-air-lines-nyse-dal-announces-fy-2026-earnings-guidance-2026-10-09",
+      "source": "marketbeat.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   },
+   {
+    "claim": "before",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Cuts 2026 Earnings Outlook As $6B Fuel-Cost Surge Weighs On Profit",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/delta-cuts-2026-earnings-outlook-142917733.html",
+      "source": "finance.yahoo.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Delta Air Lines slashes Q3 2026 earnings outlook on fuel costs",
+      "url": "https://qz.com/delta-air-lines-profit-outlook-fuel-costs-2026-100926",
+      "source": "qz.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Delta Air Lines, Inc. Q2 2026 Earnings Call Summary - Yahoo Finance",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/delta-air-lines-inc-q2-164337691.html",
+      "source": "finance.yahoo.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   },
+   {
+    "claim": "source",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "change",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Air Lines, Inc. Q2 2026 Earnings Call Summary - Yahoo Finance",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/delta-air-lines-inc-q2-164337691.html",
+      "source": "finance.yahoo.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Delta Cuts 2026 Earnings Outlook As $6B Fuel-Cost Surge Weighs On Profit",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/delta-cuts-2026-earnings-outlook-142917733.html",
+      "source": "finance.yahoo.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Delta Air Lines slashes Q3 2026 earnings outlook on fuel costs",
+      "url": "https://qz.com/delta-air-lines-profit-outlook-fuel-costs-2026-100926",
+      "source": "qz.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   }
+  ],
+  "sources": [
+   {
+    "title": "Delta Air Lines Announces September Quarter 2026 Financial Results",
+    "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+    "source": "ir.delta.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "Delta Air Lines announces September quarter 2026 financial results",
+    "url": "https://news.delta.com/delta-air-lines-announces-september-quarter-2026-financial-results",
+    "source": "news.delta.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "Delta Cuts 2026 Earnings Outlook As $6B Fuel-Cost Surge Weighs On Profit",
+    "url": "https://finance.yahoo.com/markets/stocks/articles/delta-cuts-2026-earnings-outlook-142917733.html",
+    "source": "finance.yahoo.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "Delta Air Lines slashes Q3 2026 earnings outlook on fuel costs",
+    "url": "https://qz.com/delta-air-lines-profit-outlook-fuel-costs-2026-100926",
+    "source": "qz.com",
+    "snippet": "primary \u00b7 news",
+    "published": ""
+   },
+   {
+    "title": "Delta Air Lines (NYSE:DAL) Announces FY 2026 Earnings Guidance - MarketBeat",
+    "url": "https://marketbeat.com/instant-alerts/guidance-delta-air-lines-nyse-dal-announces-fy-2026-earnings-guidance-2026-10-09",
+    "source": "marketbeat.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "Delta Air Lines Cuts 2026 Profit Outlook on Fuel Surge",
+    "url": "https://ecmsource.com/delta-air-lines-dal-q3-2026-earnings-fuel-cost-guidance-cut",
+    "source": "ecmsource.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   }
+  ],
+  "official_sources": 7,
+  "run_s": 16.6,
+  "cached_at": "Oct 11 13:25 ET"
+ },
+ "pepsico|next-year outlook": {
+  "confidence": "low",
+  "reasoning": "Low confidence - trust per claim ratio is 0%",
+  "answer": {
+   "change": "I cannot answer this question because I do not have enough information.",
+   "source": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
+   "now": "Not found in the provided search results.",
+   "before": "Not found in the provided search results."
+  },
+  "claims": [
+   {
+    "claim": "now",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "before",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "source",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "change",
+    "confidence": "low",
+    "citations": []
+   }
+  ],
+  "sources": [],
+  "official_sources": 0,
+  "run_s": 9.0,
+  "cached_at": "Oct 11 13:31 ET"
  }
 }
