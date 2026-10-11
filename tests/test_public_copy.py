@@ -47,3 +47,9 @@ def test_fixtures_and_placeholders_are_not_secrets(text):
 ])
 def test_real_looking_credentials_are_caught(text):
     assert mpc.SECRETS.search(text)
+
+
+def test_the_rules_do_not_flag_their_own_source():
+    here = Path(__file__).resolve()
+    for f in (here, here.parent.parent / "scripts" / "make_public_copy.py"):
+        assert not mpc.SECRETS.search("\n".join("+" + line for line in f.read_text().splitlines())), f.name

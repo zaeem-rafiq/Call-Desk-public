@@ -43,7 +43,7 @@ REMOVED = re.compile(r"^data/raw/|^data/replay/latest-prev/|^data/call\.mp3$|^da
 
 # Real credentials only; the test fixtures (https://public@o0.ingest.sentry.io/0) and .env.example placeholders do not match.
 SECRETS = re.compile(r"AIza[0-9A-Za-z_-]{35}|sk-[A-Za-z0-9]{20,}|[0-9a-f]{32}@o\d+\.ingest|sntrys_[A-Za-z0-9_=]{20,}"
-                     r"|ghp_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY|tsdbadmin:(?!<)[^@\s]{6,}@"
+                     r"|ghp_[A-Za-z0-9]{36}|-----BEGIN [A-Z ]*PRIVATE KEY|tsdb" r"admin:(?!<)[^@\s]{6,}@"  # split so this line never matches itself
                      r"|^\+\s*(GEMINI_API_KEY|NIMBLE_API_KEY|SNOWFLAKE_PASSWORD|SENTRY_DSN|TIGER_DATABASE_URL)=\S{8,}", re.M)
 
 
