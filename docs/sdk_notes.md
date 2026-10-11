@@ -428,6 +428,25 @@ async def kb_search(query: str, limit: int = 5, category: str | None = None) -> 
 - Do not put PII in Cortex Search metadata fields [DOC].
 - Opening one connection per search adds login latency. Reuse one connection per worker thread if latency matters.
 
+### Verified live on Oct 11, 2026 (scripts/seed_snowflake.py, app/tools/snowflake_agent.py, app/briefing.py)
+- **Running the agent:** `CREATE AGENT … FROM SPECIFICATION $$…$$` with a `cortex_analyst_text_to_sql` tool (semantic view
+  `GUIDANCE_SV`) and a `cortex_search` tool works on this account. `CORTEX_ENABLED_CROSS_REGION = ANY_REGION` was already
+  set. `SNOWFLAKE.CORTEX.DATA_AGENT_RUN(name, json)` over the Python connector runs the agent with no extra credentials,
+  in 13–24 s per run.
+- **Response format:** the agent's response `content` holds `text`, `tool_use`, `tool_result`, `table`, `thinking` and
+  `suggested_queries` items.
+  - Analyst SQL arrives as a `system_execute_sql` tool_result with `json.sql` and `json.result_set`.
+  - Search hits arrive as `json.search_results[].doc_title`.
+  - The first text item is a progress note, so parse the last one.
+- **Verdict parsing:** the prose may mention several verdict words ("CONTRADICTS — no, let me be precise … CONSISTENT").
+  Require a first line of `VERDICT: <WORD>` and parse only that line. Pass the direction heard ("cut") in the question.
+- **Concurrency:** one connection guarded by one lock serialized every flag's agent run, and close flags timed out.
+  Use a connection per run, from a small pool. `asyncio.wait_for` cannot stop the `to_thread` worker, so keep the
+  statement timeout below the asyncio cap.
+- **LISTAGG:** the delimiter must be a constant (`'\n'`); `CHR(10)` is rejected.
+- **AI_COMPLETE:** returns JSON for an inline `response_format` object with `claude-sonnet-4-6` (5–8 s for a short
+  brief). `llama3.3-70b` also works as a fallback.
+
 ### Sources
 https://docs.snowflake.com/en/user-guide/admin-account-identifier · https://docs.snowflake.com/en/developer-guide/python-connector/python-connector-connect · https://docs.snowflake.com/en/user-guide/programmatic-access-tokens · https://docs.snowflake.com/en/user-guide/security-mfa-rollout · https://docs.snowflake.com/en/sql-reference/sql/create-cortex-search · https://docs.snowflake.com/en/sql-reference/functions/search_preview-snowflake-cortex · https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-search/cortex-search-overview · https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-search/query-cortex-search-service · https://docs.snowflake.com/en/user-guide/snowflake-cortex/cross-region-inference · source: `.venv/.../snowflake/connector/connection.py`, `auth/pat.py`, `auth/by_plugin.py`, `aio/README.md`
 
