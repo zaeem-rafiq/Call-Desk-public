@@ -59,7 +59,7 @@ Five tools work together. Each one has one job.
 | PEP, KO, DAL | Stock symbols: PepsiCo, Coca-Cola, Delta Air Lines. |
 | XLP, JETS | Funds that hold many similar companies (food and drink, airlines). Comparing with them shows whether the stock moved because of this company or because the whole group moved. |
 | IR team | Investor relations: the people at a company who talk to investors. |
-| Confidence | A score from 0% to 100%. It adds up three checks: does the old forecast back up the change, does the web back it up, and did the stock react. |
+| Confidence | A score from 0% to 100%. It adds up three checks: does the old forecast back up the change, does the web back it up, and did the stock react. Then two agents check again: each one that agrees adds 3 points, and each one that disagrees takes away 10. It never goes above 98%. |
 
 ## Try it in one minute
 
@@ -123,7 +123,7 @@ flowchart LR
 
    A second Gemini call writes a structured verdict: the exact numbers, what changed, why it matters, the evidence with each source's stance, and the guidance table. A LOWERED or RAISED badge needs numbers on both sides.
 4. **Score.** Confidence is a transparent weighted sum: `0.45 × prior + 0.35 × web + 0.20 × price`. The card shows each component and its reason. A failed tool scores 0 for its component. It lowers confidence and never crashes the feed.
-5. **Re-check.** After the verdict is on screen, Snowflake's Cortex Agent and Nimble's Web Search Agent each re-check the claim on their own, Nimble's wall-breaker, Reddit and newswire specialists add reaction, and Gemini speaks an alert for a material cut or raise. They fill in the card and never change the verdict.
+5. **Re-check.** After the verdict is on screen, Snowflake's Cortex Agent and Nimble's Web Search Agent each re-check the claim on their own, Nimble's wall-breaker, Reddit and newswire specialists add reaction, and Gemini speaks an alert for a material cut or raise. They fill in the card and never change its numbers. The two agents do move the confidence score: each one that agrees with the card's direction adds 3 points (1.5 for a medium-trust Nimble answer), each one that disagrees takes away 10, low-trust answers count for nothing, and the score stops at 98%. The card shows each step, for example "92% → 95%". On a live PepsiCo check, Snowflake's agreement moved the EPS card from 92% to 95%. Replays recorded before this change, including the stage replay, show the score without these steps. `CROSS_CHECK=0` turns them off.
 6. **Brief.** When the call ends, the run's flags are written to Snowflake and `AI_COMPLETE` writes a headline and 3–5 bullets for the investor relations (IR) team inside Snowflake.
 
 ## Sponsor tools
@@ -145,7 +145,7 @@ flowchart LR
     - The *wall-breaker* uses Domain Knowledge to find which news sites run antibot systems (DataDome, Cloudflare and others), then reads the protected article with the driver Nimble recommends.
     - The *Reddit pulse* uses the pre-built `reddit_answers` Extract Template.
     - The *newswire* runs news search (`focus=news`), falling back to plain search.
-- **Tiger Data** is the stock-price stopwatch. It stores prices. `price_ticks` is a hypertable in the columnstore (several times smaller; the card shows the current ratio), and `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. One SQL query over `bars_1m` computes PEP's move since each quote minus XLP's (the abnormal move), the day move and the close move, in about 2 ms on the server. The card shows the query and its speed.
+- **Tiger Data** is the stock-price stopwatch. It stores prices. `price_ticks` is a hypertable that holds 1,461,976 price rows: 1-minute bars for 40 stocks over 30 days, September 14 to October 9, 2026 (`scripts/load_tiger_history.py`). In the columnstore they take 6.8× less space (107.8 MB → 15.9 MB). `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. One SQL query over `bars_1m` computes PEP's move since each quote minus XLP's (the abnormal move), the day move and the close move, in about 2.5 ms on the server, with 59 times more data than before. The card shows the query and its speed.
 - **Snowflake** is the memory of what each company said before. It holds the prior guidance and the call's flags. It never stores call transcripts.
   - **Cortex Search** runs over the Q2 2026 guidance documents, filtered by ticker. It answers questions such as "What was PepsiCo's core EPS guidance last quarter?"
   - **`GUIDANCE_LINES`** records every FY2026 guidance statement made before the call, from Dec 2025 to Jul 2026. The fact-check reads the metric's history from it by SQL, and the card draws that history as a timeline.
