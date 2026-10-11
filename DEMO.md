@@ -52,7 +52,7 @@ Measured in real time with all five sponsors live (run 20261011-115458): the red
 
 1. Pick **DAL · Delta Air Lines** in the header's call picker. You can also open http://localhost:8000/?call=dal_q3_2026&start=180.
 2. Click **REPLAY**, then **Play call**. A replay spends 0 agent runs and needs no Wi-Fi for Gemini.
-3. Say: "Same engine, different company and a different call format. Delta's CFO reads the outlook aloud. About 20 seconds in, Call Desk flags full-year EPS cut from $6.50–$7.50 to $5.10–$5.60, and free cash flow cut from $3–4 billion to about $2.5 billion. The prior numbers come from Snowflake, and the tape is DAL against the airline ETF, JETS."
+3. Say: "Same engine, different company and a different call format. Delta's CFO reads the outlook aloud. About 30 seconds in, Call Desk flags full-year EPS cut from $6.50–$7.50 to $5.10–$5.60, and free cash flow cut from $3–4 billion to about $2.5 billion. The prior numbers come from Snowflake, and the tape is DAL against the airline ETF, JETS."
 
 Delta numbers to have ready:
 - Q4 EPS $1.15 to $1.65. Q4 operating margin 7% to 9%. Q4 fuel about $4.25 per gallon.
