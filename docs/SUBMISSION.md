@@ -18,7 +18,7 @@ Hears earnings calls live and fact-checks every market-moving line in seconds.
 
 Corporate IR and FP&A teams track a dozen peer earnings calls a quarter. On the live Q&A, executives rarely repeat the numbers. On October 8, PepsiCo's CFO said "it's the margin piece that's driving the guide down in EPS" and moved on.
 
-Call Desk listens to the call as it happens. When a market-moving line is spoken, a flag appears about 11 seconds later. A few seconds after that, the flag fills in:
+Call Desk listens to the call as it happens. When a market-moving line is spoken, a flag appears about 12 seconds later. About 12 seconds after that, the flag fills in:
 
 - **What changed:** core EPS growth cut to +2.5% to +3.5%, from the low end of +5% to +7%. The new number is marked "not spoken", with its source.
 - **Why it matters:** one sentence in a CFO's voice.
@@ -53,7 +53,7 @@ When the call ends, Snowflake writes an IR brief. The same engine runs a second,
 
 - **PepsiCo golden eval: 8/8.** The EPS cut is heard on the call. All five guidance lines (core EPS, constant-currency EPS, organic revenue, net revenue, tax rate) have the right value and direction.
 - **Delta golden eval: 10/10.** Full-year EPS and free-cash-flow cuts, Q4 EPS, Q4 margin, fuel and leverage.
-- **Speed:** the EPS flag appears about 11 seconds after the CFO's line, and the verdict about 10 seconds later. With the Gemini Live listener, the flag appears about 5 seconds after the line.
+- **Speed:** the EPS flag appears about 12 seconds after the CFO's line, and the verdict about 12 seconds later (final stage run 20261011-134427). With the Gemini Live listener, the flag appears about 5 seconds after the line.
 - **Replay recordings:** 0 errors and 0 degraded flags.
 
 ## Challenges
