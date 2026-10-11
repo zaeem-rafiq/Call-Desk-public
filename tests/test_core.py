@@ -91,3 +91,32 @@ def test_hedged_request_raises_when_all_fail():
 
     with pytest.raises(RuntimeError):
         asyncio.run(pipeline.hedged(make, hedge_after=0.1))
+
+
+def test_late_flag_from_old_run_is_dropped(monkeypatch):
+    for name in config.INTEGRATIONS:
+        monkeypatch.setenv(f"MOCK_{name.upper()}", "1")
+    from app import pipeline
+
+    async def scenario():
+        hub = EventHub()
+        hub.start_run("old", record=False)
+        gate = asyncio.Event()
+
+        async def slow_check(claim, flag, info, publish):
+            await gate.wait()  # finishes only after the next run has started
+            flag.status = "checked"
+            publish(flag)
+            return flag
+
+        monkeypatch.setattr(pipeline, "fact_check", slow_check)
+        run = asyncio.create_task(pipeline.run_live(hub, speed=0))
+        while not any(e["event"] == "flag" for e in hub.history):
+            await asyncio.sleep(0.05)
+        hub.start_run("new", record=False)
+        gate.set()
+        await run
+        return hub.history
+
+    history = asyncio.run(scenario())
+    assert not [e for e in history if e["event"] == "flag"]

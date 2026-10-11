@@ -108,7 +108,12 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         "call": {"title": info.title, "ticker": info.ticker, "benchmark": info.primary_benchmark, "clip_start": _iso(info.clip_start)},
     })
 
+    run_id = hub.run_id
+
     def publish_flag(flag: Flag) -> None:
+        if hub.run_id != run_id:  # backstop: a straggler from a stopped run must not reach the next run
+            log.info("dropped late publish of %s from run %s", flag.id, run_id)
+            return
         hub.publish("flag", flag.model_dump(mode="json"))
 
     warm = asyncio.create_task(_warmup(modes))
