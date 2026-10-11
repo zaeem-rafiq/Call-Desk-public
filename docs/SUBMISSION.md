@@ -110,4 +110,4 @@ Gemini API (gemini-3.8-flash, Gemini Live, Gemini TTS), Nimble, Tiger Data (Time
 
 ## AI tools used
 
-Claude Code (Claude Opus 5.5) wrote and tested the code, researched the sponsor SDKs and prepared the demo data, under the team's direction. whisper.cpp located the demo clips offline. Inside the product: Gemini, plus the Snowflake Cortex models listed in the README's "Tools used" section. The demo video's narration voice was generated with Gemini TTS.
+Claude Code (Claude Opus 5.5) wrote and tested the code, researched the sponsor SDKs and prepared the demo data, under the team's direction. whisper.cpp located the demo clips offline. Inside the product: Gemini, plus the Snowflake Cortex models listed in the README's "Tools used" section.

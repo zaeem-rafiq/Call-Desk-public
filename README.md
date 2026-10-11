@@ -220,7 +220,6 @@ MLH asks every team to name the AI tools it used. This section lists every AI to
   - `setup-timescaledb-hypertables` and `timescaledb-hyperfunctions` from Tiger Data (`timescale/pg-aiguide`),
   - `nimble-web-expert` from Nimble (`Nimbleway/agent-skills`).
 - **whisper.cpp (`base.en` model)** ran offline during data preparation. It located the demo clip inside the full call and produced the transcript used in mock mode (`app/mocks/mock_call.json`).
-- **Gemini TTS** generated the narration voice of the demo video.
 
 ### AI services inside Call Desk
 
