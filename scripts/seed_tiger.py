@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS price_ticks (
     price   DOUBLE PRECISION NOT NULL,
     volume  BIGINT           NOT NULL DEFAULT 0
 ) WITH (tsdb.hypertable, tsdb.partition_column = 'ts', tsdb.chunk_interval = '1 day',
-        tsdb.segmentby = 'ticker', tsdb.orderby = 'ts DESC')
+        tsdb.enable_columnstore = true, tsdb.segmentby = 'ticker', tsdb.orderby = 'ts DESC')
 """
 HYPERTABLE_OLD = [
     """CREATE TABLE IF NOT EXISTS price_ticks (
@@ -99,10 +99,11 @@ def main() -> int:
         if not conn.execute("SELECT 1 FROM timescaledb_information.continuous_aggregates WHERE view_name = 'bars_1m'").fetchone():
             conn.execute(CAGG)
             print("created continuous aggregate bars_1m")
+        conn.execute("CREATE INDEX IF NOT EXISTS bars_1m_ticker_bucket ON bars_1m (ticker, bucket DESC)")
         conn.execute(REFERENCE)
 
         lo, hi = min(t[0] for t in ticks), max(t[0] for t in ticks)
-        conn.execute("DELETE FROM price_ticks WHERE ts BETWEEN %s AND %s", (lo, hi))
+        conn.execute("DELETE FROM price_ticks WHERE ts >= %s AND ts <= %s", (lo, hi))
         with conn.cursor() as cur, cur.copy("COPY price_ticks (ts, ticker, price, volume) FROM STDIN") as copy:
             for row in ticks:
                 copy.write_row(row)
@@ -115,13 +116,14 @@ def main() -> int:
                 )
         conn.execute("CALL refresh_continuous_aggregate('bars_1m', NULL, NULL)")
         try:
-            conn.execute("SELECT add_continuous_aggregate_policy('bars_1m', start_offset => INTERVAL '3 days', "
-                         "end_offset => INTERVAL '1 minute', schedule_interval => INTERVAL '1 minute', if_not_exists => TRUE)")
+            # Live ticks newer than end_offset are still served by real-time aggregation (materialized_only = false).
+            conn.execute("SELECT add_continuous_aggregate_policy('bars_1m', start_offset => NULL, "
+                         "end_offset => INTERVAL '5 minutes', schedule_interval => INTERVAL '5 minutes', if_not_exists => TRUE)")
         except psycopg.Error as exc:
             print(f"refresh policy not added: {exc.diag.message_primary}")
 
-        n_ticks = conn.execute("SELECT count(*) FROM price_ticks WHERE ts BETWEEN %s AND %s", (lo, hi)).fetchone()[0]
-        n_bars = conn.execute("SELECT ticker, count(*) FROM bars_1m WHERE bucket BETWEEN %s AND %s GROUP BY ticker ORDER BY ticker",
+        n_ticks = conn.execute("SELECT count(*) FROM price_ticks WHERE ts >= %s AND ts <= %s", (lo, hi)).fetchone()[0]
+        n_bars = conn.execute("SELECT ticker, count(*) FROM bars_1m WHERE bucket >= %s AND bucket <= %s GROUP BY ticker ORDER BY ticker",
                               (lo, hi)).fetchall()
         check = conn.execute(
             "SELECT close FROM bars_1m WHERE ticker = 'PEP' AND bucket <= %s ORDER BY bucket DESC LIMIT 1",
