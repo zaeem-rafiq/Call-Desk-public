@@ -294,6 +294,8 @@ function renderTrajectory(node, f) {
 const STEP_SHORT = { primary: "IR", broad: "WEB", serp: "GOOGLE", sitemap: "MAP", verify: "AGENT", wall: "WALL", social: "REDDIT", newswire: "NEWS" };
 const VERDICT_CLASS = { CONSISTENT: "ok", NEW: "new", CONTRADICTS: "bad", UNVERIFIABLE: "na" };
 
+const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 function stepTitle(s) {
   return `${s.label} · ${s.endpoint}${s.ms !== null && s.ms !== undefined ? ` · ${s.ms} ms` : ""}${s.summary ? `\n${s.summary}` : ""}`;
 }
@@ -316,7 +318,7 @@ function renderAgents(node, f) {
     const vs = desk.steps.find((s) => s.id === "verify");
     if (desk.verify) {
       v.append(el("span", `vbadge c-${desk.verify.confidence || "na"}`, `VERIFIED · ${(desk.verify.confidence || "?").toUpperCase()}`),
-        el("span", "vmeta", `${desk.verify.official_sources} official sources · ${desk.verify.run_s ?? "?"}s`));
+        el("span", "vmeta", `${plural(desk.verify.official_sources, "official source")} · ${desk.verify.run_s ?? "?"}s`));
     } else if (vs && vs.status === "running") v.append(el("span", "vrun", "verification agent running…"));
     else if (vs && vs.status !== "ok") v.append(el("span", "vmeta", `verification agent ${vs.status}`));
     if (desk.mock) v.append(el("span", "mock-tag", "MOCK"));
@@ -329,7 +331,7 @@ function renderAgents(node, f) {
     if (sa.status === "running") v.append(el("span", "vrun", "Cortex Search + Cortex Analyst running…"));
     else if (sa.status === "failed") v.append(el("span", "vbadge c-low", "FAILED"));
     else v.append(el("span", `vbadge v-${VERDICT_CLASS[sa.verdict] || "na"}`, sa.verdict || "ANSWERED"),
-      el("span", "vmeta", `${(sa.tools || []).length} tools · ${sa.rows.length} rows · ${sa.ms !== null && sa.ms !== undefined ? (sa.ms / 1000).toFixed(0) : "?"}s`));
+      el("span", "vmeta", `${plural((sa.tools || []).length, "tool")} · ${plural((sa.rows || []).length, "row")} · ${sa.ms !== null && sa.ms !== undefined ? (sa.ms / 1000).toFixed(0) : "?"}s`));
     if (sa.mock) v.append(el("span", "mock-tag", "MOCK"));
     const answer = (sa.answer || sa.error || "").replace(/^(CONSISTENT|CONTRADICTS|NEW|UNVERIFIABLE)[.:]?\s*/i, "");
     srow.querySelector(".agent-answer").textContent = answer;
