@@ -13,7 +13,7 @@ from typing import Awaitable, Callable, Literal
 
 from pydantic import BaseModel, Field
 
-from . import config, observability
+from . import config, observability, resilience
 from .claims import METRICS, ChunkResult, Claim
 from .models import Direction, Flag, Stance
 
@@ -202,7 +202,9 @@ async def agent_fact_check(claim: Claim, flag: Flag, info: config.CallInfo, plan
         tool_config=types.ToolConfig(function_calling_config=types.FunctionCallingConfig(mode="ANY")),
         thinking_config=types.ThinkingConfig(thinking_level="low"),
     )
-    resp = await client().aio.models.generate_content(model=model, contents=[_claim_block(claim, flag)], config=tool_cfg)
+    # Hedged: a slow planning call gets a twin after 6 s; the first answer wins (Gemini tail latency, not errors).
+    resp = await resilience.hedged(lambda: client().aio.models.generate_content(model=model, contents=[_claim_block(claim, flag)], config=tool_cfg),
+                                   hedge_after=6.0, label=f"plan {flag.id}")
     calls = [(c.name, dict(c.args or {})) for c in (resp.function_calls or []) if c.name in plan]
     # Pin the price lookup to the plan (quote time, ticker, benchmark); the model may reformat them.
     # The model only writes the query; the plan's other arguments (metric, company) always apply.
@@ -225,16 +227,16 @@ async def agent_fact_check(claim: Claim, flag: Flag, info: config.CallInfo, plan
         p = price.data
         sources += ["", f"PRICE (Tiger Data): {p['ticker']} {p['pct_move']:+.2f}% vs {p['benchmark']} {p['benchmark_pct_move']:+.2f}% "
                         f"over {p['window']} after the quote; by close {p.get('close_pct_move')}% vs benchmark {p.get('close_benchmark_pct_move')}%."]
-    synth = await client().aio.models.generate_content(
-        model=model,
-        contents=[f"CLAIM\n{_claim_block(claim, flag)}\n\n" + "\n".join(sources)],
-        config=types.GenerateContentConfig(
-            system_instruction=SYNTH_SYSTEM,
-            response_mime_type="application/json",
-            response_schema=Synthesis,
-            thinking_config=types.ThinkingConfig(thinking_level="low"),
-        ),
+    synth_cfg = types.GenerateContentConfig(
+        system_instruction=SYNTH_SYSTEM,
+        response_mime_type="application/json",
+        response_schema=Synthesis,
+        thinking_config=types.ThinkingConfig(thinking_level="low"),
     )
+    synth_contents = [f"CLAIM\n{_claim_block(claim, flag)}\n\n" + "\n".join(sources)]
+    # Hedged at 8 s: one stalled verdict call took 25 s in a live run; a twin request usually answers in a few seconds.
+    synth = await resilience.hedged(lambda: client().aio.models.generate_content(model=model, contents=synth_contents, config=synth_cfg),
+                                    hedge_after=8.0, label=f"verdict {flag.id}")
     _require_output(synth)
     s = synth.parsed if isinstance(synth.parsed, Synthesis) else Synthesis.model_validate_json(synth.text)
     out = s.model_dump()

@@ -175,7 +175,9 @@ async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tool
                         info.company, info.ticker, claim.quote, flag.metric_label, flag.new_value), timeout=45)
         except Exception as exc:  # noqa: BLE001 - shown on the card, never fatal
             observability.capture(exc)
-            flag.snowflake_agent = SnowflakeAgent(status="failed", error=f"{type(exc).__name__}: {exc}"[:200], mock=mock)
+            reason = ("the agent took longer than 45 s" if isinstance(exc, (asyncio.TimeoutError, TimeoutError))
+                      else f"{type(exc).__name__}: {exc}".strip(": "))
+            flag.snowflake_agent = SnowflakeAgent(status="failed", error=reason[:200], mock=mock)
         publish(flag)
 
     async def nimble_desk() -> None:

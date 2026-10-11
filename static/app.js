@@ -307,6 +307,19 @@ function stepTitle(s) {
   return `${s.label} · ${s.endpoint}${s.ms !== null && s.ms !== undefined ? ` · ${s.ms} ms` : ""}${s.summary ? `\n${s.summary}` : ""}`;
 }
 
+// One line for the card face: what Nimble's verification agent found, with its first cited excerpt.
+function verifyLine(v) {
+  const a = v.answer || {};
+  const parts = [];
+  if (a.now) parts.push(`Now ${a.now}`);
+  if (a.before) parts.push(`before ${a.before}`);
+  if (a.change) parts.push(a.change);
+  const cite = (v.claims || []).flatMap((c) => c.citations || []).find((c) => c.snippet);
+  let out = parts.join(" · ");
+  if (cite) out += `${out ? " — " : ""}“${cite.snippet.slice(0, 140)}${cite.snippet.length > 140 ? "…" : ""}” (${cite.source || "source"})`;
+  return out || a.answer || "";
+}
+
 function renderAgents(node, f) {
   const desk = f.web_desk, sa = f.snowflake_agent;
   node.querySelector(".agents").hidden = !desk && !sa;
@@ -329,6 +342,9 @@ function renderAgents(node, f) {
     } else if (vs && vs.status === "running") v.append(el("span", "vrun", "verification agent running…"));
     else if (vs && vs.status !== "ok") v.append(el("span", "vmeta", vs.summary.startsWith("unavailable") ? "verification agent unavailable" : `verification agent ${vs.status}`));
     if (desk.mock) v.append(el("span", "mock-tag", "MOCK"));
+    let line = nrow.querySelector(".agent-answer");
+    if (!line) { line = el("p", "agent-answer"); nrow.append(line); }
+    line.textContent = desk.verify ? verifyLine(desk.verify) : "";
   }
   const srow = node.querySelector(".sf-row");
   srow.hidden = !sa;
@@ -336,11 +352,12 @@ function renderAgents(node, f) {
     const v = srow.querySelector(".agent-verdict");
     v.replaceChildren();
     if (sa.status === "running") v.append(el("span", "vrun", "Cortex Search + Cortex Analyst running…"));
-    else if (sa.status === "failed") v.append(el("span", "vbadge c-low", "FAILED"));
+    else if (sa.status === "failed") v.append(el("span", "vbadge", "NO ANSWER"));
     else v.append(el("span", `vbadge v-${VERDICT_CLASS[sa.verdict] || "na"}`, sa.verdict || "ANSWERED"),
       el("span", "vmeta", `${plural((sa.tools || []).length, "tool")} · ${plural((sa.rows || []).length, "row")} · ${sa.ms !== null && sa.ms !== undefined ? (sa.ms / 1000).toFixed(0) : "?"}s`));
     if (sa.mock) v.append(el("span", "mock-tag", "MOCK"));
-    const answer = (sa.answer || sa.error || "").replace(/^(CONSISTENT|CONTRADICTS|NEW|UNVERIFIABLE)[.:]?\s*/i, "");
+    const answer = sa.status === "failed" ? `No answer: ${sa.error || "the agent did not finish"}.`
+      : (sa.answer || "").replace(/^(CONSISTENT|CONTRADICTS|NEW|UNVERIFIABLE)[.:—–-]?\s*/i, "");
     srow.querySelector(".agent-answer").textContent = answer;
   }
 }
