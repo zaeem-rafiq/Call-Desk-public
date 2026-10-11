@@ -650,6 +650,7 @@ function resetUI() {
   state.flags.clear();
   state.lines = [];
   state.lastOffset = 0;
+  $("#note-link").hidden = true;
   updateTally();
 }
 
@@ -659,6 +660,7 @@ function setRunning(on, label) {
   $("#play-label").textContent = on ? "Stop" : "Play call";
   $("#live-dot").classList.toggle("on", on);
   $("#audio-state").textContent = label || (on ? (state.mode === "replay" ? "REPLAY" : "LIVE") : "READY");
+  $("#note-link").hidden = on || !state.flags.size;  // the morning note (/api/export.md) once a run with flags ends
   const empty = $("#transcript-empty");  // before the first chunk lands (~10 s), say what is happening, not "Press Play"
   empty.replaceChildren(...(on ? ["Listening… the first lines appear about 10 seconds in."] : ["Press ", el("b", null, "Play call"), " to start listening."]));
 }

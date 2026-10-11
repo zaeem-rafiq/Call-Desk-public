@@ -101,6 +101,13 @@ a { color: var(--blue); }
 .pill.mock .pill-mode { color: var(--amber); }
 
 .controls { grid-area: controls; display: flex; align-items: center; gap: 8px; }
+.note-link {
+  display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px;
+  border: 1px solid var(--line-2); border-radius: 4px; color: var(--text); text-decoration: none; white-space: nowrap;
+  font: 600 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
+}
+.note-link:hover { background: var(--panel-3); }
+.note-link[hidden] { display: none; }
 .mode { display: flex; height: 30px; border: 1px solid var(--line-2); border-radius: 4px; overflow: hidden; }
 .mode button {
   background: transparent; border: 0; padding: 0 10px;
@@ -400,7 +407,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
   .topbar { padding: 10px 16px; }
   .call-date { display: none; }
   /* icon-only buttons; the hidden labels stay readable by screen readers */
-  .voice-toggle .vt-label, .play #play-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .voice-toggle .vt-label, .note-link .nl-label, .play #play-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .play { padding: 0 11px; }
   .market { grid-template-columns: minmax(0, 1fr); }
   .market-stats { text-align: left; white-space: normal; }
