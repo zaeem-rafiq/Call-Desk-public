@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Awaitable, Callable
 
 from . import audio, briefing, config, observability, resilience
-from .claims import ChunkResult, Claim, Segment, dedupe_key, metric_label
+from .claims import ChunkResult, Claim, Segment, card_slot, metric_label
 from .factcheck import fact_check
 from .hub import EventHub
 from .models import CallBrief, Flag, TranscriptSegment
@@ -113,7 +113,7 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
 
     pre = asyncio.create_task(preroll()) if k0 > 0 else None
     errors = 0
-    seen: set[str] = set()
+    cards: dict[str, str] = {}  # card slot -> flag id
     context: deque[str] = deque(maxlen=2)
     checks: list[asyncio.Task] = []
     n_chunks = max(1, int(-(-duration // chunk_s)))
@@ -148,18 +148,27 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
             if result.segments:
                 context.append(" ".join(f"{s.speaker}: {s.text}" for s in result.segments))
 
+            # One card per slot: within a chunk the most material claim wins the slot; later mentions attach to the card.
+            best: dict[str, Claim] = {}
+            for claim in result.claims:
+                slot = card_slot(claim)
+                if slot not in best or claim.materiality > best[slot].materiality:
+                    best[slot] = claim
             # Least material first, so the most material flag from this chunk lands on top of the feed.
             for claim in sorted(result.claims, key=lambda c: c.materiality):
-                key = dedupe_key(claim)
-                accepted = claim.materiality >= threshold and key not in seen
+                slot = card_slot(claim)
+                attached_to = cards.get(slot) or (None if best[slot] is claim else "same chunk")
+                accepted = claim.materiality >= threshold and attached_to is None
+                reason = f"same metric as {attached_to}" if attached_to else ("below threshold" if not accepted else "")
                 hub.publish("claim", {"chunk": k, "quote": claim.quote, "metric": claim.metric, "materiality": claim.materiality,
-                                      "accepted": accepted, "reason": "duplicate" if key in seen else ("below threshold" if not accepted else "")})
+                                      "accepted": accepted, "reason": reason, "attached_to": cards.get(slot)})
                 if not accepted:
                     continue
-                seen.add(key)
+                flag_id = f"f{len(cards) + 1:02d}-{claim.metric}"
+                cards[slot] = flag_id
                 t = start + max(0.0, min(claim.start, end - start))
                 flag = Flag(
-                    id=f"f{len(seen):02d}-{claim.metric}", call_ts=_iso(info.call_ts(t)), t_offset=round(t, 1),
+                    id=flag_id, call_ts=_iso(info.call_ts(t)), t_offset=round(t, 1),
                     speaker=claim.speaker, quote=claim.quote, claim_type=claim.claim_type, metric=claim.metric,
                     metric_label=metric_label(claim.metric), direction=claim.direction, prior_value=claim.prior_value,
                     new_value=claim.new_value, materiality=claim.materiality,
@@ -188,7 +197,7 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
                 task.cancel()
         await asyncio.gather(*checks, *extras, return_exceptions=True)
     degraded = sum(1 for t in checks if not t.cancelled() and t.exception() is None and t.result() and t.result().degraded)
-    summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(seen),
+    summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(cards),
                "errors": errors, "degraded": degraded}
     hub.publish("status", summary)
     return summary

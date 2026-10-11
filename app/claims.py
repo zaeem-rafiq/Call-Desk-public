@@ -92,3 +92,11 @@ def dedupe_key(claim: Claim) -> str:
     rng = parse_range(claim.new_value)
     value = f"{rng[0]:g}-{rng[1]:g}" if rng else (claim.new_value or "").lower().strip()
     return f"{claim.metric}|{value}"
+
+
+def card_slot(claim: Claim) -> str:
+    """One card per metric per call. A guidance statement gets its own slot, so a reported-results card for
+    the same metric never swallows a guidance change. The catch-all metric "other" dedupes by value."""
+    if claim.metric == "other":
+        return dedupe_key(claim)
+    return f"{claim.metric}|{'guidance' if claim.claim_type == 'guidance' else 'results'}"

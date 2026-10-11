@@ -121,3 +121,15 @@ def test_late_flag_from_old_run_is_dropped(monkeypatch):
 
     history = asyncio.run(scenario())
     assert not [e for e in history if e["event"] == "flag"]
+
+
+def test_one_card_per_metric_but_guidance_keeps_its_own():
+    from app.claims import Claim, card_slot
+
+    def c(metric, kind, value=None):
+        return Claim(quote="q", speaker="s", claim_type=kind, metric=metric, direction="n/a", new_value=value, materiality=0.8)
+
+    assert card_slot(c("outlook_next_year", "guidance", None)) == card_slot(c("outlook_next_year", "guidance", "February"))
+    assert card_slot(c("organic_revenue_growth", "guidance", "robust")) == card_slot(c("organic_revenue_growth", "guidance", "long-term 4%"))
+    assert card_slot(c("core_eps_growth", "kpi", "2%")) != card_slot(c("core_eps_growth", "guidance", None))
+    assert card_slot(c("other", "tone", "a")) != card_slot(c("other", "tone", "b"))
