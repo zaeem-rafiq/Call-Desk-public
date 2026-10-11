@@ -102,6 +102,8 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         if hub.run_id != run_id:  # backstop: a straggler from a stopped run must not reach the next run
             log.info("dropped late publish of %s from run %s", flag.id, run_id)
             return
+        if flag.new_value and flag.new_value_source not in ("", "spoken") and _heard(flag, hub.history):
+            flag.new_value_source = "spoken"  # the speaker said these numbers; the source only confirmed them
         hub.publish("flag", flag.model_dump(mode="json"))
 
     warm = asyncio.create_task(_warmup(modes))
@@ -235,6 +237,21 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
                "errors": errors, "degraded": degraded}
     hub.publish("status", summary)
     return summary
+
+
+_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+
+
+def _heard(flag: Flag, history: list[dict], window_s: float = 30.0) -> bool:
+    """True when every number in the card's value was said on the call within window_s of the quote."""
+    wanted = set(_NUMBER.findall(flag.new_value or ""))
+    if not wanted:
+        return False
+    said = " ".join(
+        e["data"].get("text", "") for e in history
+        if e["event"] == "transcript" and abs(e["data"].get("t", -1e9) - flag.t_offset) <= window_s
+    )
+    return wanted <= set(_NUMBER.findall(said.replace(",", "")))
 
 
 _DANGLING = re.compile(r"(\bto|\band|\bfrom|\bbetween|-|–)\s*$", re.I)

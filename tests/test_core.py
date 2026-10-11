@@ -192,3 +192,17 @@ def test_replay_from_a_start_point_skips_cards_spoken_before_it(tmp_path, monkey
     assert shown == ["eps"]
     # the 24 s before the start fill the transcript at once; older lines stay out
     assert [e["data"]["text"] for e in hub.history if e["event"] == "transcript"] == ["just before start"]
+
+
+def test_a_value_said_on_the_call_is_labelled_spoken():
+    from app.models import Flag
+    from app.pipeline import _heard
+
+    flag = Flag(id="f", call_ts="2026-10-09T10:18:41-04:00", t_offset=200.0, speaker="s", quote="q", claim_type="guidance",
+                metric="eps", metric_label="Adjusted EPS", direction="cut", new_value="$5.10 to $5.60 per share",
+                new_value_source="Q3 2026 release")
+    heard = [{"event": "transcript", "data": {"t": 199.0, "text": "For the full year, we now expect earnings of $5.10 to"}},
+             {"event": "transcript", "data": {"t": 204.0, "text": "$5.60 per share, with free cash flow of about $2.5 billion."}}]
+    assert _heard(flag, heard)
+    assert not _heard(flag, heard[:1])  # $5.60 not heard yet
+    assert not _heard(flag.model_copy(update={"t_offset": 400.0}), heard)  # said too far away from the quote
