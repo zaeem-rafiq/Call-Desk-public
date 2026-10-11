@@ -27,6 +27,16 @@ log = logging.getLogger("calldesk")
 observability.init_sentry()
 app = FastAPI(title="Call Desk")
 hub = EventHub()
+
+
+@app.middleware("http")
+async def revalidate_ui(request: Request, call_next):
+    """The page and its JS/CSS change often today; make browsers re-check them on every load
+    (304 when unchanged) so a stage laptop never runs a stale cached app.js."""
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 DEFAULT_MODE = "live"
 
 
