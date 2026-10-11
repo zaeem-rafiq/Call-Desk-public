@@ -77,7 +77,9 @@ def main() -> int:
     commits = int(git("rev-list", "--count", "HEAD", cwd=out))
     if commits != source_commits:
         problems.append(f"commit count changed: {source_commits} -> {commits}")
-    secrets = sorted({m.group(0)[:6] + "…" for m in SECRETS.finditer(git("log", "-p", "--all", "--no-color", cwd=out))})
+    # This script holds the patterns themselves (an early version matched its own line), so its diffs are not scanned.
+    history = git("log", "-p", "--all", "--no-color", "--", ".", ":(exclude)scripts/make_public_copy.py", cwd=out)
+    secrets = sorted({m.group(0)[:6] + "…" for m in SECRETS.finditer(history)})
     if secrets:
         problems.append(f"possible credentials in history (masked): {secrets}")
 
