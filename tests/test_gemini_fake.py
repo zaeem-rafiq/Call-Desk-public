@@ -6,7 +6,8 @@ from types import SimpleNamespace
 from app import config, gemini
 from app.claims import ChunkResult, Claim, Segment
 from app.factcheck import fact_check
-from app.models import Flag
+from app import tools
+from app.models import Flag, PriceReaction
 
 
 class FakeModels:
@@ -51,6 +52,11 @@ def test_agent_runs_all_three_tools_and_applies_verdict(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "fake-key-for-test")
     monkeypatch.setenv("MOCK_GEMINI", "0")
     models = _fake_client(monkeypatch)
+
+    async def fixed_price(ticker, since_ts, benchmark="XLP"):  # independent of data/prices.csv (not in the public snapshot)
+        return PriceReaction(ticker=ticker, benchmark=benchmark, pct_move=-0.83, benchmark_pct_move=0.07, vs_benchmark=-0.9,
+                             window="08:20 → 08:50 ET", since_ts=since_ts, source="test fixture", mock=True).model_dump()
+    monkeypatch.setattr(tools.prices, "mock_price_reaction", fixed_price)
     claim = Claim(quote="driving the guide down in EPS", speaker="Steve Schmitt (CFO)", claim_type="guidance",
                   metric="core_eps_growth", direction="cut", materiality=0.95)
     flag = Flag(id="f1", call_ts="2026-10-08T08:20:17-04:00", t_offset=147.2, speaker=claim.speaker, quote=claim.quote,

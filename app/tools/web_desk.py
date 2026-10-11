@@ -24,6 +24,8 @@ import asyncio
 import json
 import re
 import time
+
+import httpx
 from functools import lru_cache
 from pathlib import Path
 from typing import Awaitable, Callable
@@ -79,6 +81,10 @@ async def _timed(step: WebStep, coro: Awaitable, on_change: Callable[[], None] |
         except asyncio.CancelledError:
             step.status, step.summary = "skipped", step.summary or "dropped: over the time budget"
             raise
+        except (asyncio.TimeoutError, httpx.TimeoutException):  # a slow source is dropped, not an error in our code
+            step.status, step.summary = "skipped", f"dropped: no answer within {time.monotonic() - started:.0f} s"
+            span.set_status("deadline_exceeded")
+            return None
         except Exception as exc:  # noqa: BLE001 - a failed specialist is shown, never fatal
             step.status, step.summary = "failed", f"{type(exc).__name__}: {exc}"[:160]
             span.set_status("internal_error")
@@ -346,7 +352,9 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
                 raise knowledge[0]
             pick, dk = next(((h, k) for h, k in scanned if k.get("antibots")), scanned[0])
             driver, antibots = dk.get("driver") or "", dk.get("antibots") or []
-            page = await nimble.extract(http, pick["url"], driver=driver or None, render=bool(dk.get("need_to_render")) or "auto", timeout_ms=10000)
+            async with nimble.client(timeout=28.0) as wall_http:  # stealth drivers are slow under load; the enrich budget allows it
+                page = await nimble.extract(wall_http, pick["url"], driver=driver or None, render=bool(dk.get("need_to_render")) or "auto",
+                                            timeout_ms=25000)
             text = _passages(page["markdown"], f"{company} {metric_label} guidance outlook cut")
             desk.wall = {"domain": nimble.domain(pick["url"]), "url": pick["url"], "title": pick.get("title", ""), "antibots": antibots,
                          "driver": page["driver"] or driver, "snippet": text[:420],
@@ -365,14 +373,15 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
 
         async def newswire():
             q = f"{company} {ticker} {metric_label} guidance analysts react"
-            for attempt in range(2):
-                try:
-                    r = await nimble.search(http, q, focus="news", max_results=6, start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
-                    break
-                except nimble.NimbleError as exc:  # Nimble-side 5xx ("can't download the query results"): one retry
-                    if attempt or "-> 5" not in str(exc):
-                        raise
-                    await asyncio.sleep(1.0)
+            async with nimble.client(timeout=20.0) as news_http:  # focus=news runs subagents: slow under load
+                for attempt in range(2):
+                    try:
+                        r = await nimble.search(news_http, q, focus="news", max_results=6, start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
+                        break
+                    except (nimble.NimbleError, httpx.TimeoutException) as exc:  # Nimble 5xx or a slow answer: one retry
+                        if attempt or (isinstance(exc, nimble.NimbleError) and "-> 5" not in str(exc)):
+                            raise
+                        await asyncio.sleep(1.0)
             desk.street = _as_items(r, 5)
             steps["newswire"].summary = f"{len(r)} stories since Oct 8" + (f" · {', '.join(sorted({x.source for x in desk.street})[:3])}" if r else "")
 

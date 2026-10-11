@@ -32,9 +32,9 @@ def agent_name() -> str:
     return f"{e['SNOWFLAKE_DATABASE']}.{e['SNOWFLAKE_SCHEMA']}.{AGENT}"
 
 
-def question(company: str, ticker: str, quote: str, metric_label: str, new_value: str | None) -> str:
+def question(company: str, ticker: str, quote: str, metric_label: str, new_value: str | None, direction: str = "") -> str:
     return (f"Claim heard live on {company}'s ({ticker}) Q3 2026 earnings call on October 8, 2026: \"{quote}\". "
-            f"Metric: {metric_label}. Value heard: {new_value or 'none stated'}. "
+            f"Metric: {metric_label}. Value now: {new_value or 'none stated'}. Direction heard: {direction or 'not stated'}. "
             f"What was the fiscal 2026 guidance for this metric before this call, and how did it evolve through 2026? "
             f"Is the claim consistent with that history?")
 
@@ -118,8 +118,9 @@ def parse(response: dict) -> SnowflakeAgent:
     return out
 
 
-async def live_check(company: str, ticker: str, quote: str, metric_label: str, new_value: str | None) -> SnowflakeAgent:
-    body = json.dumps({"messages": [{"role": "user", "content": [{"type": "text", "text": question(company, ticker, quote, metric_label, new_value)}]}]})
+async def live_check(company: str, ticker: str, quote: str, metric_label: str, new_value: str | None, direction: str = "") -> SnowflakeAgent:
+    text = question(company, ticker, quote, metric_label, new_value, direction)
+    body = json.dumps({"messages": [{"role": "user", "content": [{"type": "text", "text": text}]}]})
     started = time.monotonic()
     abandoned = threading.Event()
     try:

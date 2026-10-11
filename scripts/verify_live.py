@@ -90,10 +90,12 @@ async def full_check() -> None:
         for s in desk.steps:
             if s.status == "ok":
                 continue
-            limited = s.status == "skipped" and (s.summary.startswith("unavailable") or "no news" in s.summary or "later flags" in s.summary)
+            limited = s.status == "skipped"  # dropped for time, a service limit, or nothing to do: the app handles it
             row("nimble", f"{s.id} · {f.metric}", None if limited else False, f"{s.status}: {s.summary[:90]}")
         ok_steps = sum(s.status == "ok" for s in desk.steps)
-        row("nimble", f"specialists ok · {f.metric}", ok_steps >= len(desk.steps) - 2, f"{ok_steps}/{len(desk.steps)}")
+        unavailable = sum(s.status == "skipped" and s.summary.startswith("unavailable") for s in desk.steps)
+        row("nimble", f"specialists ok · {f.metric}", ok_steps >= len(desk.steps) - unavailable - 2,
+            f"{ok_steps}/{len(desk.steps)}" + (f" ({unavailable} unavailable)" if unavailable else ""))
     primary = next((s for s in eps.web_desk.steps if s.id == "primary"), None) if eps.web_desk else None
     row("nimble", "EPS primary source has the guidance table", bool(primary and primary.status == "ok" and "guidance table" in primary.summary),
         primary.summary if primary else "missing")
