@@ -467,7 +467,7 @@ function renderAgents(node, f) {
     shown.forEach((s, i) => {
       const off = s.status === "skipped" || s.status === "failed";
       const name = STEP_NAME[s.id] || s.label;
-      const d = el("span", `desk-name ${off ? "off" : s.status}`, off ? `${name} · no answer` : name);
+      const d = el("span", `desk-name ${off ? "off" : s.status}`, off ? `${name} (no answer)` : name);
       d.title = stepTitle(s);
       dots.append(...(i ? [el("span", "desk-sep", "·"), d] : [d]));
     });
