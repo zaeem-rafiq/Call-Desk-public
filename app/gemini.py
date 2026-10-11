@@ -175,7 +175,8 @@ Be exact with numbers and units; never invent a number that is not in the claim 
 If the claim is a full-year guidance change and a source shows the full guidance table, fill related_changes with each line (current vs previous).
 Core EPS and core constant-currency EPS are DIFFERENT metrics. Report the one named in Metric; put the other in related_changes.
 If no number was spoken, you MUST take new_value from a [W#] source that states it for this exact metric. Use 'not stated' only when no source does.
-Take prior_value from [P#] sources first."""
+Take prior_value from [P#] sources first. If a prior source says the company steered toward the low end of a range,
+write prior_value as 'low end of <range>'."""
 
 
 def _claim_block(claim: Claim, flag: Flag) -> str:

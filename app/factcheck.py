@@ -160,7 +160,7 @@ def _apply_synthesis(flag, claim, s, prior_hits, web_hits, prior_res, web_res) -
     flag.prior_value = prior_value
     flag.what_changed = s.get("what_changed", "")
     flag.why_it_matters = s.get("why_it_matters", "")
-    flag.related_changes = [RelatedChange(**r) for r in s.get("related_changes", []) if r.get("new_value")]
+    flag.related_changes = [_numeric_row(RelatedChange(**r)) for r in s.get("related_changes", []) if r.get("new_value")]
     ev: list[Evidence] = []
     for item in s.get("evidence", []):
         hits, res, prefix = (prior_hits, prior_res, "Snowflake Cortex Search") if item.get("source") == "prior" else (web_hits, web_res, "Nimble")
@@ -176,6 +176,14 @@ def _apply_synthesis(flag, claim, s, prior_hits, web_hits, prior_res, web_res) -
             src, ref = f"{prefix} · {h.get('doc_title', 'prior quarter')}", h.get("source_url") or h.get("doc_title", "")
         ev.append(Evidence(source=src, ref=ref, snippet=(h.get("snippet") or "")[:420], stance=item.get("stance", "neutral"), mock=res.call.mock))
     flag.evidence = ev
+
+
+def _numeric_row(row: RelatedChange) -> RelatedChange:
+    """The numbers decide a table row's direction, as they do for the flag (e.g. net revenue +4% to +6% -> ~+6% is a raise)."""
+    numeric = numeric_direction(row.prior_value, row.new_value)
+    if numeric and row.direction in ("cut", "raise", "reaffirm") and numeric != row.direction:
+        row.direction = numeric
+    return row
 
 
 def _apply_price(flag, price_res) -> None:
