@@ -2,7 +2,7 @@
 
 **Hears earnings calls live and fact-checks every market-moving line in seconds.**
 
-![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white) ![Built at AI Engineer NYC 2026](docs/media/badge-built-at.svg)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white) ![Built at AI Engineer NYC 2026](docs/media/badge-built-at.svg)
 
 ![Call Desk replaying PepsiCo's Q3 2026 earnings call. The live transcript fills in on the left. A red CUT card for core EPS growth appears, then fills in with the old and new guidance, the guidance table, the guidance history, the price move against XLP and a confidence of 0.92.](docs/media/demo.gif)
 
@@ -174,3 +174,7 @@ MLH asks every team to name the AI tools it used. This section lists every AI to
 - **Tiger Data** stores the price ticks and the 1-minute bars.
 - **Sentry** records errors and traces every agent, model, and tool call.
 - **Open-source Python libraries:** FastAPI, Uvicorn, google-genai, snowflake-connector-python, psycopg, sentry-sdk, httpx, pandas, pydantic, and yfinance. `requirements.txt` pins their versions.
+
+## License
+
+Call Desk is released under the [MIT License](LICENSE). The sponsor skills in `.claude/skills/` are unmodified copies that keep their own licenses, with each license file beside its skill: `gemini-api-dev`, `setup-timescaledb-hypertables` and `timescaledb-hyperfunctions` are Apache-2.0, and `nimble-web-expert` is MIT. [Data and honesty notes](#data-and-honesty-notes) lists the third-party files this repository leaves out.
