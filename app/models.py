@@ -155,6 +155,15 @@ class WebDesk(BaseModel):
     mock: bool = False
 
 
+class CrossCheck(BaseModel):
+    """An independent agent's check that moves the confidence score after the verdict."""
+
+    source: str  # "Snowflake agent" | "Nimble check"
+    result: Literal["agrees", "disagrees"]
+    delta: float  # added to the confidence score
+    reason: str = ""
+
+
 class Flag(BaseModel):
     id: str
     status: Literal["checking", "checked"] = "checking"
@@ -177,6 +186,8 @@ class Flag(BaseModel):
     confidence: float | None = None
     confidence_components: ConfidenceComponents | None = None
     confidence_rationale: str = ""
+    confidence_base: float | None = None  # the score before the agents' cross-checks (None until one lands)
+    cross_checks: list[CrossCheck] = Field(default_factory=list)
     materiality: float = 0.0
     latency_s: float | None = None  # audio seconds from the quote to the flag appearing
     checked_latency_s: float | None = None  # ... to the fact-check finishing

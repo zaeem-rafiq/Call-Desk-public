@@ -159,9 +159,14 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
 async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tools.ToolResult | None, publish: Callable[[Flag], None]) -> None:
     """After the verdict: Snowflake's Cortex Agent and Nimble's slower web specialists fill in the card.
 
-    Awaited here (not detached), so stopping a run cancels them with the fact-check. They never change the verdict.
+    Awaited here (not detached), so stopping a run cancels them with the fact-check. They never change the verdict's
+    direction or numbers; when they finish, their agreement or disagreement moves the confidence score (cross_check).
     """
     from .tools import snowflake_agent, web_desk
+
+    def recheck() -> None:
+        if config.get("CROSS_CHECK", "1") != "0" and confidence.cross_check(flag):
+            publish(flag)
 
     async def cortex_agent() -> None:
         mock = config.is_mock("snowflake")
@@ -182,6 +187,7 @@ async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tool
                       else f"{type(exc).__name__}: {exc}".strip(": "))
             flag.snowflake_agent = SnowflakeAgent(status="failed", error=reason[:200], mock=mock)
         publish(flag)
+        recheck()
 
     async def nimble_desk() -> None:
         if flag.web_desk is None:
@@ -197,6 +203,7 @@ async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tool
                 if st.status == "running":
                     st.status, st.summary = "failed", f"{type(exc).__name__}: {exc}"[:160]
             publish(flag)
+        recheck()
 
     async def voice_alert() -> None:
         from . import voice
