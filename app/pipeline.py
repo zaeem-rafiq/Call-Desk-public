@@ -13,6 +13,7 @@ import logging
 from collections import deque
 from datetime import datetime
 from pathlib import Path
+from typing import Awaitable, Callable
 
 from . import audio, config, observability
 from .claims import ChunkResult, Claim, Segment, dedupe_key, metric_label
@@ -44,6 +45,31 @@ class MockTranscriber:
         return ChunkResult(segments=segs, claims=claims)
 
 
+HEDGE_AFTER_S = 7.0  # a normal chunk returns in 3-5 s; past this, send a duplicate and take the first answer
+
+
+async def hedged(make: Callable[[], Awaitable[ChunkResult]], hedge_after: float = HEDGE_AFTER_S) -> ChunkResult:
+    """Tail-latency guard: a slow or stuck request (e.g. a Gemini 504 plus retry) gets a twin; first success wins."""
+    tasks = [asyncio.create_task(make())]
+    try:
+        done, _ = await asyncio.wait(tasks, timeout=hedge_after)
+        if not done:
+            log.info("listener slow after %.0fs; sending a hedged duplicate", hedge_after)
+            tasks.append(asyncio.create_task(make()))
+        pending, error = set(tasks), None
+        while pending:
+            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                if task.exception() is None:
+                    return task.result()
+                error = task.exception()
+        raise error  # type: ignore[misc]
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+
+
 class GeminiTranscriber:
     name = "gemini"
 
@@ -53,7 +79,7 @@ class GeminiTranscriber:
     async def process(self, k: int, start: float, end: float, wav: bytes | None, context: list[str]) -> ChunkResult:
         from . import gemini
 
-        return await gemini.transcribe_and_extract(wav, context, k, start, end, self.info)
+        return await hedged(lambda: gemini.transcribe_and_extract(wav, context, k, start, end, self.info))
 
 
 def _iso(dt: datetime) -> str:

@@ -67,3 +67,27 @@ def test_mock_pipeline_flags_eps_cut(monkeypatch):
     assert eps and eps[0]["direction"] == "cut" and eps[0]["status"] == "checked"
     assert eps[0]["new_value"] == "+2.5% to +3.5%" and eps[0]["sentry_trace_id"]
     assert all(f["status"] == "checked" and f["confidence"] is not None for f in flags.values())
+
+
+def test_hedged_request_returns_the_fast_twin():
+    from app import pipeline
+
+    calls = []
+
+    async def make():
+        calls.append(1)
+        await asyncio.sleep(5 if len(calls) == 1 else 0.05)  # first request hangs, the twin is fast
+        return f"result-{len(calls)}"
+
+    start = asyncio.run(asyncio.wait_for(pipeline.hedged(make, hedge_after=0.1), timeout=2))
+    assert start == "result-2" and len(calls) == 2
+
+
+def test_hedged_request_raises_when_all_fail():
+    from app import pipeline
+
+    async def make():
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        asyncio.run(pipeline.hedged(make, hedge_after=0.1))
