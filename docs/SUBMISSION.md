@@ -54,7 +54,7 @@ When the call ends, Snowflake writes an IR brief. The same engine runs a second,
 - **PepsiCo golden eval: 8/8.** The EPS cut is heard on the call. All five guidance lines (core EPS, constant-currency EPS, organic revenue, net revenue, tax rate) have the right value and direction.
 - **Delta golden eval: 10/10.** Full-year EPS and free-cash-flow cuts, Q4 EPS, Q4 margin, fuel and leverage.
 - **Speed:** the EPS flag appears about 12 seconds after the CFO's line, and the verdict about 12 seconds later (final stage run 20261011-134427). With the Gemini Live listener, the flag appears about 5 seconds after the line.
-- **Replay recordings:** 0 errors and 0 degraded flags.
+- **Replay recordings:** no pipeline errors and no degraded flags. Some optional Nimble specialists (for example the news search) were unavailable at times; the card shows them as unavailable, and the core checks still ran.
 
 ## Challenges
 

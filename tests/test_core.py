@@ -179,7 +179,8 @@ def test_replay_from_a_start_point_skips_cards_spoken_before_it(tmp_path, monkey
         {"event": "status", "t": 0.0, "data": {"state": "running", "start_s": 0.0}},
         {"event": "flag", "t": 140.0, "data": {"id": "early", "t_offset": 130.0}},
         {"event": "flag", "t": 188.0, "data": {"id": "early", "t_offset": 130.0}},  # late enrichment of an early card
-        {"event": "transcript", "t": 185.0, "data": {"t": 176.0, "text": "before start"}},
+        {"event": "transcript", "t": 110.0, "data": {"t": 100.0, "text": "long before start"}},
+        {"event": "transcript", "t": 185.0, "data": {"t": 176.0, "text": "just before start"}},
         {"event": "flag", "t": 190.0, "data": {"id": "eps", "t_offset": 186.0}},
     ]
     (tmp_path / "events.jsonl").write_text("".join(_json.dumps(e) + "\n" for e in events))
@@ -189,4 +190,5 @@ def test_replay_from_a_start_point_skips_cards_spoken_before_it(tmp_path, monkey
     asyncio.run(replay.run_replay(hub, speed=0, start_s=180))
     shown = [e["data"].get("id") for e in hub.history if e["event"] == "flag"]
     assert shown == ["eps"]
-    assert not [e for e in hub.history if e["event"] == "transcript"]
+    # the 24 s before the start fill the transcript at once; older lines stay out
+    assert [e["data"]["text"] for e in hub.history if e["event"] == "transcript"] == ["just before start"]

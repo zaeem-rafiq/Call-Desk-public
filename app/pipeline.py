@@ -115,6 +115,15 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
               for pk, (a, b) in zip(range(max(0, k0 - 2), k0), spans)),
             return_exceptions=True,
         )
+        # Show these earlier lines too, so the transcript is not empty while the first chunk plays.
+        # Their claims never become cards: the cards start at the chosen start point.
+        for pk, (a, b), r in zip(range(max(0, k0 - 2), k0), spans, results):
+            if isinstance(r, BaseException) or hub.run_id != run_id:
+                continue
+            for seg in r.segments:
+                t = a + max(0.0, min(seg.start, b - a))
+                hub.publish("transcript", TranscriptSegment(t=round(t, 1), call_ts=_iso(info.call_ts(t)), speaker=seg.speaker,
+                                                            text=seg.text, chunk=pk).model_dump())
         return [" ".join(f"{s.speaker}: {s.text}" for s in r.segments) for r in results if not isinstance(r, BaseException) and r.segments]
 
     pre = asyncio.create_task(preroll()) if k0 > 0 else None
@@ -244,8 +253,9 @@ def _complete_value(flag: Flag, first: Claim, later: Claim, publish) -> None:
     merged = later.new_value if head.split()[0] in later.new_value else f"{head} {later.new_value.strip()}"
     log.info("completing %s: %r -> %r", flag.id, first.new_value, merged)
     first.new_value = merged  # the fact-check reads the claim; if it has not used it yet, it gets the full value
-    if flag.new_value in (None, "", head) or _truncated(flag.new_value):
+    if flag.new_value in (None, "", head) or _truncated(flag.new_value) or flag.new_value_source not in ("", "spoken"):
         flag.new_value = merged
+        flag.new_value_source = "spoken"  # the speaker did say it, across two chunks
         if flag.status == "checked":
             publish(flag)
 
