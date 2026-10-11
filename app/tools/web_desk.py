@@ -375,4 +375,6 @@ async def _mock_enrich(desk: WebDesk, *, metric_label: str, on_change: Callable[
         elif sid == "verify":
             v = m["verify"].get(metric_label) or m["verify"]["default"]
             desk.verify = WebVerify(**v)
+            s.summary = (f"confidence {desk.verify.confidence} · {desk.verify.official_sources} official sources · "
+                         f"{len(desk.verify.claims)} cited claims · {desk.verify.run_s:.0f}s")
         on_change()

@@ -494,7 +494,7 @@ function renderDetail(node, f) {
   }
   if (!tcs.children.length) tcs.append(el("li", "muted", "Running…"));
 
-  const trace = node.querySelector(".trace");
+  const trace = node.querySelector("p.trace");  // evidence refs also use .trace (div), so select the Sentry paragraph explicitly
   trace.replaceChildren();
   if (f.sentry_trace_url) {
     const a = el("a", null, `Open trace ${f.sentry_trace_id.slice(0, 12)}… in Sentry`);
