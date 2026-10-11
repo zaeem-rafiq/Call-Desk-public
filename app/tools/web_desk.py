@@ -72,7 +72,8 @@ async def _timed(step: WebStep, coro: Awaitable, on_change: Callable[[], None] |
                              "gen_ai.agent.name": "call-desk-web-desk", "calldesk.endpoint": step.endpoint}) as span:
         try:
             out = await coro
-            step.status = "ok"
+            if step.status == "running":  # a specialist that marked itself skipped keeps that status
+                step.status = "ok"
             span.set_status("ok")
             return out
         except asyncio.CancelledError:
@@ -86,6 +87,25 @@ async def _timed(step: WebStep, coro: Awaitable, on_change: Callable[[], None] |
             step.ms = int((time.monotonic() - started) * 1000)
             if on_change:
                 on_change()
+
+
+async def _run_bounded(tasks: list[asyncio.Task], budget_s: float) -> None:
+    """Wait up to budget_s, then cancel and drain whatever is left.
+
+    The finally block also runs when this coroutine itself is cancelled (a stopped run), so no specialist outlives
+    its fact-check and publishes into the next run.
+    """
+    try:
+        await asyncio.wait(tasks, timeout=budget_s)
+    finally:
+        for t in tasks:
+            t.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def _on(domain: str, hosts: list[str]) -> bool:
+    """True when domain is one of hosts or a subdomain of one (investor.pepsico.com is pepsico.com)."""
+    return any(domain == h or domain.endswith("." + h) for h in hosts)
 
 
 # ------------------------------------------------------------------ IR site map (cached per process)
@@ -172,10 +192,7 @@ async def live_verdict(query: str, metric_label: str = "", new_value: str | None
 
         fns = {"primary": primary, "broad": broad, "serp": serp, "sitemap": sitemap}
         tasks = [asyncio.create_task(_timed(steps[sid], fn())) for sid, fn in fns.items()]
-        _, late = await asyncio.wait(tasks, timeout=VERDICT_BUDGET_S)
-        for t in late:
-            t.cancel()
-        await asyncio.gather(*late, return_exceptions=True)
+        await _run_bounded(tasks, VERDICT_BUDGET_S)
         if steps["sitemap"].status == "running":
             steps["sitemap"].status, steps["sitemap"].summary = "skipped", "map still running; later flags use it"
 
@@ -183,7 +200,7 @@ async def live_verdict(query: str, metric_label: str = "", new_value: str | None
     rest = interleave([hits.get("broad", []), hits.get("serp", []), hits.get("sitemap", [])], 10)
     merged, seen = [], set()
     for h in hits.get("primary", []) + rest:
-        if h.get("url") and h["url"] not in seen and nimble.domain(h["url"]) not in TRANSCRIPT_HOSTS:
+        if h.get("url") and h["url"] not in seen and not _on(nimble.domain(h["url"]), TRANSCRIPT_HOSTS):
             seen.add(h["url"])
             merged.append(h)
     if not merged and all(s.status == "failed" for s in steps.values()):
@@ -204,6 +221,7 @@ async def mock_verdict(query: str, metric_label: str = "", new_value: str | None
 
 
 # ------------------------------------------------------------------ enrich phase
+_agents_unbillable_until = 0.0  # set for 10 minutes after a 402 from /v2/agents/runs
 def _verify_schema() -> dict:
     s = {"type": "string"}
     return {"type": "object", "properties": {
@@ -289,9 +307,21 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
 
     async with nimble.client(timeout=15.0) as http:
         async def verify():
-            async with nimble.client(timeout=15.0) as agent_http:
-                out = await nimble.agent_run(agent_http, _verify_prompt(company, ticker, metric_label, primary_url), output_schema=_verify_schema(),
-                                             sources=_verify_sources(primary_url), effort="low", deadline_s=ENRICH_BUDGET_S - 3)
+            global _agents_unbillable_until
+            if time.monotonic() < _agents_unbillable_until:
+                steps["verify"].status, steps["verify"].summary = "skipped", "unavailable: Nimble account cannot be billed for agent runs (402)"
+                return
+            try:
+                async with nimble.client(timeout=15.0) as agent_http:
+                    out = await nimble.agent_run(agent_http, _verify_prompt(company, ticker, metric_label, primary_url),
+                                                 output_schema=_verify_schema(), sources=_verify_sources(primary_url), effort="low",
+                                                 deadline_s=ENRICH_BUDGET_S - 3)
+            except nimble.NimbleError as exc:
+                if "-> 402" not in str(exc):
+                    raise
+                _agents_unbillable_until = time.monotonic() + 600
+                steps["verify"].status, steps["verify"].summary = "skipped", "unavailable: Nimble account cannot be billed for agent runs (402)"
+                return
             desk.verify = to_verify(out["output"], out["run_s"])
             v = desk.verify
             steps["verify"].summary = (f"confidence {v.confidence or '?'} · {v.official_sources} official sources · "
@@ -302,10 +332,10 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
             for h in found.get("broad", []):
                 d = nimble.domain(h.get("url", ""))
                 old = re.search(r"/(20(?:[01]\d|2[0-5]))/", h.get("url", ""))  # a dated path before 2026 is last year's story
-                if d and d not in seen and d not in TRANSCRIPT_HOSTS and d not in IR_DOMAINS and d not in VIDEO_HOSTS and not old:
+                if d and d not in seen and not _on(d, TRANSCRIPT_HOSTS + IR_DOMAINS + VIDEO_HOSTS) and not old:
                     seen.add(d)
                     candidates.append(h)
-            candidates.sort(key=lambda h: 0 if nimble.domain(h["url"]) in HARD_DOMAINS else 1)
+            candidates.sort(key=lambda h: 0 if _on(nimble.domain(h["url"]), HARD_DOMAINS) else 1)
             candidates = candidates[:4]
             if not candidates:
                 steps["wall"].status, steps["wall"].summary = "skipped", "no news article to open"
@@ -322,7 +352,7 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
                          "driver": page["driver"] or driver, "snippet": text[:420],
                          "scanned": [{"domain": nimble.domain(h["url"]), "antibots": k.get("antibots") or []} for h, k in scanned]}
             protected = sum(1 for _, k in scanned if k.get("antibots"))
-            steps["wall"].summary = (f"scanned {len(scanned)} sites, {protected} protected · {desk.wall['domain']}: "
+            steps["wall"].summary = (f"scanned {len(scanned)} site{'s' if len(scanned) != 1 else ''}, {protected} protected · {desk.wall['domain']}: "
                                      f"{', '.join(dict.fromkeys(antibots)) or 'no antibot'} → driver {desk.wall['driver']} · "
                                      f"{'read' if text else 'opened'}")
 
@@ -334,18 +364,22 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
             steps["social"].summary = f"{len(desk.social)} Reddit threads" + (f" · {', '.join(subs[:3])}" if subs else "")
 
         async def newswire():
-            r = await nimble.search(http, f"{company} {ticker} {metric_label} guidance analysts react", focus="news", max_results=6,
-                                    start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
+            q = f"{company} {ticker} {metric_label} guidance analysts react"
+            for attempt in range(2):
+                try:
+                    r = await nimble.search(http, q, focus="news", max_results=6, start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
+                    break
+                except nimble.NimbleError as exc:  # Nimble-side 5xx ("can't download the query results"): one retry
+                    if attempt or "-> 5" not in str(exc):
+                        raise
+                    await asyncio.sleep(1.0)
             desk.street = _as_items(r, 5)
             steps["newswire"].summary = f"{len(r)} stories since Oct 8" + (f" · {', '.join(sorted({x.source for x in desk.street})[:3])}" if r else "")
 
         async with nimble.client(timeout=ENRICH_BUDGET_S) as http_slow:
             tasks = [asyncio.create_task(_timed(steps[sid], fn(), on_change))
                      for sid, fn in (("verify", verify), ("wall", wall), ("social", social), ("newswire", newswire))]
-            _, late = await asyncio.wait(tasks, timeout=ENRICH_BUDGET_S)
-            for t in late:
-                t.cancel()
-            await asyncio.gather(*late, return_exceptions=True)
+            await _run_bounded(tasks, ENRICH_BUDGET_S)
     on_change()
 
 

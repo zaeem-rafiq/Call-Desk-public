@@ -320,7 +320,7 @@ function renderAgents(node, f) {
       v.append(el("span", `vbadge c-${desk.verify.confidence || "na"}`, `VERIFIED · ${(desk.verify.confidence || "?").toUpperCase()}`),
         el("span", "vmeta", `${plural(desk.verify.official_sources, "official source")} · ${desk.verify.run_s ?? "?"}s`));
     } else if (vs && vs.status === "running") v.append(el("span", "vrun", "verification agent running…"));
-    else if (vs && vs.status !== "ok") v.append(el("span", "vmeta", `verification agent ${vs.status}`));
+    else if (vs && vs.status !== "ok") v.append(el("span", "vmeta", vs.summary.startsWith("unavailable") ? "verification agent unavailable" : `verification agent ${vs.status}`));
     if (desk.mock) v.append(el("span", "mock-tag", "MOCK"));
   }
   const srow = node.querySelector(".sf-row");
@@ -339,6 +339,7 @@ function renderAgents(node, f) {
 }
 
 function link(url, text) {
+  if (!/^https?:\/\//i.test(url || "")) return el("span", null, text || url || "");  // never a javascript: or data: href
   const a = el("a", null, text || url);
   a.href = url; a.target = "_blank"; a.rel = "noopener noreferrer";
   return a;

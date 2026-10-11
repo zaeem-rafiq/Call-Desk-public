@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Callable
 
@@ -147,7 +148,7 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
         _apply_confidence(flag, prior_res, web_res, price_res, synthesis)
         flag.status = "checked"
         publish(flag)
-        if config.get("ENRICH", "1") != "0":
+        if (os.environ.get("ENRICH") or config.get("ENRICH") or "1") != "0":  # ENRICH=0 in the shell or .env turns it off
             await _enrich(claim, flag, info, web_res, publish)
         return flag
 
@@ -181,10 +182,17 @@ async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tool
         if flag.web_desk is None:
             return
         found = web_res.data if web_res and web_res.ok and isinstance(web_res.data, dict) else {}
-        await web_desk.enrich(flag.web_desk, company=info.company, ticker=info.ticker, metric_label=flag.metric_label,
-                              new_value=flag.new_value, found=found, mock=bool(found.get("mock")), on_change=lambda: publish(flag))
+        try:
+            await web_desk.enrich(flag.web_desk, company=info.company, ticker=info.ticker, metric_label=flag.metric_label,
+                                  new_value=flag.new_value, found=found, mock=bool(found.get("mock")), on_change=lambda: publish(flag))
+        except Exception as exc:  # noqa: BLE001 - the verdict is already out; an enrichment bug must not undo it
+            observability.capture(exc)
+            for st in flag.web_desk.steps:
+                if st.status == "running":
+                    st.status, st.summary = "failed", f"{type(exc).__name__}: {exc}"[:160]
+            publish(flag)
 
-    await asyncio.gather(cortex_agent(), nimble_desk())
+    await asyncio.gather(cortex_agent(), nimble_desk(), return_exceptions=True)
 
 
 def _apply_synthesis(flag, claim, s, prior_hits, web_hits, prior_res, web_res) -> None:

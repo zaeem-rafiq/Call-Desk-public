@@ -84,3 +84,102 @@ def test_sentry_starts_when_its_key_appears_after_server_start(monkeypatch):
     monkeypatch.setenv("SENTRY_ORG", "acme")
     assert observability.trace_url("abc") == "https://acme.sentry.io/explore/traces/trace/abc/"
     assert observability.trace_url("def") and calls == [1]  # started once
+
+
+def _slow_nimble(monkeypatch, seconds=5.0):
+    from app.tools import nimble
+
+    async def slow(*a, **k):
+        await asyncio.sleep(seconds)
+        return {}
+    for name in ("agent_run", "domain_knowledge", "template_run", "search", "extract"):
+        monkeypatch.setattr(nimble, name, slow)
+
+
+def test_stopping_a_run_silences_the_web_desk(monkeypatch):
+    """A cancelled fact-check must not leave Nimble specialists publishing into the next run."""
+    from app.models import WebDesk
+    from app.tools import web_desk
+
+    _slow_nimble(monkeypatch)
+    calls = []
+
+    async def main():
+        desk = WebDesk()
+        task = asyncio.create_task(web_desk.enrich(desk, company="PepsiCo", ticker="PEP", metric_label="Core EPS growth", new_value=None,
+                                                   found={"broad": [{"url": "https://www.cnbc.com/x", "title": "x"}]}, mock=False,
+                                                   on_change=lambda: calls.append(asyncio.get_running_loop().time())))
+        await asyncio.sleep(0.2)
+        task.cancel()
+        stopped = asyncio.get_running_loop().time()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+        await asyncio.sleep(0.5)
+        return stopped, desk
+
+    stopped, desk = asyncio.run(main())
+    assert not [t for t in calls if t > stopped + 0.05], "a specialist published after the run stopped"
+    assert all(s.status != "running" for s in desk.steps)
+
+
+def test_a_skipped_step_is_not_shown_as_ok(monkeypatch):
+    from app.models import WebDesk
+    from app.tools import web_desk
+
+    _slow_nimble(monkeypatch, seconds=0.01)
+    desk = WebDesk()
+    asyncio.run(web_desk.enrich(desk, company="PepsiCo", ticker="PEP", metric_label="Core EPS growth", new_value=None,
+                                found={"broad": []}, mock=False, on_change=lambda: None))
+    wall = next(s for s in desk.steps if s.id == "wall")
+    assert wall.status == "skipped" and wall.summary == "no news article to open"
+
+
+def test_nimble_billing_limit_shows_as_unavailable(monkeypatch):
+    from app.models import WebDesk
+    from app.tools import nimble, web_desk
+
+    _slow_nimble(monkeypatch, seconds=0.01)
+
+    async def billing(*a, **k):
+        raise nimble.NimbleError("POST /v2/agents/runs -> 402: {'detail': {'message': 'This account cannot be billed'}}")
+    monkeypatch.setattr(nimble, "agent_run", billing)
+    monkeypatch.setattr(web_desk, "_agents_unbillable_until", 0.0)
+    desk = WebDesk()
+    asyncio.run(web_desk.enrich(desk, company="PepsiCo", ticker="PEP", metric_label="Core EPS growth", new_value=None,
+                                found={"broad": []}, mock=False, on_change=lambda: None))
+    verify = next(s for s in desk.steps if s.id == "verify")
+    assert verify.status == "skipped" and verify.summary.startswith("unavailable")
+
+
+def test_snowflake_agent_runs_do_not_queue_behind_each_other(monkeypatch):
+    """Each agent run takes its own connection, so three close flags finish together instead of timing out in turn."""
+    import json
+    import time
+
+    from app.tools import prior_guidance, snowflake_agent
+
+    class Cur:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, *a, **k): time.sleep(0.4)
+        def fetchone(self): return [json.dumps({"content": [{"type": "text", "text": "CONSISTENT. ok"}]})]
+
+    class Conn:
+        def cursor(self): return Cur()
+        def is_closed(self): return False
+        def close(self): pass
+
+    monkeypatch.setattr(prior_guidance, "connect", lambda *a, **k: Conn())
+    monkeypatch.setenv("SNOWFLAKE_DATABASE", "CALLDESK")
+    monkeypatch.setenv("SNOWFLAKE_SCHEMA", "PRIOR")
+
+    async def main():
+        started = time.monotonic()
+        outs = await asyncio.gather(*(snowflake_agent.live_check("PepsiCo", "PEP", "q", "Core EPS growth", None) for _ in range(3)))
+        return time.monotonic() - started, outs
+
+    took, outs = asyncio.run(main())
+    assert all(o.verdict == "CONSISTENT" for o in outs)
+    assert took < 1.0, f"agent runs were serialized ({took:.2f}s for three 0.4 s runs)"

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import queue
 import re
 import threading
 import time
@@ -22,8 +23,8 @@ from . import guidance_history
 
 AGENT = "GUIDANCE_AGENT"
 VERDICTS = ("CONSISTENT", "CONTRADICTS", "NEW", "UNVERIFIABLE")
-_conn = None
-_lock = threading.Lock()  # its own connection: a long agent run must not block the fast search path
+STATEMENT_TIMEOUT_S = 38  # below the 45 s cap in factcheck, so the worker thread ends with the await
+_idle: queue.LifoQueue = queue.LifoQueue(maxsize=4)  # idle connections; each agent run takes its own, so flags run in parallel
 
 
 def agent_name() -> str:
@@ -38,26 +39,33 @@ def question(company: str, ticker: str, quote: str, metric_label: str, new_value
             f"Is the claim consistent with that history?")
 
 
-def _run_sql(body: str) -> str:
-    global _conn
+def _run_sql(body: str, abandoned: threading.Event | None = None) -> str:
+    """One DATA_AGENT_RUN on a pooled connection. No retry: a timed-out agent run is reported, not repeated."""
     from .prior_guidance import connect
 
-    with _lock:
-        for attempt in range(2):
+    if abandoned is not None and abandoned.is_set():
+        raise TimeoutError("abandoned before start")
+    try:
+        conn = _idle.get_nowait()
+        if conn.is_closed():
+            conn = connect()
+    except queue.Empty:
+        conn = connect()
+    ok = False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN(%s, %s)", (agent_name(), body), timeout=STATEMENT_TIMEOUT_S)
+            out = cur.fetchone()[0]
+        ok = True
+        return out
+    finally:
+        if ok:
             try:
-                if _conn is None or _conn.is_closed():
-                    _conn = connect()
-                with _conn.cursor() as cur:
-                    cur.execute("SELECT SNOWFLAKE.CORTEX.DATA_AGENT_RUN(%s, %s)", (agent_name(), body), timeout=40)
-                    return cur.fetchone()[0]
-            except Exception:
-                try:
-                    if _conn is not None:
-                        _conn.close()
-                finally:
-                    _conn = None
-                if attempt == 1:
-                    raise
+                _idle.put_nowait(conn)
+            except queue.Full:
+                conn.close()
+        else:
+            conn.close()
 
 
 def _rows(result_set: dict) -> list[dict]:
@@ -113,7 +121,12 @@ def parse(response: dict) -> SnowflakeAgent:
 async def live_check(company: str, ticker: str, quote: str, metric_label: str, new_value: str | None) -> SnowflakeAgent:
     body = json.dumps({"messages": [{"role": "user", "content": [{"type": "text", "text": question(company, ticker, quote, metric_label, new_value)}]}]})
     started = time.monotonic()
-    raw = await asyncio.to_thread(_run_sql, body)
+    abandoned = threading.Event()
+    try:
+        raw = await asyncio.to_thread(_run_sql, body, abandoned)
+    except BaseException:
+        abandoned.set()  # a cancelled or timed-out await: the worker must not start a run nobody waits for
+        raise
     data = json.loads(raw) if isinstance(raw, str) else raw
     if isinstance(data, dict) and data.get("code") and not data.get("content"):
         raise RuntimeError(f"agent error {data.get('code')}: {str(data.get('message'))[:200]}")
