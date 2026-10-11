@@ -166,7 +166,8 @@ async def _warmup(modes: dict[str, str]) -> None:
 async def _safe_check(claim: Claim, flag: Flag, info: config.CallInfo, publish, audio_now) -> Flag:
     def publish_with_latency(f: Flag) -> None:
         now = audio_now()
-        if f.status == "checked" and now is not None:
+        # Only the first "checked" publish sets the headline latency; later enrichment publishes keep it.
+        if f.status == "checked" and now is not None and f.checked_latency_s is None:
             f.checked_latency_s = round(now - f.t_offset, 1)
         publish(f)
 
