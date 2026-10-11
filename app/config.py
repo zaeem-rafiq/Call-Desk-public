@@ -93,7 +93,8 @@ class CallInfo:
     call_start: datetime
     clip_start_offset_s: float  # offset of the clip into the live call
     audio_path: Path
-    roster: tuple[str, ...] = ()  # "Name (Role)" for executives; analysts are named on the call
+    roster: tuple[str, ...] = ()  # "Name (Role)" for executives
+    analysts: tuple[str, ...] = ()  # "Name (Firm)" for analysts the clip may greet by first name
     call_context: str = ""  # one sentence for the agents: format of the call and when the release came out
     ir_domains: tuple[str, ...] = ()  # official sites for the company's release and remarks
     prices_path: Path = DATA / "prices.csv"
@@ -166,6 +167,7 @@ def call_info(call_id: str | None = None) -> CallInfo:
         clip_start_offset_s=offset,
         audio_path=ROOT / audio,
         roster=tuple(spec.get("roster", [])),
+        analysts=tuple(spec.get("analysts", [])),
         call_context=spec.get("call_context", ""),
         ir_domains=tuple(spec.get("ir_domains", [])),
         prices_path=ROOT / spec["prices"],

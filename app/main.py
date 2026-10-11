@@ -41,8 +41,10 @@ class RunManager:
     def running(self) -> bool:
         return self.task is not None and not self.task.done()
 
-    async def start(self, mode: str, speed: float, start_s: float = 0.0) -> str:
+    async def start(self, mode: str, speed: float, start_s: float = 0.0, call_id: str | None = None) -> str:
         await self.stop()  # the old run must finish publishing "stopped" before the new run's hub reset
+        if call_id:
+            config.set_active_call(call_id)
         run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
         record = mode == "live"
         hub.start_run(run_id, record=record)
@@ -94,7 +96,7 @@ def _promote(run_id: str, summary: dict) -> None:
         hub.finish_run(promote=False)
         log.info("run %s kept out of the replay cache (quality %s vs cached %s)", run_id, quality, cached_quality)
         return
-    latest = hub.finish_run(promote=True)
+    latest = hub.finish_run(promote=True, target=replay.latest_dir())
     if latest:
         (latest / "meta.json").write_text(json.dumps({"run_id": run_id, **summary}, indent=2))
         log.info("replay cache updated from run %s (quality %s)", run_id, quality)
@@ -107,17 +109,20 @@ class RunRequest(BaseModel):
     mode: str | None = None  # live | replay
     speed: float = 1.0  # 1.0 = real time, 0 = as fast as possible
     start_s: float = 0.0  # start this many seconds into the clip (snapped to a chunk boundary)
+    call: str | None = None  # call id from /api/state "calls"; default keeps the active call
 
 
 @app.post("/api/run")
 async def start_run(req: RunRequest) -> dict:
     mode = req.mode or DEFAULT_MODE
-    if mode == "replay" and not replay.available():
-        raise HTTPException(409, "no replay cache yet; run live once first")
+    if req.call and req.call not in {c["id"] for c in config.list_calls()}:
+        raise HTTPException(404, f"unknown call {req.call!r}")
+    if mode == "replay" and not replay.available(req.call):
+        raise HTTPException(409, "no replay cache yet for this call; run live once first")
     if mode not in ("live", "replay"):
         raise HTTPException(400, "mode must be live or replay")
-    run_id = await runs.start(mode, req.speed, max(0.0, req.start_s))
-    return {"run_id": run_id, "mode": mode}
+    run_id = await runs.start(mode, req.speed, max(0.0, req.start_s), req.call)
+    return {"run_id": run_id, "mode": mode, "call": config.active_call_id()}
 
 
 @app.post("/api/stop")
@@ -127,8 +132,11 @@ async def stop_run() -> dict:
 
 
 @app.get("/api/state")
-async def state() -> dict:
-    info = config.call_info()
+async def state(call: str | None = None) -> dict:
+    """State for the active call, or for ?call=<id> (a preview for the call picker; does not switch)."""
+    if call and call not in {c["id"] for c in config.list_calls()}:
+        raise HTTPException(404, f"unknown call {call!r}")
+    info = config.call_info(call)
     return {
         "default_mode": DEFAULT_MODE,
         "running": runs.running,
@@ -136,10 +144,14 @@ async def state() -> dict:
         "position_s": round(runs.start_s + hub.elapsed() * runs.speed, 2) if runs.running else None,
         "speed": runs.speed,
         "integrations": config.integration_modes(),
-        "replay_available": replay.available(),
+        "replay_available": replay.available(info.call_id),
         "audio": info.audio_path.exists(),
-        "call": {"title": info.title, "ticker": info.ticker, "benchmark": info.primary_benchmark,
-                 "clip_start": info.clip_start.isoformat(timespec="seconds")},
+        "audio_url": f"/audio/{info.call_id}.mp3",
+        "active_call": config.active_call_id(),
+        "calls": config.list_calls(),
+        "call": {"id": info.call_id, "title": info.title, "company": info.company, "ticker": info.ticker,
+                 "benchmark": info.primary_benchmark, "benchmarks": list(info.benchmarks),
+                 "session_day": info.session_day.isoformat(), "clip_start": info.clip_start.isoformat(timespec="seconds")},
         "sentry": observability.enabled(),
         "sentry_browser": getattr(observability, "browser_config", lambda: None)(),
     }
@@ -168,9 +180,17 @@ async def events(request: Request) -> StreamingResponse:
 
 @app.get("/audio/call.mp3")
 async def call_audio() -> FileResponse:
-    path = config.call_info().audio_path
+    """Audio of the active call."""
+    return await call_audio_for(config.active_call_id())
+
+
+@app.get("/audio/{call_id}.mp3")
+async def call_audio_for(call_id: str) -> FileResponse:
+    if call_id not in {c["id"] for c in config.list_calls()}:
+        raise HTTPException(404, f"unknown call {call_id!r}")
+    path = config.call_info(call_id).audio_path
     if not path.exists():
-        raise HTTPException(404, "data/call.mp3 not built yet")
+        raise HTTPException(404, f"{path.name} not built yet (scripts/fetch_audio.py)")
     return FileResponse(path, media_type="audio/mpeg")
 
 

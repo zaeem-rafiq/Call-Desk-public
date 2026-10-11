@@ -23,3 +23,7 @@ __pycache__/
 .vscode/
 data/replay/runs/
 data/replay/latest-prev/
+data/replay/*-prev/
+
+# demo video with the call audio: built by scripts/record_demo.py, never published
+docs/media/*.mp4

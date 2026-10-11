@@ -1,17 +1,31 @@
 {
-  "title": "PepsiCo Q3 2026 Earnings Call · Q&A",
+  "title": "PepsiCo Q3 2026 Earnings Call \u00b7 Q&A",
   "company": "PepsiCo",
   "ticker": "PEP",
-  "benchmarks": ["XLP", "SPY"],
+  "benchmarks": [
+    "XLP",
+    "SPY"
+  ],
   "call_start_et": "2026-10-08T08:15:00-04:00",
   "call_context": "PepsiCo's Q3 2026 earnings call on October 8, 2026 was Q&A only; the press release and prepared remarks were posted at about 6 AM ET, so executives often refer to guidance without saying the numbers.",
-  "roster": ["Ravi Pamnani (SVP Investor Relations)", "Ramon Laguarta (Chairman and CEO)", "Steve Schmitt (EVP and CFO)"],
-  "ir_domains": ["pepsico.com", "investors.pepsico.com", "sec.gov"],
+  "roster": [
+    "Ravi Pamnani (SVP Investor Relations)",
+    "Ramon Laguarta (Chairman and CEO)",
+    "Steve Schmitt (EVP and CFO)"
+  ],
   "audio": "data/call.mp3",
   "meta": "data/call_meta.json",
   "prices": "data/prices.csv",
   "prior_close": "data/prior_close.csv",
   "day_close": "data/day_close.csv",
   "prior_dir": "data/prior",
-  "golden": "tests/golden.json"
+  "golden": "tests/golden.json",
+  "analysts": [
+    "Dara Mohsenian (Morgan Stanley)"
+  ],
+  "ir_domains": [
+    "pepsico.com",
+    "investors.pepsico.com",
+    "sec.gov"
+  ]
 }

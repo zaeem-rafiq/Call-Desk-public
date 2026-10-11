@@ -46,12 +46,13 @@ class EventHub:
             self._record_file.close()
             self._record_file = None
 
-    def finish_run(self, promote: bool) -> Path | None:
-        """Close the recording; when promote, copy it to data/replay/latest."""
+    def finish_run(self, promote: bool, target: Path | None = None) -> Path | None:
+        """Close the recording; when promote, copy it to target (default data/replay/latest)."""
         self.close_recording()
         if not (promote and self._record_dir):
             return None
-        latest, prev = REPLAY_DIR / "latest", REPLAY_DIR / "latest-prev"
+        latest = target or REPLAY_DIR / "latest"
+        prev = latest.with_name(latest.name + "-prev")
         if latest.exists():
             if prev.exists():
                 shutil.rmtree(prev)
