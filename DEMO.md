@@ -63,3 +63,13 @@ Delta numbers to have ready:
 ## If a judge asks "can it go faster?" (Gemini Live)
 
 The stage runs the 12-second chunk listener, because its cards are cleaner. A streaming listener on the Gemini Live API (`gemini-3.5-transcribe-live`) is in the code and off by default. It sends the audio to Gemini in real time and extracts claims sentence by sentence. In live tests the PepsiCo EPS flag landed about 5 seconds after the line, against about 11 seconds with chunks. Start it with `LISTENER=live .venv/bin/python -m app.main`. Use it only off stage: it shows more low-value cards.
+
+## Judge questions: short answers
+
+- **"How accurate is it?"** We wrote golden tests from the companies' own releases and run them on the live stack. PepsiCo passes 8/8 and Delta 10/10. Any number not said on the call is labelled "not spoken", with its source.
+- **"How fast?"** The flag appears about 11 seconds after the line, and the verdict about 10 seconds later. The Gemini Live listener gets the flag to about 5 seconds.
+- **"Isn't this just ChatGPT on a transcript?"** No. It listens live, compares each claim with last quarter's guidance in Snowflake, checks the morning release on the live web with Nimble, measures the tape against the sector ETF and peers in Tiger Data, and traces every step in Sentry. Every number shows its source and a confidence score.
+- **"What if a tool fails?"** That part of the confidence score drops to 0 and the card says so. The feed keeps going. If the agent itself fails, the card is marked "agent failed · unreviewed evidence", and it never shows canned answers.
+- **"Does it work on other companies?"** Yes. Delta's call runs on the same engine (see the Delta section above). A new call needs a short config file, its prior guidance, and its price tickers.
+- **"Cost?"** Gemini runs a few cents per call. Nimble agent runs are the paid part: about 2 per PepsiCo play with fresh verification, and 0 in replay.
+- **"Data rights?"** The prior-quarter warehouse holds only the companies' own published guidance. The call audio and vendor price data are not in the public repository; scripts rebuild them locally.
