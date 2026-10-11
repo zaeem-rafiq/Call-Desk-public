@@ -108,11 +108,19 @@ def parse(response: dict) -> SnowflakeAgent:
                         out.citations.append(str(title))
         elif t == "table" and isinstance(inner.get("result_set"), dict) and not out.rows:
             out.rows = _rows(inner["result_set"])
-    # The last text block is the answer; earlier ones are progress notes ("I'll check the guidance history...").
-    final = next((x for x in reversed(texts) if re.search(r"\b(" + "|".join(VERDICTS) + r")\b", x.upper())), texts[-1] if texts else "")
+    # The agent opens its answer with "VERDICT: <WORD>"; only that line decides the verdict (prose can mention others).
+    tagged = re.compile(r"VERDICT:\s*\**\s*(" + "|".join(VERDICTS) + r")\b", re.I)
+    final = next((x for x in reversed(texts) if tagged.search(x)), None)
+    if final is not None:
+        m = tagged.search(final)
+        out.verdict = m.group(1).upper()
+        final = final[m.end():].lstrip(" .:—–-\n*")
+    else:  # older agent spec: first verdict word in the last answer-like block
+        final = next((x for x in reversed(texts) if re.search(r"\b(" + "|".join(VERDICTS) + r")\b", x.upper())), texts[-1] if texts else "")
+        m = re.search(r"\b(" + "|".join(VERDICTS) + r")\b", final.upper())
+        out.verdict = m.group(1) if m else ""
+    final = re.sub(r"\*{1,2}([^*\n]+)\*{1,2}", r"\1", final)  # the card shows plain text, not Markdown bold
     out.answer = re.sub(r"\s+", " ", final).strip()[:900]
-    m = re.search(r"\b(" + "|".join(VERDICTS) + r")\b", out.answer.upper())
-    out.verdict = m.group(1) if m else ""
     out.tools = list(dict.fromkeys(out.tools))
     out.citations = out.citations[:4]
     return out

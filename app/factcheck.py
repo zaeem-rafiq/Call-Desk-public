@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Callable
 
@@ -93,7 +94,7 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
     with observability.agent_transaction(
         "invoke_agent call-desk-fact-checker",
         {"calldesk.flag_id": flag.id, "calldesk.quote": claim.quote, "calldesk.metric": claim.metric, "calldesk.metric_label": flag.metric_label},
-    ) as (trace_id, _txn):
+    ) as (trace_id, txn):
         flag.sentry_trace_id = trace_id
         flag.sentry_trace_url = observability.trace_url(trace_id)
         publish(flag)
@@ -148,6 +149,7 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
         _apply_confidence(flag, prior_res, web_res, price_res, synthesis)
         flag.status = "checked"
         publish(flag)
+        observability.record_verdict(txn, flag)  # after publish: the pipeline's publish sets checked_latency_s
         if (os.environ.get("ENRICH") or config.get("ENRICH") or "1") != "0":  # ENRICH=0 in the shell or .env turns it off
             await _enrich(claim, flag, info, web_res, publish)
         return flag
@@ -172,7 +174,7 @@ async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tool
                 with observability.span("gen_ai.invoke_agent", "invoke_agent snowflake.GUIDANCE_AGENT",
                                         {"gen_ai.agent.name": "snowflake-cortex-guidance-agent", "gen_ai.operation.name": "invoke_agent"}):
                     flag.snowflake_agent = await asyncio.wait_for(snowflake_agent.live_check(
-                        info.company, info.ticker, claim.quote, flag.metric_label, flag.new_value), timeout=45)
+                        info.company, info.ticker, claim.quote, flag.metric_label, flag.new_value, flag.direction), timeout=45)
         except Exception as exc:  # noqa: BLE001 - shown on the card, never fatal
             observability.capture(exc)
             reason = ("the agent took longer than 45 s" if isinstance(exc, (asyncio.TimeoutError, TimeoutError))
@@ -209,15 +211,30 @@ async def _enrich(claim: Claim, flag: Flag, info: config.CallInfo, web_res: tool
     await asyncio.gather(cortex_agent(), nimble_desk(), voice_alert(), return_exceptions=True)
 
 
+def _source_names(text: str, prior_hits: list[dict], web_hits: list[dict]) -> str:
+    """Replace the verdict's internal source ids ([W4], P2) with the site or document they point to."""
+    def name(m: re.Match) -> str:
+        hits, i = (web_hits if m.group(1).upper() == "W" else prior_hits), int(m.group(2)) - 1
+        if not (0 <= i < len(hits)):
+            return "web source" if m.group(1).upper() == "W" else "prior guidance"
+        h = hits[i]
+        return h.get("source") or h.get("doc_title") or h.get("title") or "source"
+    return re.sub(r"\[?\b([WPwp])(\d{1,2})\b\]?", name, text)
+
+
 def _apply_synthesis(flag, claim, s, prior_hits, web_hits, prior_res, web_res) -> None:
     flag.new_value = s.get("new_value") or claim.new_value
-    flag.new_value_source = s.get("new_value_source") or ("spoken" if claim.new_value else "")
+    flag.new_value_source = _source_names(s.get("new_value_source") or ("spoken" if claim.new_value else ""), prior_hits, web_hits)
     prior_value = s.get("prior_value") or claim.prior_value
     direction = s.get("direction") or claim.direction
     numeric = numeric_direction(prior_value, flag.new_value)
     if numeric and direction in ("cut", "raise", "reaffirm") and numeric != direction:
         log.info("direction %s overridden by numbers -> %s (%s vs %s)", direction, numeric, prior_value, flag.new_value)
         direction = numeric
+    if direction in ("cut", "raise") and not (parse_range(prior_value) and parse_range(flag.new_value)):
+        # A CUT/RAISE badge needs numbers on both sides (e.g. no "cut" for a metric the company never guided).
+        log.info("direction %s needs prior and new numbers (%s vs %s) -> n/a", direction, prior_value, flag.new_value)
+        direction = "n/a"
     flag.direction = direction
     flag.prior_value = prior_value
     flag.what_changed = s.get("what_changed", "")

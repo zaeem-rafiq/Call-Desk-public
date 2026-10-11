@@ -142,7 +142,7 @@ orchestration:
   tool_not_accessible: reject{budget}
 instructions:
   orchestration: "Use Guidance_History for the numbers: filter by TICKER and METRIC, order by AS_OF_DATE, and return AS_OF_DATE, AS_OF_EVENT, VALUE_TEXT, STATUS and QUALIFIER. Use Prior_Docs_Search only for wording and context. Never invent a number."
-  response: "Start with exactly one verdict word, judged against the latest guidance before the call. CONSISTENT: the claim matches that guidance or sits inside its range (a reaffirm or a narrowing inside the range). NEW: the claim changes the guidance (a cut or raise) or adds a metric with no prior guidance. CONTRADICTS: the claim misstates what was guided before (a wrong prior number or wrong direction). UNVERIFIABLE: no guidance line exists for this metric. Then at most two sentences: the latest guidance before the call with its date, and how it evolved."
+  response: "Your first line must be exactly 'VERDICT: <WORD>' with one word, judged against the latest guidance before the call. CONSISTENT: the claim matches that guidance or sits inside its range (a reaffirm or a narrowing inside the range). NEW: the claim changes the guidance (a cut or raise) or adds a metric with no prior guidance. CONTRADICTS: the claim misstates what was guided before (a wrong prior number or wrong direction). UNVERIFIABLE: no guidance line exists for this metric. Then at most two sentences: the latest guidance before the call with its date, and how it evolved."
 tools:
   - tool_spec:
       type: "cortex_analyst_text_to_sql"

@@ -300,6 +300,8 @@ function renderTrajectory(node, f) {
 // ---------- agents strip (Nimble web desk + Snowflake Cortex Agent) ----------
 const STEP_SHORT = { primary: "IR", broad: "WEB", serp: "GOOGLE", sitemap: "MAP", verify: "AGENT", wall: "WALL", social: "REDDIT", newswire: "NEWS" };
 const VERDICT_CLASS = { CONSISTENT: "ok", NEW: "new", CONTRADICTS: "bad", UNVERIFIABLE: "na" };
+// Plain labels: a bare "NEW" next to a red CUT badge read like a contradiction.
+const VERDICT_LABEL = { CONSISTENT: "MATCHES PRIOR GUIDANCE", NEW: "CHANGES PRIOR GUIDANCE", CONTRADICTS: "CONFLICTS WITH PRIOR", UNVERIFIABLE: "NO PRIOR GUIDANCE" };
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -329,6 +331,7 @@ function renderAgents(node, f) {
     const dots = nrow.querySelector(".desk-dots");
     dots.replaceChildren();
     for (const s of desk.steps) {
+      if (s.status === "skipped") continue;  // skipped specialists stay in the detail panel, off the card face
       const d = el("span", `dot ${s.status} ${s.phase}`, STEP_SHORT[s.id] || s.id.toUpperCase());
       d.title = stepTitle(s);
       dots.append(d);
@@ -353,7 +356,7 @@ function renderAgents(node, f) {
     v.replaceChildren();
     if (sa.status === "running") v.append(el("span", "vrun", "Cortex Search + Cortex Analyst running…"));
     else if (sa.status === "failed") v.append(el("span", "vbadge", "NO ANSWER"));
-    else v.append(el("span", `vbadge v-${VERDICT_CLASS[sa.verdict] || "na"}`, sa.verdict || "ANSWERED"),
+    else v.append(el("span", `vbadge v-${VERDICT_CLASS[sa.verdict] || "na"}`, VERDICT_LABEL[sa.verdict] || sa.verdict || "ANSWERED"),
       el("span", "vmeta", `${plural((sa.tools || []).length, "tool")} · ${plural((sa.rows || []).length, "row")} · ${sa.ms !== null && sa.ms !== undefined ? (sa.ms / 1000).toFixed(0) : "?"}s`));
     if (sa.mock) v.append(el("span", "mock-tag", "MOCK"));
     const answer = sa.status === "failed" ? `No answer: ${sa.error || "the agent did not finish"}.`

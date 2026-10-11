@@ -412,14 +412,17 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
         async def newswire():
             q = f"{company} {ticker} {metric_label} guidance analysts react"
             async with nimble.client(timeout=20.0) as news_http:  # focus=news runs subagents: slow under load
-                for attempt in range(2):
+                try:
+                    r = await nimble.search(news_http, q, focus="news", max_results=6, start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
+                except (nimble.NimbleError, httpx.TimeoutException) as exc:
+                    if isinstance(exc, nimble.NimbleError) and "-> 5" not in str(exc):
+                        raise
+                    # focus=news often returns 500 "can't download the query response": fall back to plain search once.
                     try:
-                        r = await nimble.search(news_http, q, focus="news", max_results=6, start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
-                        break
-                    except (nimble.NimbleError, httpx.TimeoutException) as exc:  # Nimble 5xx or a slow answer: one retry
-                        if attempt or (isinstance(exc, nimble.NimbleError) and "-> 5" not in str(exc)):
-                            raise
-                        await asyncio.sleep(1.0)
+                        r = await nimble.search(news_http, f"{q} news", max_results=6, start_date=CALL_DATE, exclude_domains=TRANSCRIPT_HOSTS)
+                    except (nimble.NimbleError, httpx.TimeoutException):
+                        steps["newswire"].status, steps["newswire"].summary = "skipped", "unavailable: Nimble news search returned errors"
+                        return
             desk.street = _as_items(r, 5)
             steps["newswire"].summary = f"{len(r)} stories since Oct 8" + (f" · {', '.join(sorted({x.source for x in desk.street})[:3])}" if r else "")
 

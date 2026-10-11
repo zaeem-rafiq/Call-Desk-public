@@ -220,3 +220,27 @@ def test_snowflake_agent_runs_do_not_queue_behind_each_other(monkeypatch):
     took, outs = asyncio.run(main())
     assert all(o.verdict == "CONSISTENT" for o in outs)
     assert took < 1.0, f"agent runs were serialized ({took:.2f}s for three 0.4 s runs)"
+
+
+def test_verdict_labels_need_numbers_and_never_show_internal_ids():
+    from app.claims import Claim
+    from app.factcheck import _apply_synthesis
+    from app.models import Flag
+
+    claim = Claim(quote="margins below plan", speaker="CFO", claim_type="margin", metric="operating_margin", direction="cut", materiality=0.8)
+    flag = Flag(id="f", call_ts="2026-10-08T08:20:17-04:00", t_offset=1.0, speaker="CFO", quote=claim.quote, claim_type="margin",
+                metric="operating_margin", metric_label="Operating margin", direction="cut")
+    web = [{"source": "investors.pepsico.com", "url": "https://investors.pepsico.com/x"}] * 4
+    _apply_synthesis(flag, claim, {"direction": "cut", "new_value": "below plan", "new_value_source": "W4"}, [], web, None, None)
+    assert flag.direction == "n/a", "no CUT badge without numbers on both sides"
+    assert flag.new_value_source == "investors.pepsico.com"
+    _apply_synthesis(flag, claim, {"direction": "cut", "new_value": "+2.5% to +3.5%", "prior_value": "low end of +5% to +7%",
+                                   "new_value_source": "Q3 2026 release [W1]"}, [], web, None, None)
+    assert flag.direction == "cut" and flag.new_value_source == "Q3 2026 release investors.pepsico.com"
+
+
+def test_tagged_cortex_verdict_line_wins_over_prose():
+    from app.tools import snowflake_agent
+
+    out = snowflake_agent.parse({"content": [{"type": "text", "text": "VERDICT: CONSISTENT\nIt does not CONTRADICT; the range +2% to +4% holds."}]})
+    assert out.verdict == "CONSISTENT" and out.answer.startswith("It does not")
