@@ -6,6 +6,10 @@ Paste each section into the matching field of the MLH or Devpost form. Every num
 
 Call Desk
 
+## Code
+
+https://github.com/zaeem-rafiq/Call-Desk-public. It is the full commit history, without the call audio, third-party transcripts or vendor price data; `scripts/fetch_audio.py` and `scripts/fetch_prices.py` rebuild those locally.
+
 ## Tagline (one line)
 
 Hears earnings calls live and fact-checks every market-moving line in seconds.

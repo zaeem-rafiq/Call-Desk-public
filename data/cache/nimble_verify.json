@@ -1,12 +1,95 @@
 {
  "pepsico|organic revenue growth": {
+  "confidence": "medium",
+  "reasoning": "Medium confidence - cells fill rate is 60% and trust per claim ratio is 67%",
+  "answer": {
+   "source": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
+   "before": "2% to 4%"
+  },
+  "claims": [
+   {
+    "claim": "before",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "PepsiCo Revenue Tops Forecasts as Global Volumes ...",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/pepsico-revenue-tops-forecasts-global-105426178.html",
+      "source": "finance.yahoo.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "PepsiCo (PEP) Earnings Preview July 9, 2026: Analysts ...",
+      "url": "https://tradingkey.com/analysis/stocks/us-stocks/262012922-pepsico-pep-earnings-preview-july-9-2026-q2-tradingkey",
+      "source": "tradingkey.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   },
+   {
+    "claim": "source",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "PDF Q3 2026 8-K - Exhibit 99 - investors.pepsico.com",
+      "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-earnings-release.pdf",
+      "source": "investors.pepsico.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "PDF Third Quarter 2026 Earnings Prepared Management Remarks 10/8/26",
+      "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
+      "source": "investors.pepsico.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   }
+  ],
+  "sources": [
+   {
+    "title": "PepsiCo Revenue Tops Forecasts as Global Volumes ...",
+    "url": "https://finance.yahoo.com/markets/stocks/articles/pepsico-revenue-tops-forecasts-global-105426178.html",
+    "source": "finance.yahoo.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "PepsiCo (PEP) Earnings Preview July 9, 2026: Analysts ...",
+    "url": "https://tradingkey.com/analysis/stocks/us-stocks/262012922-pepsico-pep-earnings-preview-july-9-2026-q2-tradingkey",
+    "source": "tradingkey.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "PDF Q3 2026 8-K - Exhibit 99 - investors.pepsico.com",
+    "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-earnings-release.pdf",
+    "source": "investors.pepsico.com",
+    "snippet": "primary \u00b7 news",
+    "published": ""
+   },
+   {
+    "title": "PDF Third Quarter 2026 Earnings Prepared Management Remarks 10/8/26",
+    "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
+    "source": "investors.pepsico.com",
+    "snippet": "primary \u00b7 news",
+    "published": ""
+   }
+  ],
+  "official_sources": 4,
+  "run_s": 18.6,
+  "cached_at": "Oct 11 14:49 ET"
+ },
+ "pepsico|core eps growth": {
   "confidence": "high",
   "reasoning": "High confidence - cells fill rate is 100% and trust per claim ratio is 100%",
   "answer": {
-   "change": "narrowed from prior 2%\u20134% range to approximately 3%",
+   "change": "Revised down from 5%-7% to 2.5%-3.5%",
    "source": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
-   "before": "2% to 4%",
-   "now": "approximately 3%"
+   "now": "2.5% to 3.5% growth",
+   "before": "approximately 5% to 7% growth"
   },
   "claims": [
    {
@@ -21,9 +104,9 @@
       "published": ""
      },
      {
-      "title": "PepsiCo slashes forecast, deepens cost cuts as North America recovery ...",
-      "url": "https://reuters.com/business/retail-consumer/pepsico-cuts-annual-core-profit-forecast-higher-costs-hurt-margins-2026-10-08",
-      "source": "reuters.com",
+      "title": "PepsiCo cuts full-year profit forecast in Q3 2026 earnings",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/pepsico-cuts-full-profit-forecast-111635656.html",
+      "source": "finance.yahoo.com",
       "snippet": "",
       "published": ""
      }
@@ -34,9 +117,23 @@
     "confidence": "high",
     "citations": [
      {
-      "title": "PepsiCo (PEP) Q2 2026 earnings - CNBC",
-      "url": "https://cnbc.com/2026/07/09/pepsico-pep-q2-2026-earnings.html",
-      "source": "cnbc.com",
+      "title": "PDF Q2 2026 8-K - Exhibit 99 - investors.pepsico.com",
+      "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q2-2026-earnings-release.pdf",
+      "source": "investors.pepsico.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "pep-20260709 - SEC.gov",
+      "url": "https://sec.gov/Archives/edgar/data/77476/0000077476-26-000037.txt",
+      "source": "sec.gov",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Document - SEC.gov",
+      "url": "https://sec.gov/Archives/edgar/data/77476/000007747626000037/q220268-kxexhibit991.htm",
+      "source": "sec.gov",
       "snippet": "",
       "published": ""
      }
@@ -67,16 +164,9 @@
       "published": ""
      },
      {
-      "title": "PepsiCo slashes forecast, deepens cost cuts as North America recovery ...",
-      "url": "https://reuters.com/business/retail-consumer/pepsico-cuts-annual-core-profit-forecast-higher-costs-hurt-margins-2026-10-08",
-      "source": "reuters.com",
-      "snippet": "",
-      "published": ""
-     },
-     {
-      "title": "PepsiCo (PEP) Q2 2026 earnings - CNBC",
-      "url": "https://cnbc.com/2026/07/09/pepsico-pep-q2-2026-earnings.html",
-      "source": "cnbc.com",
+      "title": "PepsiCo cuts full-year profit forecast in Q3 2026 earnings",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/pepsico-cuts-full-profit-forecast-111635656.html",
+      "source": "finance.yahoo.com",
       "snippet": "",
       "published": ""
      }
@@ -88,145 +178,34 @@
     "title": "PepsiCo (PEP) Q3 2026 Earnings Call Transcript - The Motley Fool",
     "url": "https://fool.com/earnings/call-transcripts/2026/10/08/pepsico-pep-q3-2026-earnings-call-transcript",
     "source": "fool.com",
-    "snippet": "primary \u00b7 news",
-    "published": ""
-   },
-   {
-    "title": "PepsiCo (PEP) Q2 2026 earnings - CNBC",
-    "url": "https://cnbc.com/2026/07/09/pepsico-pep-q2-2026-earnings.html",
-    "source": "cnbc.com",
     "snippet": "primary \u00b7 official",
-    "published": ""
-   },
-   {
-    "title": "PepsiCo slashes forecast, deepens cost cuts as North America recovery ...",
-    "url": "https://reuters.com/business/retail-consumer/pepsico-cuts-annual-core-profit-forecast-higher-costs-hurt-margins-2026-10-08",
-    "source": "reuters.com",
-    "snippet": "primary \u00b7 news",
-    "published": ""
-   },
-   {
-    "title": "PDF Third Quarter 2026 Earnings Prepared Management Remarks 10/8/26",
-    "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
-    "source": "investors.pepsico.com",
-    "snippet": "primary \u00b7 news",
-    "published": ""
-   }
-  ],
-  "official_sources": 4,
-  "run_s": 15.1,
-  "cached_at": "Oct 11 12:15 ET"
- },
- "pepsico|core eps growth": {
-  "confidence": "high",
-  "reasoning": "High confidence - cells fill rate is 80% and trust per claim ratio is 100%",
-  "answer": {
-   "source": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
-   "before": "5% to 7%",
-   "now": "2.5% to 3.5%"
-  },
-  "claims": [
-   {
-    "claim": "source",
-    "confidence": "high",
-    "citations": [
-     {
-      "title": "PDF Third Quarter 2026 Earnings Prepared Management Remarks 10/8/26",
-      "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
-      "source": "investors.pepsico.com",
-      "snippet": "",
-      "published": ""
-     }
-    ]
-   },
-   {
-    "claim": "before",
-    "confidence": "high",
-    "citations": [
-     {
-      "title": "PDF Q2 2026 8-K - Exhibit 99 - investors.pepsico.com",
-      "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q2-2026-earnings-release.pdf",
-      "source": "investors.pepsico.com",
-      "snippet": "",
-      "published": ""
-     },
-     {
-      "title": "PepsiCo Inc. (via Public) / PepsiCo Reports Second-Quarter 2026 Results ...",
-      "url": "https://publicnow.com/view/65F2EB95BE2568A3FD9CA0F9A3725F11DC5569E7",
-      "source": "publicnow.com",
-      "snippet": "",
-      "published": ""
-     },
-     {
-      "title": "PDF 09-Jul-2026 PepsiCo, Inc. (PEP) Q2 2026 Earnings Call",
-      "url": "https://investor.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q2-2026-pep-transcript.pdf",
-      "source": "investor.pepsico.com",
-      "snippet": "",
-      "published": ""
-     }
-    ]
-   },
-   {
-    "claim": "now",
-    "confidence": "high",
-    "citations": [
-     {
-      "title": "PDF Q3 2026 8-K - Exhibit 99 - investors.pepsico.com",
-      "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-earnings-release.pdf",
-      "source": "investors.pepsico.com",
-      "snippet": "",
-      "published": ""
-     },
-     {
-      "title": "PDF Third Quarter 2026 Earnings Prepared Management Remarks 10/8/26",
-      "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
-      "source": "investors.pepsico.com",
-      "snippet": "",
-      "published": ""
-     },
-     {
-      "title": "PepsiCo (PEP) Q3 2026 Earnings Call Transcript - The Motley Fool",
-      "url": "https://fool.com/earnings/call-transcripts/2026/10/08/pepsico-pep-q3-2026-earnings-call-transcript",
-      "source": "fool.com",
-      "snippet": "",
-      "published": ""
-     }
-    ]
-   }
-  ],
-  "sources": [
-   {
-    "title": "PDF Q3 2026 8-K - Exhibit 99 - investors.pepsico.com",
-    "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-earnings-release.pdf",
-    "source": "investors.pepsico.com",
-    "snippet": "primary \u00b7 news",
-    "published": ""
-   },
-   {
-    "title": "PDF Third Quarter 2026 Earnings Prepared Management Remarks 10/8/26",
-    "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q3-2026-prepared-management-remarks.pdf",
-    "source": "investors.pepsico.com",
-    "snippet": "primary \u00b7 news",
-    "published": ""
-   },
-   {
-    "title": "PepsiCo (PEP) Q3 2026 Earnings Call Transcript - The Motley Fool",
-    "url": "https://fool.com/earnings/call-transcripts/2026/10/08/pepsico-pep-q3-2026-earnings-call-transcript",
-    "source": "fool.com",
-    "snippet": "primary \u00b7 news",
-    "published": ""
-   },
-   {
-    "title": "PepsiCo (PEP) Q3 2026 earnings - CNBC",
-    "url": "https://cnbc.com/2026/10/08/pepsico-pep-q3-2026-earnings.html",
-    "source": "cnbc.com",
-    "snippet": "primary \u00b7 news",
     "published": ""
    },
    {
     "title": "PDF Q2 2026 8-K - Exhibit 99 - investors.pepsico.com",
     "url": "https://investors.pepsico.com/docs/pepsico-5v9wci20/media/Files/investors/q2-2026-earnings-release.pdf",
     "source": "investors.pepsico.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "PepsiCo cuts full-year profit forecast in Q3 2026 earnings",
+    "url": "https://finance.yahoo.com/markets/stocks/articles/pepsico-cuts-full-profit-forecast-111635656.html",
+    "source": "finance.yahoo.com",
+    "snippet": "primary \u00b7 news",
+    "published": ""
+   },
+   {
+    "title": "pep-20260709 - SEC.gov",
+    "url": "https://sec.gov/Archives/edgar/data/77476/0000077476-26-000037.txt",
+    "source": "sec.gov",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "Document - SEC.gov",
+    "url": "https://sec.gov/Archives/edgar/data/77476/000007747626000037/q220268-kxexhibit991.htm",
+    "source": "sec.gov",
     "snippet": "primary \u00b7 official",
     "published": ""
    },
@@ -238,9 +217,9 @@
     "published": ""
    }
   ],
-  "official_sources": 16,
-  "run_s": 40.0,
-  "cached_at": "Oct 11 12:15 ET"
+  "official_sources": 7,
+  "run_s": 16.6,
+  "cached_at": "Oct 11 14:47 ET"
  },
  "delta air lines|fuel price \u00b7 q4 2026": {
   "confidence": "low",
@@ -692,5 +671,85 @@
   "official_sources": 0,
   "run_s": 9.0,
   "cached_at": "Oct 11 13:31 ET"
+ },
+ "delta air lines|fuel price": {
+  "confidence": "low",
+  "reasoning": "Low confidence - cells fill rate is 0% and trust per claim ratio is 0%",
+  "answer": {},
+  "claims": [],
+  "sources": [],
+  "official_sources": 0,
+  "run_s": 39.1,
+  "cached_at": "Oct 11 13:37 ET"
+ },
+ "delta air lines|free cash flow": {
+  "confidence": "low",
+  "reasoning": "Low confidence - cells fill rate is 0% and trust per claim ratio is 0%",
+  "answer": {},
+  "claims": [],
+  "sources": [],
+  "official_sources": 0,
+  "run_s": 14.8,
+  "cached_at": "Oct 11 13:43 ET"
+ },
+ "delta air lines|cash returns": {
+  "confidence": "low",
+  "reasoning": "Low confidence - trust per claim ratio is 25%",
+  "answer": {
+   "change": "Cash returns guidance from October 9, 2026 release: no specific figure for fiscal 2026 cash returns (share repurchases/dividends) guidance is present in the available results; Cash returns guidance from July 10, 2026 release: similarly no specific figure is present in the available results.",
+   "now": "Not stated in available search results",
+   "before": "Not stated in available search results"
+  },
+  "claims": [
+   {
+    "claim": "change",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "before",
+    "confidence": "low",
+    "citations": []
+   },
+   {
+    "claim": "now",
+    "confidence": "high",
+    "citations": [
+     {
+      "title": "Delta Air Lines Announces September Quarter 2026 Financial Results",
+      "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+      "source": "ir.delta.com",
+      "snippet": "",
+      "published": ""
+     },
+     {
+      "title": "Delta Air Lines Announces June Quarter 2026 Financial Results",
+      "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-June-Quarter-2026-Financial-Results/default.aspx",
+      "source": "ir.delta.com",
+      "snippet": "",
+      "published": ""
+     }
+    ]
+   }
+  ],
+  "sources": [
+   {
+    "title": "Delta Air Lines Announces September Quarter 2026 Financial Results",
+    "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-September-Quarter-2026-Financial-Results/default.aspx",
+    "source": "ir.delta.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   },
+   {
+    "title": "Delta Air Lines Announces June Quarter 2026 Financial Results",
+    "url": "https://ir.delta.com/news/news-details/2026/Delta-Air-Lines-Announces-June-Quarter-2026-Financial-Results/default.aspx",
+    "source": "ir.delta.com",
+    "snippet": "primary \u00b7 official",
+    "published": ""
+   }
+  ],
+  "official_sources": 2,
+  "run_s": 16.6,
+  "cached_at": "Oct 11 13:53 ET"
  }
 }
