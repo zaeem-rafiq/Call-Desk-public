@@ -37,6 +37,8 @@ Measured in real time with all five sponsors live (run 20261011-115458): the red
 | 1:40 | Click **Open trace in Sentry** | "And every flag is a Sentry trace: the agent run, each Gemini call, and each tool call, with timings." |
 | 1:50 | Back to the feed | "Gemini, Nimble, Tiger Data, Snowflake and Sentry. Call Desk: every market-moving line, fact-checked in seconds." |
 
+Optional closer, if time allows: open http://localhost:8000/api/export.md in a new tab. Say: "When the call ends, the IR team gets a morning note it can paste and send: every change, its source, and the market reaction."
+
 ## Numbers to have ready if asked
 
 - FY2026 core EPS growth: +2.5% to +3.5%, from the low end of +5% to +7%.
