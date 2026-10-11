@@ -47,7 +47,7 @@ function renderPills(modes = {}) {
     const mode = modes[key] || "mock";
     const li = el("li", `pill ${mode}`);
     li.title = mode === "live" ? `${label}: live` : `${label}: mock data (key missing or MOCK_ flag set)`;
-    li.append(el("span", null, label.toUpperCase()), el("span", "pill-mode", mode.toUpperCase()));
+    li.append(el("span", null, label.toUpperCase()), el("span", mode === "live" ? "pill-mode sr-only" : "pill-mode", mode.toUpperCase()));
     ul.append(li);
   }
 }
@@ -272,6 +272,10 @@ function shortDate(iso) {
   const [y, m, d] = iso.split("-").map(Number);
   return `${MONTHS[m - 1]} ${d} ’${String(y).slice(2)}`;
 }
+const longDate = (iso) => {  // "2026-10-09" → "Oct 9, 2026"
+  const [y, m, d] = (iso || "").split("-").map(Number);
+  return y && m && d ? `${MONTHS[m - 1]} ${d}, ${y}` : "";
+};
 const compact = (v) => (v || "").replace(/^approximately\s+/i, "~").replace(/\s*\(.*\)$/, "");
 
 function renderTrajectory(node, f) {
@@ -300,7 +304,7 @@ function renderTrajectory(node, f) {
 }
 
 // ---------- agents strip (Nimble web desk + Snowflake Cortex Agent) ----------
-const STEP_SHORT = { primary: "IR", broad: "WEB", serp: "GOOGLE", sitemap: "MAP", verify: "AGENT", wall: "WALL", social: "REDDIT", newswire: "NEWS" };
+const STEP_NAME = { primary: "IR + SEC", broad: "web", serp: "Google", sitemap: "site map", wall: "wall-breaker", social: "Reddit", newswire: "news" };
 const VERDICT_CLASS = { CONSISTENT: "ok", NEW: "new", CONTRADICTS: "bad", UNVERIFIABLE: "na" };
 // Plain labels: a bare "NEW" next to a red CUT badge read like a contradiction.
 const VERDICT_LABEL = { CONSISTENT: "MATCHES PRIOR GUIDANCE", NEW: "CHANGES PRIOR GUIDANCE", CONTRADICTS: "CONFLICTS WITH PRIOR", UNVERIFIABLE: "NO PRIOR GUIDANCE" };
@@ -332,12 +336,14 @@ function renderAgents(node, f) {
   if (desk) {
     const dots = nrow.querySelector(".desk-dots");
     dots.replaceChildren();
-    for (const s of desk.steps) {
-      if (s.status === "skipped") continue;  // skipped specialists stay in the detail panel, off the card face
-      const d = el("span", `dot ${s.status} ${s.phase}`, STEP_SHORT[s.id] || s.id.toUpperCase());
+    // Failed and skipped specialists stay in the detail panel; the verification agent has its own badge.
+    const shown = desk.steps.filter((s) => s.id !== "verify" && s.status !== "skipped" && s.status !== "failed");
+    if (shown.length) dots.append(el("span", "desk-count", `${plural(shown.length, "specialist")}:`));
+    shown.forEach((s, i) => {
+      const d = el("span", `desk-name ${s.status}`, STEP_NAME[s.id] || s.label);
       d.title = stepTitle(s);
-      dots.append(d);
-    }
+      dots.append(...(i ? [el("span", "desk-sep", "·"), d] : [d]));
+    });
     const v = nrow.querySelector(".agent-verdict");
     v.replaceChildren();
     const vs = desk.steps.find((s) => s.id === "verify");
@@ -359,7 +365,7 @@ function renderAgents(node, f) {
   if (sa) {
     const v = srow.querySelector(".agent-verdict");
     v.replaceChildren();
-    if (sa.status === "running") v.append(el("span", "vrun", "Cortex Search + Cortex Analyst running…"));
+    if (sa.status === "running") v.append(el("span", "vrun", "checking prior guidance…"));
     else if (sa.status === "failed") v.append(el("span", "vbadge", "NO ANSWER"));
     else v.append(el("span", `vbadge v-${VERDICT_CLASS[sa.verdict] || "na"}`, VERDICT_LABEL[sa.verdict] || sa.verdict || "ANSWERED"),
       el("span", "vmeta", `${plural((sa.tools || []).length, "tool")} · ${plural((sa.rows || []).length, "row")} · ${sa.ms !== null && sa.ms !== undefined ? (sa.ms / 1000).toFixed(0) : "?"}s`));
@@ -616,7 +622,10 @@ function connect() {
     }
     if (s.duration) { state.duration = s.duration; $("#duration").textContent = fmtTime(s.duration); }
     if (s.call?.clip_start) state.clipStart = new Date(s.call.clip_start);
-    if (s.transcriber) $("#transcriber").textContent = s.transcriber === "gemini" ? `Gemini · ${state.chunkS || 12}s chunks` : "MOCK transcript (no Gemini key)";
+    if (s.transcriber) {
+      $("#transcriber").textContent = s.transcriber !== "gemini" ? "MOCK transcript (no Gemini key)"
+        : s.listener === "gemini-live" ? "Gemini Live · streaming" : `Gemini · ${state.chunkS || 12}s chunks`;
+    }
     if (s.state === "running") { if (!state.running) state.runStartedAt = performance.now() - s.t * 1000; setRunning(true); }
     if (s.state === "running" && s.speed && s.speed !== 1 && state.hasAudio) audio.playbackRate = Math.min(4, s.speed);
     if (s.state === "done") setRunning(false, s.mode === "replay" ? "REPLAY DONE" : "CALL ENDED");
@@ -646,11 +655,12 @@ function renderCallPicker(calls, current) {
   const box = $("#call-picker");
   box.replaceChildren();
   box.hidden = !calls || calls.length < 2;
+  $("#call-name").classList.toggle("pickable", !box.hidden);  // the title shows the call; an invisible menu over it switches
   if (box.hidden) return;
   const select = el("select", "call-select");
   select.setAttribute("aria-label", "Earnings call");
   for (const c of calls) {
-    const opt = el("option", null, `${c.ticker} · ${c.company}`);
+    const opt = el("option", null, c.title);
     opt.value = c.id;
     opt.selected = c.id === current;
     if (!c.audio) opt.textContent += " (no audio)";
@@ -681,6 +691,7 @@ async function init() {
   if (audioUrl && audio.getAttribute("src") !== audioUrl) { audio.src = audioUrl; audio.load(); }
   $("#ticker").textContent = s.call.ticker;
   $("#call-title").textContent = s.call.title;
+  $("#call-date").textContent = longDate(s.call.session_day);
   document.title = `Call Desk · ${s.call.ticker}`;
   document.querySelector('.mode button[data-mode="replay"]').disabled = !s.replay_available;
   if (!s.audio) $("#audio-state").textContent = "NO AUDIO FILE — MOCK CLOCK";

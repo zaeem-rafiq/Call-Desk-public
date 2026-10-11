@@ -8,4 +8,5 @@
 .tiger-sql[open] .tiger-toggle::after { content: " ▾"; }
 .tiger-sql > summary:hover .tiger-toggle, .tiger-sql > summary:focus-visible .tiger-toggle { color: var(--text); }
 .tiger-sql > summary:focus-visible { outline: 1px solid var(--line-2); outline-offset: 2px; border-radius: 2px; }
+.tiger-source { margin: 6px 0 0; font: 10px/1.5 var(--mono); letter-spacing: 0.04em; color: var(--faint); }
 .tiger-sql > pre { margin-top: 6px; max-height: 300px; overflow: auto; }

@@ -33,8 +33,32 @@ function ensureToggle() {
   if (controls) controls.prepend(toggle); else bar.append(toggle);
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+// A speaker with sound waves (on) or a cross (off), drawn in the button's text colour.
+function speakerIcon(on) {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("class", "vt-icon");
+  svg.setAttribute("aria-hidden", "true");
+  const paths = [["M2 6h2.5L8 3v10L4.5 10H2z", "fill"],
+    ...(on ? [["M10.5 5.5a3.5 3.5 0 0 1 0 5", "stroke"], ["M12.5 3.5a6.4 6.4 0 0 1 0 9", "stroke"]]
+      : [["M10.5 6l4 4M14.5 6l-4 4", "stroke"]])];
+  for (const [d, kind] of paths) {
+    const path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    if (kind === "fill") path.setAttribute("fill", "currentColor");
+    else { path.setAttribute("fill", "none"); path.setAttribute("stroke", "currentColor"); path.setAttribute("stroke-width", "1.5"); path.setAttribute("stroke-linecap", "round"); }
+    svg.append(path);
+  }
+  return svg;
+}
+
 function paintToggle() {
-  toggle.textContent = muted ? "🔇 Alerts off" : "🔊 Alerts on";
+  const label = document.createElement("span");
+  label.className = "vt-label";
+  label.textContent = muted ? "Alerts off" : "Alerts on";
+  toggle.replaceChildren(speakerIcon(!muted), label);
   toggle.setAttribute("aria-pressed", String(!muted));
   toggle.classList.toggle("off", muted);
 }
@@ -75,7 +99,7 @@ export function onFlagVoice(f) {
       line.className = "voice-line";
       const label = document.createElement("span");
       label.className = "voice-label";
-      label.textContent = "🔊 SPOKEN ALERT";
+      label.append(speakerIcon(true), "Spoken alert");
       const text = document.createElement("span");
       text.className = "voice-text";
       line.append(label, " · ", text);

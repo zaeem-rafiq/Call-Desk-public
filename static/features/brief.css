@@ -27,7 +27,7 @@
 .call-brief > .brief-bullets {
   flex: 0 1 auto; min-height: 36px; overflow-y: auto;
   margin: 5px 0 0; padding-left: 16px;
-  font-size: 12.5px; line-height: 1.4; color: var(--text);
+  font-size: 13px; line-height: 1.4; color: var(--text);
 }
 .brief-bullets li + li { margin-top: 2px; }
 .brief-bullets li::marker { color: var(--faint); }
