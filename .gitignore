@@ -7,6 +7,10 @@
 data/raw/
 data/seed_state.json
 
+# third-party call transcripts: kept on the developer's machine, never published
+data/q3_transcript.txt
+data/prior/*_transcript.txt
+
 # python
 .venv/
 __pycache__/
