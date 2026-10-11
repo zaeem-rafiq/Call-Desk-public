@@ -92,15 +92,35 @@ async def run(speed: float) -> tuple[list[dict], dict, list[dict]]:
     return list(flags.values()), summary, hub.history
 
 
+def score_recording(run_dir: Path) -> int:
+    """Golden checks on a recorded run (live, streaming or a replay cache), using each flag's final state."""
+    events = [json.loads(line) for line in (run_dir / "events.jsonl").read_text().splitlines() if line.strip()]
+    status = next((e["data"] for e in events if e["event"] == "status"), {})
+    flags: dict[str, dict] = {}
+    for e in events:
+        if e["event"] == "flag":
+            flags[e["data"]["id"]] = e["data"]
+    results = check(list(flags.values()))
+    print(f"\nrecorded run {run_dir.name} · listener={status.get('listener', status.get('transcriber'))} · flags={len(flags)}")
+    for name, ok, detail in results:
+        print(f"  {'PASS' if ok else 'FAIL'}  {name:<44} {detail}")
+    passed = sum(ok for _, ok, _ in results)
+    print(f"\n{'PASS' if passed == len(results) else 'FAIL'}: {passed}/{len(results)} checks")
+    return 0 if passed == len(results) else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--speed", type=float, default=0.0)
     parser.add_argument("--save", action="store_true")
     parser.add_argument("--call", default=None, help="call id from data/calls/ (default: the default call)")
+    parser.add_argument("--run", default=None, help="score a recorded run folder (events.jsonl) instead of running the pipeline")
     args = parser.parse_args()
     if args.call:
         config.set_active_call(args.call)
     GOLDEN.update(json.loads(config.call_info().golden_path.read_text()))
+    if args.run:
+        return score_recording(Path(args.run))
     observability.init_sentry()
     modes = config.integration_modes()
     started = time.monotonic()

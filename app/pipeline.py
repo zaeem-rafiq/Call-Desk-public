@@ -8,6 +8,7 @@ background fact-check fills in evidence, price reaction and confidence.
 from __future__ import annotations
 
 import asyncio
+import re
 import json
 import logging
 from collections import deque
@@ -46,6 +47,7 @@ class MockTranscriber:
 
 
 VAGUE_STREAMING_BAR = 0.8
+CHUNK_LEAD_IN_S = 2.5
 HEDGE_AFTER_S = 7.0  # a normal chunk returns in 3-5 s; past this, send a duplicate and take the first answer
 
 
@@ -118,6 +120,7 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
     pre = asyncio.create_task(preroll()) if k0 > 0 else None
     errors = 0
     cards: dict[str, str] = {}  # card slot -> flag id
+    card_flags: dict[str, tuple[Flag, Claim]] = {}  # card slot -> (flag, the claim that made it)
     context: deque[str] = deque(maxlen=2)
     checks: list[asyncio.Task] = []
     n_chunks = max(1, int(-(-duration // chunk_s)))
@@ -145,6 +148,8 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         for claim in sorted(result.claims, key=lambda c: c.materiality):
             slot = card_slot(claim)
             attached_to = cards.get(slot) or (None if best[slot] is claim else "same chunk")
+            if slot in card_flags:
+                _complete_value(*card_flags[slot], claim, publish_flag)
             # Streaming hears one sentence at a time, so vague commentary (no value, no guidance direction)
             # needs a higher bar before it becomes a card.
             vague = streaming and not claim.new_value and claim.direction not in ("cut", "raise", "reaffirm")
@@ -167,6 +172,7 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
             )
             now = audio_now()
             flag.latency_s = None if now is None else round(now - t, 1)
+            card_flags[slot] = (flag, claim)
             publish_flag(flag)
             checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag, audio_now)))
 
@@ -180,20 +186,22 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
             start, end = k * chunk_s, min((k + 1) * chunk_s, duration)
             if speed > 0:
                 await asyncio.sleep(max(0.0, (end - start_s) / speed - (hub.elapsed() - t0)))
-            wav = call_audio.wav_chunk(start, end) if call_audio else None
+            # 2.5 s of lead-in, so a number spoken across a chunk boundary is heard whole.
+            a_start = max(0.0, start - CHUNK_LEAD_IN_S) if k > k0 else start
+            wav = call_audio.wav_chunk(a_start, end) if call_audio else None
             if pre is not None and k == k0:
                 try:
                     context.extend(await asyncio.wait_for(asyncio.shield(pre), timeout=6))
                 except Exception as exc:  # noqa: BLE001 - no context is better than a late first chunk
                     log.warning("preroll context unavailable: %s", exc)
             try:
-                result = await transcriber.process(k, start, end, wav, list(context))
+                result = await transcriber.process(k, a_start, end, wav, list(context))
             except Exception as exc:  # noqa: BLE001 - a bad chunk must not stop the call
                 observability.capture(exc)
                 hub.publish("error", {"chunk": k, "message": f"chunk {k} failed: {type(exc).__name__}"})
                 errors += 1
                 continue
-            handle(k, start, end, result)
+            handle(k, a_start, end, result)
 
         await asyncio.gather(*checks)
 
@@ -218,6 +226,28 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
                "errors": errors, "degraded": degraded}
     hub.publish("status", summary)
     return summary
+
+
+_DANGLING = re.compile(r"(\bto|\band|\bfrom|\bbetween|-|–)\s*$", re.I)
+
+
+def _truncated(value: str | None) -> bool:
+    """A spoken value cut by a chunk boundary, e.g. "$5.10 to"."""
+    return bool(value) and bool(_DANGLING.search(value.strip()))
+
+
+def _complete_value(flag: Flag, first: Claim, later: Claim, publish) -> None:
+    """A later mention completes a value the first mention left truncated: update the existing card."""
+    if not (_truncated(first.new_value) and later.new_value and not _truncated(later.new_value)):
+        return
+    head = first.new_value.strip()
+    merged = later.new_value if head.split()[0] in later.new_value else f"{head} {later.new_value.strip()}"
+    log.info("completing %s: %r -> %r", flag.id, first.new_value, merged)
+    first.new_value = merged  # the fact-check reads the claim; if it has not used it yet, it gets the full value
+    if flag.new_value in (None, "", head) or _truncated(flag.new_value):
+        flag.new_value = merged
+        if flag.status == "checked":
+            publish(flag)
 
 
 async def _warmup(modes: dict[str, str]) -> None:

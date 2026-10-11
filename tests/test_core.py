@@ -153,3 +153,18 @@ def test_quarter_and_full_year_guidance_get_separate_cards():
     assert period_key("FY2026") == period_key("full year") == "fy" and period_key("2027") == "2027"
     assert card_slot(c("Q4 2026")) != card_slot(c("FY2026"))
     assert card_slot(c(None)) == card_slot(c(None))
+
+
+def test_truncated_spoken_value_is_completed_by_the_next_mention():
+    from app.claims import Claim
+    from app.models import Flag
+    from app.pipeline import _complete_value, _truncated
+
+    first = Claim(quote="q", speaker="s", claim_type="guidance", metric="eps", direction="cut", new_value="$5.10 to", materiality=0.9)
+    later = Claim(quote="q", speaker="s", claim_type="guidance", metric="eps", direction="cut", new_value="$5.10 to $5.60 per share", materiality=0.9)
+    flag = Flag(id="f1", status="checked", call_ts="2026-10-09T10:18:41-04:00", t_offset=200, speaker="s", quote="q",
+                claim_type="guidance", metric="eps", metric_label="Adjusted EPS", direction="cut", new_value="$5.10 to")
+    published = []
+    assert _truncated("$5.10 to") and not _truncated("$5.10 to $5.60")
+    _complete_value(flag, first, later, published.append)
+    assert flag.new_value == "$5.10 to $5.60 per share" and first.new_value == flag.new_value and published
