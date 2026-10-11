@@ -14,7 +14,7 @@ https://github.com/zaeem-rafiq/Call-Desk-public. It is the full commit history, 
 
 ## One-line pitch (at most 140 characters)
 
-Listens to company earnings calls live and shows what just changed, with proof, in seconds.
+The stock moves the moment a boss says “we'll earn less than we said.” Call Desk tells you how much less, with proof, in seconds.
 
 ## Description
 

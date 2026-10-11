@@ -26,7 +26,7 @@ Measured in real time with all five sponsors live (final stage run 20261011-1344
 
 ## The pitch in one breath
 
-"When a company's boss mentions a big change on a call with investors, Call Desk finds the exact number and shows you the source, in seconds."
+"The stock moves the moment a boss says 'we'll earn less than we said.' Call Desk tells you how much less, with proof, in seconds."
 
 ## Plain words on stage
 
