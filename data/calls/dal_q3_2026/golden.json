@@ -1,0 +1,119 @@
+{
+ "_source": "Delta Air Lines Q3 2026 release p.2-3 (October 9, 2026) and the CFO's spoken outlook in data/calls/dal_q3_2026/call.mp3, verified in data/raw/dal/q3_2026_outlook.md. Prior guidance: Q2 2026 release (July 10, 2026) in data/calls/dal_q3_2026/prior/. All numbers below are spoken in the clip by Erik Snell (CFO). The Q4 revenue outlook (+~20% on ~3% capacity) is spoken on the call but outside this clip, so it is not checked here.",
+ "spoken_flags": [
+  {
+   "name": "Full-year EPS guidance cut heard on the call",
+   "metric_any": [
+    "eps",
+    "core_eps_growth"
+   ],
+   "direction": "cut",
+   "quote_contains": "5.10"
+  },
+  {
+   "name": "Full-year free cash flow guidance cut heard on the call",
+   "metric_any": [
+    "free_cash_flow"
+   ],
+   "direction": "cut",
+   "quote_contains": "free cash flow"
+  },
+  {
+   "name": "Q4 EPS guidance heard on the call",
+   "metric_any": [
+    "eps",
+    "core_eps_growth"
+   ],
+   "quote_contains": "1.15"
+  },
+  {
+   "name": "Q4 operating margin guidance heard on the call",
+   "metric": "operating_margin",
+   "quote_contains": "7"
+  },
+  {
+   "name": "Q4 fuel price of $4.25 per gallon heard on the call",
+   "metric_any": [
+    "fuel_price",
+    "input_costs"
+   ],
+   "quote_contains": "4.25"
+  },
+  {
+   "name": "Next-year low-single-digit unit cost growth",
+   "metric_any": [
+    "outlook_next_year",
+    "unit_cost_growth"
+   ]
+  },
+  {
+   "name": "Year-end gross leverage of 2.2x versus approx. 2x guided",
+   "metric_any": [
+    "leverage"
+   ],
+   "quote_contains": "2.2"
+  }
+ ],
+ "guidance_lines": [
+  {
+   "name": "Full-year adjusted EPS",
+   "label_any": [
+    "eps",
+    "earnings per share"
+   ],
+   "label_none": [
+    "q4",
+    "4q",
+    "fourth",
+    "december",
+    "quarter",
+    "growth"
+   ],
+   "direction": "cut",
+   "new": [
+    5.1,
+    5.6
+   ],
+   "prior_contains": [
+    "6.5",
+    "7.5"
+   ]
+  },
+  {
+   "name": "Full-year free cash flow",
+   "label_any": [
+    "free cash flow",
+    "fcf"
+   ],
+   "direction": "cut",
+   "new": [
+    2.5,
+    2.5
+   ],
+   "prior_contains": [
+    "3",
+    "4"
+   ]
+  },
+  {
+   "name": "Q4 operating margin",
+   "label_all": [
+    "margin"
+   ],
+   "label_any": [
+    "q4",
+    "4q",
+    "fourth",
+    "december"
+   ],
+   "label_none": [
+    "gross"
+   ],
+   "new": [
+    7,
+    9
+   ],
+   "prior_contains": []
+  }
+ ]
+}

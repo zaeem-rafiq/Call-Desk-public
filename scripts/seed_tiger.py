@@ -81,11 +81,11 @@ def main() -> int:
     if not url:
         print("TIGER_DATABASE_URL is not set; Tiger stays in mock mode.")
         return 1
-    bars = pd.read_csv(config.DATA / "prices.csv")
-    session_day = pd.Timestamp(bars["ts"].iloc[0]).tz_convert(config.ET).date()
-    ticks = bar_ticks(bars)
-    prior = pd.read_csv(config.DATA / "prior_close.csv")
-    day = pd.read_csv(config.DATA / "day_close.csv")
+    calls = [config.call_info(c["id"]) for c in config.list_calls()]
+    calls = [c for c in calls if c.prices_path.exists()]
+    if not calls:
+        print("no price files found (run scripts/fetch_prices.py)")
+        return 1
 
     with psycopg.connect(url, autocommit=True, connect_timeout=15) as conn:
         version = conn.execute("SELECT extversion FROM pg_extension WHERE extname = 'timescaledb'").fetchone()
@@ -102,18 +102,24 @@ def main() -> int:
         conn.execute("CREATE INDEX IF NOT EXISTS bars_1m_ticker_bucket ON bars_1m (ticker, bucket DESC)")
         conn.execute(REFERENCE)
 
-        lo, hi = min(t[0] for t in ticks), max(t[0] for t in ticks)
-        conn.execute("DELETE FROM price_ticks WHERE ts >= %s AND ts <= %s", (lo, hi))
-        with conn.cursor() as cur, cur.copy("COPY price_ticks (ts, ticker, price, volume) FROM STDIN") as copy:
-            for row in ticks:
-                copy.write_row(row)
-        for kind, df in (("prior", prior), ("day", day)):
-            for r in df.itertuples(index=False):
-                conn.execute(
-                    "INSERT INTO reference_close (session_day, ticker, kind, close) VALUES (%s, %s, %s, %s) "
-                    "ON CONFLICT (session_day, ticker, kind) DO UPDATE SET close = EXCLUDED.close",
-                    (session_day, r.ticker, kind, float(r.close)),
-                )
+        loaded = []
+        for info in calls:
+            bars = pd.read_csv(info.prices_path)
+            ticks = bar_ticks(bars)
+            tickers = sorted(bars["ticker"].unique().tolist())
+            lo, hi = min(t[0] for t in ticks), max(t[0] for t in ticks)
+            conn.execute("DELETE FROM price_ticks WHERE ticker = ANY(%s) AND ts >= %s AND ts <= %s", (tickers, lo, hi))
+            with conn.cursor() as cur, cur.copy("COPY price_ticks (ts, ticker, price, volume) FROM STDIN") as copy:
+                for row in ticks:
+                    copy.write_row(row)
+            for kind, path in (("prior", info.prior_close_path), ("day", info.day_close_path)):
+                for r in pd.read_csv(path).itertuples(index=False):
+                    conn.execute(
+                        "INSERT INTO reference_close (session_day, ticker, kind, close) VALUES (%s, %s, %s, %s) "
+                        "ON CONFLICT (session_day, ticker, kind) DO UPDATE SET close = EXCLUDED.close",
+                        (info.session_day, r.ticker, kind, float(r.close)),
+                    )
+            loaded.append((info, tickers, lo, hi, len(ticks)))
         conn.execute("CALL refresh_continuous_aggregate('bars_1m', NULL, NULL)")
         # Historical demo data is immutable: move it to the columnstore now instead of waiting for the policy.
         for (chunk,) in conn.execute("SELECT c::text FROM show_chunks('price_ticks') c").fetchall():
@@ -133,15 +139,13 @@ def main() -> int:
         except psycopg.Error as exc:
             print(f"refresh policy not added: {exc.diag.message_primary}")
 
-        n_ticks = conn.execute("SELECT count(*) FROM price_ticks WHERE ts >= %s AND ts <= %s", (lo, hi)).fetchone()[0]
-        n_bars = conn.execute("SELECT ticker, count(*) FROM bars_1m WHERE bucket >= %s AND bucket <= %s GROUP BY ticker ORDER BY ticker",
-                              (lo, hi)).fetchall()
-        check = conn.execute(
-            "SELECT close FROM bars_1m WHERE ticker = 'PEP' AND bucket <= %s ORDER BY bucket DESC LIMIT 1",
-            (config.call_info().clip_start,),
-        ).fetchone()
-    print(f"loaded {n_ticks} ticks for {session_day}; bars_1m rows: {dict(n_bars)}")
-    print(f"PEP close at clip start ({config.call_info().clip_start:%H:%M} ET): {check[0] if check else 'n/a'}")
+        for info, tickers, lo, hi, n in loaded:
+            n_bars = conn.execute("SELECT ticker, count(*) FROM bars_1m WHERE ticker = ANY(%s) AND bucket >= %s AND bucket <= %s "
+                                  "GROUP BY ticker ORDER BY ticker", (tickers, lo, hi)).fetchall()
+            check = conn.execute("SELECT close FROM bars_1m WHERE ticker = %s AND bucket <= %s ORDER BY bucket DESC LIMIT 1",
+                                 (info.ticker, info.clip_start)).fetchone()
+            print(f"{info.call_id}: {n} ticks for {info.session_day}; bars_1m rows {dict(n_bars)}; "
+                  f"{info.ticker} at clip start ({info.clip_start:%H:%M} ET): {check[0] if check else 'n/a'}")
     return 0
 
 

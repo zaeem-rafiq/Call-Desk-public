@@ -1,0 +1,70 @@
+{
+  "source_url": "https://www.youtube.com/watch?v=Qz6QYihnIB4",
+  "source_description": "Public YouTube re-upload of Delta Air Lines' September quarter 2026 earnings call (channel 'Castify Earnings Call', title 'Delta Air Lines Inc ($DAL) Q3 2026 Earnings Call', uploaded 2026-10-09, 4069 s, no login). Downloaded with yt-dlp (format 251 Opus) and converted to mp3. The full call is included: operator, prepared remarks and Q&A.",
+  "official_webcast_url": "https://events.q4inc.com/attendee/802834583",
+  "official_webcast_note": "Listed in Delta's IR event feed (ir.delta.com) as 'Delta Air Lines 3Q 2026 Earnings Webcast', 10/09/2026 10:00:00. The page is a JavaScript app on the Q4 events platform, which normally asks for registration before playback. It was not opened or used.",
+  "alternate_source_url": null,
+  "alternate_source_note": "No other full-call upload was found on YouTube. Other search hits were commentary videos or AI podcasts, not the call.",
+  "full_audio_path": "data/raw/dal/dal_q3_2026_full.mp3",
+  "full_duration_s": 4069.021,
+  "clip_path": "data/calls/dal_q3_2026/call.mp3",
+  "clip_start_s": 921.2,
+  "clip_end_s": 1188.1,
+  "clip_duration_s": 266.9,
+  "clip_format": "mp3, mono, 24 kHz, 64 kbps CBR, 30 ms fade-in, 60 ms fade-out",
+  "clip_first_words": "During the quarter, we further expanded self-service options in the Fly Delta app and completed the rollout of Delta Concierge to all SkyMiles members.",
+  "clip_last_words": "As we move toward our long-term gross leverage target of 1x, we remain committed to increasing returns to shareholders. Now, I'll turn it back to Julie for analyst Q&A.",
+  "clip_speakers": [
+    "Dan Janki (Chief Operating Officer), end of his operations remarks (0:00-0:48)",
+    "Erik Snell (Chief Financial Officer), full prepared remarks on results and outlook (0:48-4:26)"
+  ],
+  "recording_starts_at_call_start": true,
+  "recording_starts_at_call_start_explanation": "The file opens with the operator's welcome ('Good morning everyone and welcome to the Delta Airlines September quarter 2026 financial results conference call') at 0.0 s. There is no hold music or pre-roll, so offset 0 is the start of the call program. The file carries no wall-clock time, so the exact ET time of that moment is assumed, not measured.",
+  "call_start_et": "2026-10-09T10:00:00-04:00",
+  "assumed_call_start_et": "2026-10-09T10:00:00-04:00",
+  "operator_lead_in_detected_s": 0.0,
+  "estimated_clip_start_et": "2026-10-09T10:15:21-04:00",
+  "estimated_clip_end_et": "2026-10-09T10:19:48-04:00",
+  "window_source": "Full-call whisper transcript data/raw/dal/dal_q3_2026_full_whisper.srt, 15:21.2 to 19:48.1. Cross-checked against the public transcript data/raw/dal/platformaeronaut_dal_3q26_transcript_fulltext.txt.",
+  "window_location_method": {
+    "whisper_full_call_segments_s": [
+      921.06,
+      1187.93
+    ],
+    "rms_energy_and_word_timing_s": {
+      "speech_before_ends": 920.3,
+      "clip_first_word_onset": 921.7,
+      "clip_last_word_ends": 1187.55,
+      "next_word_onset": 1188.3
+    },
+    "confirmation": "Re-transcribed data/calls/dal_q3_2026/call.mp3 with whisper.cpp base.en (data/raw/dal/call_clip_whisper.srt). It begins with 'During the quarter we further expanded self-service options...' and ends with '...Now I'll turn it back to Julie for analyst Q&A.' with no trailing 'Thank you, Eric'.",
+    "model": "whisper.cpp ggml-base.en.bin (sha1 137c40403d78fd54d454da0f9bd998f78703390c)"
+  },
+  "spoken_guidance_in_clip": [
+    {"t": 37.6, "speaker": "Dan Janki (COO)", "text": "over the next several years we are positioned to more than double MRO revenue while expanding margins"},
+    {"t": 56.4, "speaker": "Erik Snell (CFO)", "text": "Q3 actual: earnings of $1.72 per share and an operating margin of 9.4% (Q3 guidance was $2.00 to $2.50 and 11% to 13%)"},
+    {"t": 64.4, "speaker": "Erik Snell (CFO)", "text": "Q3 actual: pre-tax profit $1.5 billion; $1.6 billion fuel increase, more than $500 million above guidance"},
+    {"t": 76.1, "speaker": "Erik Snell (CFO)", "text": "Q3 actual: fuel $3.61 per gallon including a 13-cent refinery benefit (Q3 guidance was about $3.15)"},
+    {"t": 84.4, "speaker": "Erik Snell (CFO)", "text": "Q4 refinery benefit roughly three times the September quarter level"},
+    {"t": 96.3, "speaker": "Erik Snell (CFO)", "text": "Q3 actual: non-fuel unit costs up 7.3% on flat capacity"},
+    {"t": 114.0, "speaker": "Erik Snell (CFO)", "text": "Q3 free cash flow $460 million; year to date $1.9 billion"},
+    {"t": 127.5, "speaker": "Erik Snell (CFO)", "text": "Pay down more than $2 billion of debt this year; year-end gross leverage 2.2x (prior guidance approx. 2x)"},
+    {"t": 157.1, "speaker": "Erik Snell (CFO)", "text": "Q4 all-in fuel price $4.25 per gallon including a refinery benefit of about $0.40 (forward curve as of October 2)"},
+    {"t": 171.6, "speaker": "Erik Snell (CFO)", "text": "Q4 non-fuel unit cost growth to improve one to two points sequentially"},
+    {"t": 181.3, "speaker": "Erik Snell (CFO)", "text": "Next year: low-single-digit unit cost growth"},
+    {"t": 191.5, "speaker": "Erik Snell (CFO)", "text": "Q4 EPS $1.15 to $1.65; operating margin 7% to 9%"},
+    {"t": 200.8, "speaker": "Erik Snell (CFO)", "text": "Full-year EPS now $5.10 to $5.60 (was $6.50 to $7.50); free cash flow approximately $2.5 billion (was $3 to $4 billion)"},
+    {"t": 210.1, "speaker": "Erik Snell (CFO)", "text": "Outlook includes a refinery benefit of more than $700 million"},
+    {"t": 217.2, "speaker": "Erik Snell (CFO)", "text": "Roughly $6 billion increase in fuel expense this year"},
+    {"t": 233.4, "speaker": "Erik Snell (CFO)", "text": "Long-term: margins and returns to the mid-teens; gross leverage target 1x"}
+  ],
+  "notes": [
+    "Delta's call was at 10:00 a.m. ET on Friday, October 9, 2026 (Delta's September 18 announcement and the IR event feed). The release was posted at 6:30 a.m. ET.",
+    "The clip covers the CFO's whole prepared section, which holds the Q4 and full-year outlook numbers. It does not include the Q4 revenue outlook ('approximately 20 percent year-over-year on roughly 3 percent capacity growth'), which CCO Joe Esposito spoke at 10:57-11:22 in the full audio, more than 6 minutes earlier.",
+    "The clip starts in the 1.3 s pause before 'During the quarter' and ends in the 0.7 s pause before Julie Stewart's 'Thank you, Eric'.",
+    "Clip ET times assume the operator began at exactly 10:00:00 ET. Conference calls often start 0-2 minutes late, so treat clip ET times as +/- 2 minutes.",
+    "Whisper base.en misspells some names ('Eric' for Erik, 'Delta Consey Air' for Delta Concierge, 'pitch' for Fitch, 'full recurve' for forward curve).",
+    "Source peaks reach 0 dBFS in the upload; no loudness change was applied. Clip mean volume is -17.0 dB.",
+    "Full-call whisper SRT: data/raw/dal/dal_q3_2026_full_whisper.srt. Clip whisper SRT (clip-relative times): data/raw/dal/call_clip_whisper.srt."
+  ]
+}

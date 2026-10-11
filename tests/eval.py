@@ -28,7 +28,7 @@ from app import config, observability, pipeline  # noqa: E402
 from app.claims import parse_range  # noqa: E402
 from app.hub import EventHub  # noqa: E402
 
-GOLDEN = json.loads((ROOT / "tests" / "golden.json").read_text())
+GOLDEN: dict = {}
 
 
 def _label_ok(label: str, spec: dict) -> bool:
@@ -67,14 +67,14 @@ def check(flags: list[dict]) -> list[tuple[str, bool, str]]:
              for f in flags for r in f.get("related_changes", [])]
     for spec in GOLDEN["guidance_lines"]:
         cands = [r for r in rows if _label_ok(r["label"], spec)]
-        good = [r for r in cands if r["direction"] == spec["direction"] and _value_ok(r["new"], spec["new"])
+        good = [r for r in cands if r["direction"] == spec.get("direction", r["direction"]) and _value_ok(r["new"], spec["new"])
                 and all(x in (r["prior"] or "") for x in spec["prior_contains"])]
         if good:
             r = good[0]
             results.append((spec["name"], True, f"{r['prior']} → {r['new']} ({r['direction']}, {r['from']})"))
         else:
             seen = "; ".join(f"{r['prior']} → {r['new']} ({r['direction']})" for r in cands[:2]) or "not found"
-            results.append((spec["name"], False, f"expected {spec['direction']} to {spec['new']}; saw {seen}"))
+            results.append((spec["name"], False, f"expected {spec.get('direction', 'any')} to {spec['new']}; saw {seen}"))
     return results
 
 
@@ -96,7 +96,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--speed", type=float, default=0.0)
     parser.add_argument("--save", action="store_true")
+    parser.add_argument("--call", default=None, help="call id from data/calls/ (default: the default call)")
     args = parser.parse_args()
+    if args.call:
+        config.set_active_call(args.call)
+    GOLDEN.update(json.loads(config.call_info().golden_path.read_text()))
     observability.init_sentry()
     modes = config.integration_modes()
     started = time.monotonic()

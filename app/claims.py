@@ -28,6 +28,12 @@ METRICS: dict[str, str] = {
     "cash_returns": "Cash returns",
     "productivity": "Productivity savings",
     "input_costs": "Input costs",
+    "eps": "Adjusted EPS",
+    "free_cash_flow": "Free cash flow",
+    "fuel_price": "Fuel price",
+    "unit_cost_growth": "Unit cost growth",
+    "capacity": "Capacity",
+    "leverage": "Leverage",
     "mix": "Mix",
     "marketing_investment": "Marketing investment",
     "outlook_next_year": "Next-year outlook",
@@ -51,6 +57,7 @@ class Claim(BaseModel):
     prior_value: str | None = Field(default=None, description="Prior value if the speaker states it, else null")
     new_value: str | None = Field(default=None, description="New or current value as stated, e.g. '+2.5% to +3.5%'")
     materiality: float = Field(description="0-1: how much this could move the stock or peers' models")
+    period: str | None = Field(default=None, description="Period the claim is about, e.g. 'Q4 2026', 'FY2026', 'Q3 2026' for reported results, '2027'; null if unclear")
     start: float = Field(default=0.0, description="Seconds from the start of this chunk where the quote begins")
 
 
@@ -110,4 +117,22 @@ def card_slot(claim: Claim) -> str:
     the same metric never swallows a guidance change. The catch-all metric "other" dedupes by value."""
     if claim.metric == "other":
         return dedupe_key(claim)
-    return f"{claim.metric}|{'guidance' if claim.claim_type == 'guidance' else 'results'}"
+    return f"{claim.metric}|{'guidance' if claim.claim_type == 'guidance' else 'results'}|{period_key(claim.period)}"
+
+
+_QUARTER = re.compile(r"\b(?:q([1-4])|([1-4])q|(first|second|third|fourth) quarter)\b")
+_ORDINAL = {"first": "1", "second": "2", "third": "3", "fourth": "4"}
+
+
+def period_key(period: str | None) -> str:
+    """'Q4 2026' / 'fourth quarter' -> 'q4'; 'FY2026' / 'full year' / '2026' -> 'fy'; '2027' -> '2027'; None -> ''."""
+    if not period:
+        return ""
+    p = period.lower()
+    m = _QUARTER.search(p)
+    if m:
+        return "q" + (m.group(1) or m.group(2) or _ORDINAL[m.group(3)])
+    years = re.findall(r"20\d\d", p)
+    if "full" in p or "fy" in p or "year" in p:
+        return "fy" if not years or years[0] == "2026" else years[0]
+    return ("fy" if years[0] == "2026" else years[0]) if years else ""

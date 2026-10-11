@@ -1,0 +1,18 @@
+{
+  "title": "Delta Air Lines Q3 2026 Earnings Call",
+  "company": "Delta Air Lines",
+  "ticker": "DAL",
+  "benchmarks": ["JETS", "SPY"],
+  "call_start_et": "2026-10-09T10:00:00-04:00",
+  "call_context": "Delta's Q3 2026 earnings call on October 9, 2026 opened with spoken prepared remarks by management, so guidance numbers are said aloud; the press release came out at 6:30 AM ET.",
+  "roster": ["Julie Stewart (VP Investor Relations)", "Ed Bastian (CEO)", "Dan Janki (Chief Operating Officer)", "Joe Esposito (Chief Commercial Officer)", "Erik Snell (CFO)"],
+  "analysts": [],
+  "ir_domains": ["ir.delta.com", "news.delta.com", "sec.gov"],
+  "audio": "data/calls/dal_q3_2026/call.mp3",
+  "meta": "data/calls/dal_q3_2026/call_meta.json",
+  "prices": "data/calls/dal_q3_2026/prices.csv",
+  "prior_close": "data/calls/dal_q3_2026/prior_close.csv",
+  "day_close": "data/calls/dal_q3_2026/day_close.csv",
+  "prior_dir": "data/calls/dal_q3_2026/prior",
+  "golden": "data/calls/dal_q3_2026/golden.json"
+}

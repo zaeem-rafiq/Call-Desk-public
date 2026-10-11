@@ -141,3 +141,15 @@ def test_no_card_is_titled_other():
     assert metric_label("other", "macro") == "Macro commentary"
     assert metric_label("other", None) == "Commentary"
     assert metric_label("input_costs") == "Input costs"
+
+
+def test_quarter_and_full_year_guidance_get_separate_cards():
+    from app.claims import Claim, card_slot, period_key
+
+    def c(period):
+        return Claim(quote="q", speaker="s", claim_type="guidance", metric="eps", direction="cut", materiality=0.9, period=period)
+
+    assert period_key("Q4 2026") == period_key("fourth quarter") == "q4"
+    assert period_key("FY2026") == period_key("full year") == "fy" and period_key("2027") == "2027"
+    assert card_slot(c("Q4 2026")) != card_slot(c("FY2026"))
+    assert card_slot(c(None)) == card_slot(c(None))
