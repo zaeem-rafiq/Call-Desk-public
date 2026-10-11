@@ -21,13 +21,13 @@ export function renderBrief(data) {
   const box = root();
   if (!box || !data) return;
   const head = el("div", "brief-head");
-  head.append(el("span", "brief-label", "SNOWFLAKE CORTEX · END-OF-CALL BRIEF"));
+  head.append(el("span", "brief-label", "SNOWFLAKE CORTEX · CALL SUMMARY"));
   if (data.mock) head.append(el("span", "mock-tag", "MOCK"));
   const parts = [head];
 
   if (data.status === "running") {
     const line = el("div", "brief-running");
-    line.append(el("span", "spinner"), el("span", null, "Writing the brief in Snowflake…"));
+    line.append(el("span", "spinner"), el("span", null, "Writing the summary in Snowflake…"));
     parts.push(line);
   } else if (data.status === "done") {
     parts.push(el("p", "brief-headline", data.headline));
@@ -36,7 +36,7 @@ export function renderBrief(data) {
     parts.push(list);
     const n = data.rows_written || 0;
     const secs = typeof data.ms === "number" ? ` · ${(data.ms / 1000).toFixed(1)} s` : "";
-    const meta = el("span", "brief-meta", `${n} flag${n === 1 ? "" : "s"} written to CALL_FLAGS · ${data.model || "AI_COMPLETE"}${secs}`);
+    const meta = el("span", "brief-meta", `${n} card${n === 1 ? "" : "s"} saved in Snowflake · ${data.model || "AI_COMPLETE"}${secs}`);
     if (data.sql) {
       // The meta line is the SQL toggle: one compact footer row, the query unfolds below it.
       const det = el("details", "brief-sql");

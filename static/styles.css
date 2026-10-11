@@ -44,7 +44,7 @@ a { color: var(--blue); }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 /* ---------- top bar ---------- */
-/* One row on laptops; below 1280 px the integration status moves to a second row; phones get three short rows. */
+/* One row from 1440 px; below that the integration status moves to a second row; phones get three short rows. */
 .topbar {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -58,6 +58,7 @@ a { color: var(--blue); }
 }
 .brand { grid-area: brand; display: flex; align-items: center; gap: 10px; }
 .logo {
+  flex: none;
   width: 22px; height: 22px; border-radius: 5px;
   background:
     linear-gradient(135deg, transparent 45%, var(--red) 46%, var(--red) 56%, transparent 57%),
@@ -272,6 +273,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .neg { color: var(--red); }
 .market-stats .lbl { color: var(--faint); font-size: 10px; letter-spacing: 0.08em; }
 .close-line { margin-top: 2px; font-size: 12px; }
+.hindsight { margin: 0 6px; padding: 1px 4px; border: 1px dashed var(--line-2); border-radius: 3px; font: 10px var(--mono); letter-spacing: 0.02em; color: var(--faint); cursor: help; }
 
 .conf { display: flex; align-items: center; gap: 10px; margin-top: 12px; font: 11px var(--mono); }
 .conf-label { color: var(--faint); letter-spacing: 0.1em; text-transform: uppercase; font-size: 10px; }
@@ -389,7 +391,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .rows th { text-align: left; color: var(--faint); font-weight: 500; padding: 3px 6px 3px 0; border-bottom: 1px solid var(--line); }
 .rows td { padding: 3px 6px 3px 0; color: var(--text); border-bottom: 1px solid var(--line); }
 
-@media (max-width: 1279px) {
+@media (max-width: 1439px) {
   .topbar { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "brand meta controls" ". pills pills"; }
 }
 @media (max-width: 1023px) {
@@ -406,6 +408,10 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 }
 @media (max-width: 640px) {
   .topbar { padding: 10px 16px; }
+  .brand { gap: 8px; }
+  .brand-name { letter-spacing: 0.12em; }
+  .controls { gap: 6px; }
+  .mode button { padding: 0 8px; letter-spacing: 0.06em; }
   .call-date { display: none; }
   /* icon-only buttons; the hidden labels stay readable by screen readers */
   .voice-toggle .vt-label, .note-link .nl-label, .play #play-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

@@ -4,13 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Call Desk</title>
-  <meta name="description" content="Hears earnings calls live and fact-checks every market-moving line in seconds.">
+  <meta name="description" content="Listens to company earnings calls live and shows what just changed, with proof, in seconds.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2307090c'/%3E%3Cpath d='M6 20 L12 12 L17 17 L26 8' stroke='%23ff4d5e' stroke-width='3' fill='none'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="/static/features/tiger.css">
   <link rel="stylesheet" href="/static/features/voice.css">
   <link rel="stylesheet" href="/static/features/brief.css">
   <link rel="stylesheet" href="/static/features/sentry.css">
+  <link rel="stylesheet" href="/static/features/notes.css">
 </head>
 <body>
   <header class="topbar">
@@ -78,8 +79,8 @@
       <section class="call-brief" id="call-brief" hidden aria-live="polite"></section>
       <ol class="feed" id="feed" aria-live="polite"></ol>
       <div class="empty feed-empty" id="feed-empty">
-        <p>Flags appear here seconds after a market-moving line is spoken.</p>
-        <p class="muted">Each flag is checked against prior guidance (Snowflake), the live web (a team of Nimble specialists) and the tape (Tiger Data), and traced in Sentry. Snowflake's Cortex Agent and Nimble's verification agent then re-check it on their own.</p>
+        <p>When someone on the call says something that could move the stock, a card appears here within seconds.</p>
+        <p class="muted">Each card is checked against what the company said before (Snowflake), the live web (a team of Nimble specialists) and the stock price (Tiger Data), and traced in Sentry. Snowflake's Cortex Agent and Nimble's verification agent then double-check it on their own.</p>
       </div>
     </section>
   </main>
@@ -89,7 +90,7 @@
       <div class="flag-head">
         <span class="badge"></span>
         <h3 class="metric"></h3>
-        <span class="degraded-tag" hidden>AGENT FAILED · UNREVIEWED EVIDENCE</span>
+        <span class="degraded-tag" hidden>CHECK FAILED · NOT REVIEWED</span>
         <span class="flag-time"></span>
       </div>
       <div class="chip-row">
@@ -101,11 +102,11 @@
       <p class="what"></p>
       <p class="why"></p>
       <table class="related" hidden>
-        <caption>Guidance table found by the agent · prior quarter → now</caption>
+        <caption>Other forecasts in today’s report · last quarter → now</caption>
         <tbody></tbody>
       </table>
       <div class="trajectory" hidden>
-        <div class="sect-label">Guidance history <span class="by">Snowflake · SQL on GUIDANCE_LINES</span></div>
+        <div class="sect-label">Forecast history <span class="by">from Snowflake</span></div>
         <ol class="traj"></ol>
       </div>
       <div class="checking" hidden>
@@ -143,10 +144,10 @@
             <ul class="evidence"></ul>
           </div>
           <div>
-            <h4>Confidence components</h4>
+            <h4>How the score was made</h4>
             <ul class="components"></ul>
             <p class="rationale"></p>
-            <h4>Agent tool calls</h4>
+            <h4>Tools the agent used</h4>
             <ul class="toolcalls"></ul>
             <h4>Sentry trace</h4>
             <p class="trace"></p>
@@ -160,7 +161,7 @@
           </div>
           <div>
             <h4>Snowflake Cortex Agent · own check</h4>
-            <div class="sf-detail"><p class="muted">Runs after the verdict.</p></div>
+            <div class="sf-detail"><p class="muted">Runs after the answer.</p></div>
           </div>
         </div>
       </div>
@@ -168,5 +169,6 @@
   </template>
 
   <script src="/static/app.js" type="module"></script>
+  <script src="/static/features/notes.js" type="module"></script>
 </body>
 </html>

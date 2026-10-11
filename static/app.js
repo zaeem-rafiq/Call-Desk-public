@@ -10,7 +10,8 @@ import { initSentryBrowser, traceFlagRender } from "./features/sentry.js";
 const $ = (sel) => document.querySelector(sel);
 const ET = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
 const INTEGRATIONS = [["gemini", "Gemini"], ["nimble", "Nimble"], ["tiger", "Tiger"], ["snowflake", "Snowflake"], ["sentry", "Sentry"]];
-const BADGE = { cut: "CUT", raise: "RAISE", reaffirm: "REAFFIRM", new: "NEW", "n/a": "NOTE" };
+// Plain words for people outside finance (owner, Oct 11): the class names (cut, raise, worse…) still drive colour.
+const BADGE = { cut: "LOWERED", raise: "RAISED", reaffirm: "UNCHANGED", new: "NEW", "n/a": "NOTE" };
 const EXEC = /(CEO|CFO|Chief|President|Chair|IR|Investor Relations)/i;
 
 const state = {
@@ -39,7 +40,7 @@ const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padSt
 const fmtET = (iso) => ET.format(new Date(iso));
 const signed = (v, d = 2) => (v === null || v === undefined ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`);
 const dirClass = (d) => (d === "n/a" ? "na" : d || "na");
-// A raise in a lower-is-better metric (leverage, a tax rate, unit costs, fuel) is bad news: amber "RAISE · WORSE", not green.
+// A raise in a lower-is-better metric (leverage, a tax rate, unit costs, fuel) is bad news: amber "RAISED · WORSE", not green.
 const LOWER_IS_BETTER = new Set(["leverage", "core_tax_rate", "unit_cost_growth", "fuel_price", "input_costs"]);
 const LOWER_IS_BETTER_LABEL = /tax rate|leverage|unit cost|casm|fuel|input cost|debt/i;
 const worseRaise = (direction, metric, label) => direction === "raise" && (LOWER_IS_BETTER.has(metric) || LOWER_IS_BETTER_LABEL.test(label || ""));
@@ -136,7 +137,10 @@ function joinText(prev, next) {
   const head = STARTS_LOWER.test(rest) ? prev.replace(/\.$/, "") : prev;  // the period was revised to a comma
   const m = SENTENCE_BREAK.exec(rest);
   const end = m ? m.index + m[0].length : rest.length;
-  return [`${head} ${rest.slice(0, end)}`.trim(), rest.slice(end).trim()];
+  const after = rest.slice(end).trim();
+  // a few words that start the next sentence ("…fourth quarter. These") stay here: the next piece re-hears them
+  if (after && normWords(after).length < 4 && !ENDS_SENTENCE.test(after)) return [`${head} ${rest}`.trim(), ""];
+  return [`${head} ${rest.slice(0, end)}`.trim(), after];
 }
 
 // A piece that only repeats the end of the previous line (even under another speaker label) adds nothing.
@@ -155,9 +159,10 @@ function addLine(seg) {
   if (continues(prev, seg)) {
     [prev.text, text] = joinText(prev.text, seg.text);
     renderMarks(prev);
-  } else if (prev) {  // a new speaker label can still re-hear the previous line's last words
+  } else if (prev) {  // a finished sentence re-heard (one word reworded), or re-heard words under a new speaker label
     const tokens = text.split(/\s+/);
-    text = tokens.slice(overlap(prev.text, tokens, 3, 0)).join(" ");
+    const same = prev.speaker === seg.speaker;
+    text = tokens.slice(overlap(prev.text, tokens, same ? 5 : 3, same ? 2 : 0)).join(" ");
   }
   if (text) {
     const li = el("li", "line");
@@ -256,25 +261,25 @@ function renderFlag(f) {
   const compact = f.direction === "n/a";  // a NOTE: one line under the material cards, expandable on click
   node.className = ["flag", dirClass(dirKey(f.direction, f.metric, f.metric_label)), ...keep, ...(compact ? ["compact"] : [])].join(" ");
   placeCard(node, compact, isNew);
-  node.querySelector(".badge").textContent = worseRaise(f.direction, f.metric, f.metric_label) ? "RAISE · WORSE" : BADGE[f.direction] || f.direction.toUpperCase();
+  node.querySelector(".badge").textContent = worseRaise(f.direction, f.metric, f.metric_label) ? "RAISED · WORSE" : BADGE[f.direction] || f.direction.toUpperCase();
   node.querySelector(".metric").textContent = f.metric_label;
   const timeEl = node.querySelector(".flag-time");
   timeEl.replaceChildren(`${fmtET(f.call_ts)} ET`);
   if (f.latency_s !== null && f.latency_s !== undefined) {
-    const lat = el("span", "latency", ` · flagged +${f.latency_s.toFixed(1)}s`);
-    if (f.checked_latency_s !== null && f.checked_latency_s !== undefined) lat.textContent += ` · checked +${f.checked_latency_s.toFixed(1)}s`;
+    const lat = el("span", "latency", ` · spotted in ${f.latency_s.toFixed(1)} s`);
+    if (f.checked_latency_s !== null && f.checked_latency_s !== undefined) lat.textContent += ` · checked in ${f.checked_latency_s.toFixed(1)} s`;
     lat.title = "Seconds after the quote was spoken";
     timeEl.append(lat);
   }
   const prior = node.querySelector(".prior");
-  prior.textContent = f.prior_value || "no prior";
+  prior.textContent = f.prior_value || "not given before";
   prior.classList.toggle("none", !f.prior_value);
   const newEl = node.querySelector(".new");
-  newEl.textContent = f.new_value || (f.status === "checked" ? "not stated" : "finding the number…");
+  newEl.textContent = f.new_value || (f.status === "checked" ? "no number given" : "finding the number…");
   newEl.classList.toggle("pending", !f.new_value);
   const vs = node.querySelector(".value-source");
   vs.hidden = !f.new_value || !f.new_value_source || f.new_value_source === "spoken";
-  vs.textContent = vs.hidden ? "" : `not spoken · ${f.new_value_source}`;
+  vs.textContent = vs.hidden ? "" : `not spoken · from the ${f.new_value_source}`;
   renderRelated(node, f);
   renderTrajectory(node, f);
   node.querySelector(".degraded-tag").hidden = !f.degraded;
@@ -287,7 +292,7 @@ function renderFlag(f) {
   node.querySelector(".checking").hidden = !checking;
   if (checking) {
     const calls = Object.fromEntries((f.tool_calls || []).map((t) => [t.backend, t]));
-    node.querySelector(".checking-label").textContent = f.tool_calls?.length ? "Writing verdict" : "Fact-checking";
+    node.querySelector(".checking-label").textContent = f.tool_calls?.length ? "Writing the answer" : "Fact-checking";
     for (const chip of node.querySelectorAll(".tool-chip")) {
       const t = calls[chip.dataset.backend];
       const name = chip.dataset.backend[0].toUpperCase() + chip.dataset.backend.slice(1);
@@ -303,16 +308,24 @@ function renderFlag(f) {
     sparkline(node.querySelector(".spark"), pr);
     const stats = node.querySelector(".market-stats");
     stats.replaceChildren();
-    const ab = el("div", `big ${pr.vs_benchmark >= 0 ? "pos" : "neg"}`, `${signed(pr.vs_benchmark)}pp`);
+    const ab = el("div", `big ${pr.vs_benchmark >= 0 ? "pos" : "neg"}`, `${signed(pr.vs_benchmark)} pts`);
+    // Hindsight tags: these moves happened after the quote, so a live tool could not know them yet.
+    const later = (text, title) => Object.assign(el("span", "hindsight", text), { title });
+    const mins = pr.since_ts && pr.until_ts ? Math.round((new Date(pr.until_ts) - new Date(pr.since_ts)) / 60000) : null;
+    const moveLbl = el("div", "lbl", `STOCK MOVE · ${pr.window} AFTER THE QUOTE`);
+    moveLbl.append(later(mins ? `from the next ${mins} min` : "from after the quote",
+      "This came after the quote. A live run shows it once that time has passed; this replay of a past call shows it early."));
     stats.append(
-      el("div", "lbl", `${pr.ticker} VS ${pr.benchmark} · ${pr.window} AFTER QUOTE`),
+      moveLbl,
       ab,
+      el("div", "lbl", `vs similar stocks (${pr.benchmark})`),
       el("div", null, `${pr.ticker} ${signed(pr.pct_move)}%  ${pr.benchmark} ${signed(pr.benchmark_pct_move)}%`),
     );
     if (pr.close_pct_move !== null && pr.close_pct_move !== undefined) {
       const close = el("div", "close-line");
-      close.append(el("span", "lbl", "BY CLOSE "), el("span", pr.close_pct_move >= 0 ? "pos" : "neg", `${pr.ticker} ${signed(pr.close_pct_move)}%`),
-        el("span", "lbl", ` · `), el("span", pr.close_vs_benchmark >= 0 ? "pos" : "neg", `${signed(pr.close_vs_benchmark)}pp`), el("span", "lbl", ` vs ${pr.benchmark}`));
+      close.append(later("from later that day", "This is the day's closing price, after the quote. A live run shows it after the close; this replay of a past call shows it early."),
+        el("span", "lbl", " BY CLOSE "), el("span", pr.close_pct_move >= 0 ? "pos" : "neg", `${pr.ticker} ${signed(pr.close_pct_move)}%`),
+        el("span", "lbl", ` · `), el("span", pr.close_vs_benchmark >= 0 ? "pos" : "neg", `${signed(pr.close_vs_benchmark)} pts`), el("span", "lbl", ` vs ${pr.benchmark}`));
       stats.append(close);
     }
     if (pr.mock) stats.firstChild.append(el("span", "mock-tag", "MOCK"));
@@ -323,7 +336,7 @@ function renderFlag(f) {
   conf.hidden = checking || f.confidence === null || f.confidence === undefined;
   if (!conf.hidden) {
     node.querySelector(".conf-fill").style.width = `${Math.round(f.confidence * 100)}%`;
-    node.querySelector(".conf-value").textContent = f.confidence.toFixed(2);
+    node.querySelector(".conf-value").textContent = `${Math.round(f.confidence * 100)}%`;
   }
   renderAgents(node, f);
   renderDetail(node, f);
@@ -369,7 +382,7 @@ function renderTrajectory(node, f) {
   box.hidden = !pts.length;
   if (!pts.length) return;
   const by = box.querySelector(".by");
-  by.replaceChildren("Snowflake · SQL on GUIDANCE_LINES");
+  by.replaceChildren("from Snowflake");
   if ((f.mocked || []).includes("snowflake")) by.append(el("span", "mock-tag", "MOCK"));
   const ol = box.querySelector(".traj");
   ol.replaceChildren();
@@ -389,10 +402,11 @@ function renderTrajectory(node, f) {
 }
 
 // ---------- agents strip (Nimble web desk + Snowflake Cortex Agent) ----------
-const STEP_NAME = { primary: "IR + SEC", broad: "web", serp: "Google", sitemap: "site map", wall: "wall-breaker", social: "Reddit", newswire: "news" };
+const STEP_NAME = { primary: "company filings", broad: "web", serp: "Google", sitemap: "company website", wall: "locked sites", social: "Reddit", newswire: "news" };
 const VERDICT_CLASS = { CONSISTENT: "ok", NEW: "new", CONTRADICTS: "bad", UNVERIFIABLE: "na" };
 // Plain labels: a bare "NEW" next to a red CUT badge read like a contradiction.
-const VERDICT_LABEL = { CONSISTENT: "MATCHES PRIOR GUIDANCE", NEW: "CHANGES PRIOR GUIDANCE", CONTRADICTS: "CONFLICTS WITH PRIOR", UNVERIFIABLE: "NO PRIOR GUIDANCE" };
+const VERDICT_LABEL = { CONSISTENT: "SAME AS LAST FORECAST", NEW: "CHANGED FROM LAST FORECAST", CONTRADICTS: "DISAGREES WITH LAST FORECAST", UNVERIFIABLE: "NO EARLIER FORECAST" };
+const TRUST = { high: "SURE", medium: "FAIRLY SURE", low: "UNSURE" };
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -422,10 +436,15 @@ function renderAgents(node, f) {
     const dots = nrow.querySelector(".desk-dots");
     dots.replaceChildren();
     // Failed and skipped specialists stay in the detail panel; the verification agent has its own badge.
-    const shown = desk.steps.filter((s) => s.id !== "verify" && s.status !== "skipped" && s.status !== "failed");
+    // A specialist shown on the card stays: one that ends failed or skipped turns grey instead of vanishing mid-demo.
+    const seen = new Set((nrow.dataset.seen || "").split(",").filter(Boolean));
+    const shown = desk.steps.filter((s) => s.id !== "verify" && (seen.has(s.id) || (s.status !== "skipped" && s.status !== "failed")));
+    nrow.dataset.seen = shown.map((s) => s.id).join(",");
     if (shown.length) dots.append(el("span", "desk-count", `${plural(shown.length, "specialist")}:`));
     shown.forEach((s, i) => {
-      const d = el("span", `desk-name ${s.status}`, STEP_NAME[s.id] || s.label);
+      const off = s.status === "skipped" || s.status === "failed";
+      const name = STEP_NAME[s.id] || s.label;
+      const d = el("span", `desk-name ${off ? "off" : s.status}`, off ? `${name} · no answer` : name);
       d.title = stepTitle(s);
       dots.append(...(i ? [el("span", "desk-sep", "·"), d] : [d]));
     });
@@ -433,9 +452,9 @@ function renderAgents(node, f) {
     v.replaceChildren();
     const vs = desk.steps.find((s) => s.id === "verify");
     if (desk.verify) {
-      v.append(el("span", `vbadge c-${desk.verify.confidence || "na"}`, `NIMBLE TRUST · ${(desk.verify.confidence || "?").toUpperCase()}`),
-        el("span", "vmeta", `${plural(desk.verify.official_sources, "official source")} · ${desk.verify.cached_at ? `cached ${desk.verify.cached_at}` : `${desk.verify.run_s ?? "?"}s`}`));
-    } else if (vs && vs.status === "running") v.append(el("span", "vrun", "verification agent running…"));
+      v.append(el("span", `vbadge c-${desk.verify.confidence || "na"}`, `NIMBLE CHECK · ${TRUST[desk.verify.confidence] || (desk.verify.confidence || "?").toUpperCase()}`),
+        el("span", "vmeta", `${plural(desk.verify.official_sources, "official source")} · ${desk.verify.cached_at ? `checked ${desk.verify.cached_at}` : `${desk.verify.run_s ?? "?"} s`}`));
+    } else if (vs && vs.status === "running") v.append(el("span", "vrun", "double-checking…"));
     else if (vs && vs.status !== "ok" && !vs.summary.startsWith("not a numeric")) {  // by design on non-numeric lines: say nothing
       v.append(el("span", "vmeta", vs.summary.startsWith("unavailable") ? "verification agent unavailable"
         : vs.summary.startsWith("agent still working") ? "verification agent still working" : `verification agent ${vs.status}`));
@@ -450,10 +469,10 @@ function renderAgents(node, f) {
   if (sa) {
     const v = srow.querySelector(".agent-verdict");
     v.replaceChildren();
-    if (sa.status === "running") v.append(el("span", "vrun", "checking prior guidance…"));
+    if (sa.status === "running") v.append(el("span", "vrun", "checking past forecasts…"));
     else if (sa.status === "failed") v.append(el("span", "vbadge", "NO ANSWER"));
     else v.append(el("span", `vbadge v-${VERDICT_CLASS[sa.verdict] || "na"}`, VERDICT_LABEL[sa.verdict] || sa.verdict || "ANSWERED"),
-      el("span", "vmeta", `${plural((sa.tools || []).length, "tool")} · ${plural((sa.rows || []).length, "row")} · ${sa.ms !== null && sa.ms !== undefined ? (sa.ms / 1000).toFixed(0) : "?"}s`));
+      el("span", "vmeta", `${plural((sa.tools || []).length, "tool")} · ${sa.ms !== null && sa.ms !== undefined ? (sa.ms / 1000).toFixed(0) : "?"} s`));
     if (sa.mock) v.append(el("span", "mock-tag", "MOCK"));
     const answer = sa.status === "failed" ? `No answer: ${sa.error || "the agent did not finish"}.`
       : (sa.answer || "").replace(/^(CONSISTENT|CONTRADICTS|NEW|UNVERIFIABLE)[.:—–-]?\s*/i, "");
@@ -639,7 +658,7 @@ function updateTally() {
   }
   const t = $("#tally");
   t.replaceChildren();
-  for (const [d, label] of [["cut", "CUT"], ["raise", "RAISE"], ["worse", "RAISE · WORSE"], ["reaffirm", "REAFFIRM"], ["new", "NEW"], ["na", "NOTE"]]) {
+  for (const [d, label] of [["cut", "LOWERED"], ["raise", "RAISED"], ["worse", "RAISED · WORSE"], ["reaffirm", "UNCHANGED"], ["new", "NEW"], ["na", "NOTE"]]) {
     if (counts[d]) t.append(el("span", `t-${d}`, `${counts[d]} ${label}`));
   }
 }
@@ -724,7 +743,7 @@ function connect() {
     if (s.call?.clip_start) state.clipStart = new Date(s.call.clip_start);
     if (s.transcriber) {
       $("#transcriber").textContent = s.transcriber !== "gemini" ? "MOCK transcript (no Gemini key)"
-        : s.listener === "gemini-live" ? "Gemini Live · streaming" : `Gemini · ${state.chunkS || 12}s chunks`;
+        : s.listener === "gemini-live" ? "Gemini Live · streaming" : `Gemini · every ${state.chunkS || 12} s`;
     }
     if (s.state === "running") { if (!state.running) state.runStartedAt = performance.now() - s.t * 1000; setRunning(true); }
     if (s.state === "running" && s.speed && s.speed !== 1 && state.hasAudio) audio.playbackRate = Math.min(4, s.speed);

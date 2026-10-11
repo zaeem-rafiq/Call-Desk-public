@@ -11,8 +11,8 @@ const chunksText = (s) => (hasChunks(s) ? `${s.chunks} chunk${s.chunks === 1 ? "
 // The storage fact for the card face: compression when Tiger reports it, else the hypertable size.
 function storageText(s) {
   if (!hasChunks(s)) return "";
-  if (s.ratio) return `columnstore ${s.ratio}× smaller`;
-  return s.total_bytes ? `hypertable ${bytes(s.total_bytes)}` : "";
+  if (s.ratio) return `data stored ${s.ratio}× smaller`;
+  return s.total_bytes ? `data stored in ${bytes(s.total_bytes)}` : "";
 }
 
 // One collapsed line under the market stats: query time and storage; opens to where the numbers came
@@ -46,7 +46,7 @@ export function renderTigerExtra(node, f) {
   const parts = ["TIGER DATA"];
   if (pr.mock) parts.push("query shown, not run (offline)");
   else {
-    if (pr.query_ms !== null && pr.query_ms !== undefined) parts.push(`query ${pr.query_ms} ms`);
+    if (pr.query_ms !== null && pr.query_ms !== undefined) parts.push(`price check in ${pr.query_ms} ms`);
     const storage = storageText(pr.storage);
     if (storage) parts.push(storage);
   }
@@ -67,7 +67,7 @@ function renderPeers(box, pr) {
   if (!row) { row = document.createElement("p"); row.className = "tiger-peers"; box.append(row); }
   const label = document.createElement("span");
   label.className = "peers-label";
-  label.textContent = `PEERS VS ${pr.benchmark}`;
+  label.textContent = `SIMILAR COMPANIES VS ${pr.benchmark}`;
   label.title = `Each stock's move minus ${pr.benchmark} over the same window${pr.window ? ` (${pr.window})` : ""}`;
   // A peer whose price did not change has no reaction to compare: before the 9:30 ET open it often has no trades at all.
   // Its "move minus the benchmark" would only be the benchmark's move with the sign flipped, so it reads "unchanged".
@@ -76,7 +76,7 @@ function renderPeers(box, pr) {
   const items = [...peers].sort((a, b) => (b.subject - a.subject) || (flat(a) - flat(b)) || (a.vs_benchmark - b.vs_benchmark)).map((p) => {
     const s = document.createElement("span");
     s.className = `peer${p.subject ? " subject" : ""} ${flat(p) ? "flat" : p.vs_benchmark >= 0 ? "pos" : "neg"}`;
-    s.textContent = flat(p) ? `${p.ticker} unchanged` : `${p.ticker} ${pct(p.vs_benchmark)}pp`;
+    s.textContent = flat(p) ? `${p.ticker} unchanged` : `${p.ticker} ${pct(p.vs_benchmark)} pts`;
     s.title = flat(p) ? `${p.ticker}'s price did not change in this window, often because it had no trades before the 9:30 ET open`
       : `${p.ticker} ${pct(p.move)}% · ${pr.benchmark} ${pct(p.move - p.vs_benchmark)}%`;
     return s;
