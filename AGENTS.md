@@ -30,6 +30,15 @@ The preview pane cannot launch servers from this folder (the space in "Call Desk
 - The call clock maps clip offsets to real call time using `data/call_meta.json` (`estimated_clip_start_et`).
 - Never print or log `.env` values. `scripts/check_env.py` reports presence only.
 
+## Sponsor skills
+
+`.claude/skills/` holds unmodified copies of official sponsor skills (Apache-2.0, license files kept beside each):
+
+- `gemini-api-dev` from `google-gemini/gemini-skills` at `832c8f9`.
+- `setup-timescaledb-hypertables` and `timescaledb-hyperfunctions` from `timescale/pg-aiguide` at `187be00`.
+
+To update one, copy its folder again from the official GitHub repository. Do not use `npx skills`, which is a Vercel tool. `app/gemini.py` calls `generate_content`; the Gemini skill recommends the Interactions API, so treat a migration as its own change, not part of unrelated work.
+
 ## Git and preview workflow
 
 - Work on a task branch and commit verified units.
