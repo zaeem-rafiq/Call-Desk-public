@@ -4,7 +4,7 @@
 
 Corporate IR and FP&A teams track their peers' earnings calls. On a live Q&A call, executives rarely restate the numbers. They say "it's the margin piece that's driving the guide down in EPS" and move on. Call Desk catches that line as it is spoken. Within seconds it puts a flag in front of the team: what changed, why it matters, the evidence, the market reaction, and a confidence score.
 
-**Demo:** PepsiCo (PEP) Q3 2026 earnings Q&A, October 8, 2026, using the real call audio. When the CFO says "guide down in EPS", a red flag appears. It reads: core EPS growth cut to +2.5% to +3.5%, from the low end of +5% to +7%. The new number comes from the 6 AM release (found live on the web) and the old one from last quarter's guidance (from the warehouse). The flag also shows PEP's move against XLP, the full guidance table, and a Sentry trace.
+**Demo:** PepsiCo (PEP) Q3 2026 earnings Q&A, October 8, 2026, using the real call audio. When the CFO says "guide down in EPS", a red flag appears. It reads: core EPS growth cut to +2.5% to +3.5%, from the low end of +5% to +7%. The new number comes from the 6 AM release (found live on the web) and the old one from last quarter's guidance (from the warehouse). The flag also shows PEP's move against XLP, the full guidance table, the guidance history since December, and a Sentry trace. Seconds later, Snowflake's Cortex Agent and a Nimble Web Search Agent re-check the claim on their own, Gemini reads the cut aloud, and when the call ends Snowflake writes a short brief for the IR team.
 
 ## How it works
 
@@ -12,61 +12,73 @@ Corporate IR and FP&A teams track their peers' earnings calls. On a live Q&A cal
 flowchart LR
     A[call.mp3<br/>played at real-time speed] -->|12 s WAV chunks| B[Gemini 3.8 Flash<br/>listener: transcript + claims + materiality]
     B -->|transcript| UI[Browser<br/>live transcript + flag feed]
-    B -->|claims with materiality 0.6 or more, deduped| F[Flag: checking]
+    B -->|material claims, one card per metric| F[Flag: checking]
     F --> AG[Gemini fact-check agent<br/>function calling]
-    AG -->|parallel tool calls| T1[search_prior_guidance<br/>Snowflake Cortex Search]
-    AG --> T2[search_live_web<br/>Nimble search + extract]
-    AG --> T3[get_price_reaction<br/>Tiger Data hypertable + 1-min continuous aggregate]
-    T1 & T2 & T3 --> S[Gemini structured verdict<br/>+ transparent confidence score]
+    AG -->|parallel, 8 s cap each| T1[Snowflake<br/>Cortex Search + guidance history SQL]
+    AG --> T2[Nimble web desk<br/>IR guidance table, web, Google, site map]
+    AG --> T3[Tiger Data<br/>reaction computed in SQL on bars_1m]
+    T1 & T2 & T3 --> S[Gemini verdict<br/>+ transparent confidence]
     S -->|Server-Sent Events| UI
-    B -. spans .-> SE[(Sentry<br/>AI agent traces)]
+    S --> E[After the verdict]
+    E --> E1[Snowflake Cortex Agent<br/>Analyst + Search + SQL]
+    E --> E2[Nimble: Web Search Agent trust report,<br/>wall-breaker, Reddit, newswire]
+    E --> E3[Gemini TTS<br/>spoken alert]
+    E1 & E2 & E3 -->|card fills in| UI
+    UI -->|call ends| BR[Snowflake AI_COMPLETE<br/>end-of-call IR brief]
+    B -. spans .-> SE[(Sentry<br/>server + browser traces)]
     AG -. spans .-> SE
 ```
 
-1. **Listen.** The pipeline plays `data/call.mp3` in 12-second chunks at real-time speed. For each chunk, Gemini receives the audio and the transcript of the last two chunks. It returns speaker turns and candidate claims, each scored for materiality.
-2. **Flag.** Each claim scoring 0.6 or more becomes a flag at once, marked "checking". Repeated claims are dropped.
-3. **Fact-check.** A Gemini agent with function calling asks for three tools in parallel:
-   - prior-quarter guidance from Snowflake,
-   - this morning's release and news from Nimble,
-   - the price reaction against XLP from Tiger Data.
+1. **Listen.** The pipeline plays `data/call.mp3` in 12-second chunks at real-time speed. For each chunk, Gemini receives the audio and the transcript of the last two chunks. It returns speaker turns and candidate claims, each scored for materiality for a team that already has the morning release.
+2. **Flag.** Each claim scoring 0.6 or more becomes a flag at once, marked "checking". A metric gets one card per call; later mentions attach to it.
+3. **Fact-check.** A Gemini agent with function calling asks for three tools in parallel, each capped at 8 s:
+   - Snowflake: last quarter's guidance (Cortex Search) and the metric's guidance history (SQL);
+   - Nimble: the company's own guidance table from its IR site, plus web, Google and site-map specialists;
+   - Tiger Data: the price reaction against XLP, computed in SQL.
 
-   A second Gemini call writes a structured verdict. It contains the exact numbers, what changed, why it matters, the evidence with each source's stance, and the guidance table.
+   A second Gemini call writes a structured verdict: the exact numbers, what changed, why it matters, the evidence with each source's stance, and the guidance table. A CUT or RAISE badge needs numbers on both sides.
 4. **Score.** Confidence is a transparent weighted sum: `0.45 × prior + 0.35 × web + 0.20 × price`. The card shows each component and its reason. A failed tool scores 0 for its component. It lowers confidence and never crashes the feed.
+5. **Re-check.** After the verdict is on screen, Snowflake's Cortex Agent and Nimble's Web Search Agent each re-check the claim on their own, Nimble's wall-breaker, Reddit and newswire specialists add reaction, and Gemini speaks an alert for a material cut or raise. They fill in the card and never change the verdict.
+6. **Brief.** When the call ends, the run's flags are written to Snowflake and `AI_COMPLETE` writes a headline and 3–5 bullets for the IR team inside Snowflake.
 
 ## Sponsor tools
 
-- **Gemini API** (`gemini-3.8-flash`) does the work of four steps:
-  - audio transcription and understanding,
-  - claim extraction with materiality scoring,
-  - the fact-check agent with parallel function calling,
-  - structured verdicts.
-- **Nimble** runs a "web desk" of nine specialists for every flag, each built on a different Nimble capability. They feed each other.
-  - **Before the verdict**, all five run in parallel and are capped at 6.5 s:
-    - The *primary-source reader* uses standard-depth search, limited to PepsiCo's IR site and the SEC. It returns the company's own guidance table, showing each line's current and previous values, in about 0.5 s. That table is the first web source in every verdict.
+- **Gemini API** (`gemini-3.8-flash`) does the work of five steps:
+  - audio transcription and understanding, with speakers judged by what they say;
+  - claim extraction with materiality scoring;
+  - the fact-check agent with parallel function calling;
+  - structured verdicts (slow calls are hedged: a duplicate request after 6–8 s, first answer wins);
+  - spoken alerts with Gemini TTS (`gemini-3.8-flash-tts`). The sentence is built from the flag's own fields, so the voice never says a number the card doesn't show.
+- **Nimble** runs a "web desk" of eight specialists for every flag, each on a different Nimble capability. They feed each other.
+  - **Before the verdict**, four run in parallel within 6.5 s:
+    - The *primary-source reader* uses standard-depth search limited to PepsiCo's IR site and the SEC. It returns the company's own guidance table (each line's current and previous value) in about 0.5 s. That table is the first web source in every verdict.
     - The *broad web search* runs the model's query plus a fixed recall query.
-    - The *newswire scout* uses `focus=news`.
-    - *Google right now* uses Fast SERP.
+    - *Google right now* uses Fast SERP, with the standard SERP endpoint as a fallback.
     - The *IR site mapper* uses Map.
   - **After the verdict**, four more fill in the card:
-    - The *verification agent* is a Web Search Agent run with `output_schema`, starting from the document the primary reader found. It returns Nimble's trust report: a confidence grade, official sources, and citations for each claim.
-    - The *wall-breaker* uses Domain Knowledge to find which news sites run antibot systems (DataDome, Cloudflare and others). It then reads the protected article with the driver Nimble recommends.
+    - The *verification agent* is a Web Search Agent run with `output_schema`, started from the document the primary reader found. It returns Nimble's trust report: a confidence grade, official sources, and citations for each claim. Agent runs are billed per task, so it runs only on numeric guidance lines, a run is never retried, a run past its deadline is collected later instead of repeated, and results are stored in `data/cache/nimble_verify.json` and reused (labelled "cached") unless `NIMBLE_VERIFY_FRESH=1`.
+    - The *wall-breaker* uses Domain Knowledge to find which news sites run antibot systems (DataDome, Cloudflare and others), then reads the protected article with the driver Nimble recommends.
     - The *Reddit pulse* uses the pre-built `reddit_answers` Extract Template.
-    - The *street reaction* runs news search.
-- **Tiger Data** stores prices. `price_ticks` is a hypertable, and `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. Together they give PEP's move since each quote minus XLP's, which is the abnormal move.
-- **Snowflake** holds the prior guidance. It never stores call transcripts.
+    - The *newswire* runs news search (`focus=news`), falling back to plain search.
+- **Tiger Data** stores prices. `price_ticks` is a hypertable in the columnstore (7.6× smaller), and `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. One SQL query over `bars_1m` computes PEP's move since each quote minus XLP's (the abnormal move), the day move and the close move, in about 2 ms on the server. The card shows the query and its speed.
+- **Snowflake** holds the prior guidance and the call's flags. It never stores call transcripts.
   - **Cortex Search** runs over the Q2 2026 guidance documents, filtered by ticker. It answers questions such as "What was PepsiCo's core EPS guidance last quarter?"
   - **`GUIDANCE_LINES`** records every FY2026 guidance statement made before the call, from Dec 2025 to Jul 2026. The fact-check reads the metric's history from it by SQL, and the card draws that history as a timeline.
-  - **The Cortex Agent `GUIDANCE_AGENT`** re-checks each claim after the verdict, inside Snowflake. It uses Cortex Analyst over the semantic view `GUIDANCE_SV`, Cortex Search, and SQL on the warehouse. Its verdict, the SQL it wrote, and the rows it read appear on the card.
+  - **The Cortex Agent `GUIDANCE_AGENT`** re-checks each claim after the verdict, inside Snowflake. It uses Cortex Analyst over the semantic view `GUIDANCE_SV`, Cortex Search, and SQL on the warehouse. The card shows its verdict (matches, changes or conflicts with prior guidance), the SQL it wrote, and the rows it read.
+  - **The end-of-call brief.** The run's flags go into `CALL_FLAGS` (structured fields only), and one `AI_COMPLETE` query writes the IR brief inside Snowflake.
 - **Sentry** covers errors and AI agent monitoring:
-  - Each flag is its own `gen_ai.invoke_agent` trace.
-  - Every Gemini call is a `gen_ai.chat` span, and every tool call is a `gen_ai.execute_tool` span.
-  - Each flag shows its trace id and a link to the trace.
+  - Each flag is its own `gen_ai.invoke_agent` trace, with the quote-to-flag and quote-to-verdict latencies as measurements.
+  - Every Gemini call is a `gen_ai.chat` span; every tool call, Nimble specialist and the Cortex Agent are spans in the same trace.
+  - The browser loads Sentry's official SDK (pinned with its integrity hash) and records each card's render inside that flag's server trace.
+  - Each flag links to its trace.
 
 ## Run it
 
 ```bash
 uv venv --python 3.11 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
+.venv/bin/python scripts/fetch_audio.py      # rebuilds data/call.mp3 from the public replay (yt-dlp + ffmpeg)
+.venv/bin/python scripts/fetch_prices.py --date 2026-10-08 --tickers PEP SPY XLP --out data/prices.csv
 cp .env.example .env        # fill in keys; any blank key runs that integration in mock mode
 .venv/bin/python scripts/check_env.py --ping
 .venv/bin/python -m app.main          # open http://localhost:8000 and press "Play call"
@@ -75,6 +87,7 @@ cp .env.example .env        # fill in keys; any blank key runs that integration 
 - **Seed the data stores.** Run `scripts/autoseed.py --watch` and it seeds each store as soon as its key appears. To seed by hand, run `scripts/seed_tiger.py` and `scripts/seed_snowflake.py`.
 - **Golden eval.** Run `.venv/bin/python tests/eval.py`. It checks the EPS cut heard in the audio and the five FY2026 guidance lines with the correct direction. A run with Gemini mocked is labelled MOCK.
 - **Unit tests.** Run `.venv/bin/python -m pytest -q`.
+- **Live self-check.** Run `.venv/bin/python scripts/verify_live.py`. It sends three claims at once through every sponsor, live, and prints PASS, WARN or FAIL for each check (`--only tiger,voice,brief,sentry` runs just those). With the stored Nimble results it starts no agent runs.
 - **Last-resort demo.** Run `.venv/bin/python -m app.main --replay`. It replays `data/replay/latest/` (the cached flags and transcript) with the original timing.
 
 ### Environment
@@ -87,7 +100,7 @@ cp .env.example .env        # fill in keys; any blank key runs that integration 
 | `SNOWFLAKE_ACCOUNT`, `SNOWFLAKE_USER`, `SNOWFLAKE_PASSWORD` (+ `_WAREHOUSE`, `_DATABASE`, `_SCHEMA`) | prior-guidance search |
 | `NIMBLE_API_KEY` | live web evidence |
 
-Set `MOCK_<NAME>=1` to force a mock even when a key is present.
+Set `MOCK_<NAME>=1` to force a mock even when a key is present. `ENRICH=0` turns off the after-verdict re-checks. `NIMBLE_VERIFY_FRESH=1` makes the Nimble verification agent run fresh instead of reusing a stored result (each run is billed).
 
 ## Data and honesty notes
 
@@ -96,6 +109,8 @@ Set `MOCK_<NAME>=1` to force a mock even when a key is present.
 - **Prior-quarter data.** The prior-quarter warehouse (`data/prior/`) holds only information published before the Q3 call.
 - **Evaluation-only text.** `data/q3_transcript.txt` and `data/raw/` are used only for evaluation and are never given to the agent.
 - **Call transcripts are not in this repository.** They are third-party text, so they stay on the developer's machine. Without them, the prior-quarter warehouse loads only our own summary, `data/prior/q2_2026_guidance.md`, which holds every guidance number the demo checks. PepsiCo posts its own call transcripts on its [investor earnings page](https://www.pepsico.com/investors/earnings).
+- **Public repository.** It does not include the call audio or vendor price data; the two scripts above rebuild them locally.
+- **Cached agent results.** A Nimble verification shown as "cached" is the stored result of an earlier live run of the same check, with its time.
 - **Price data.** yfinance provides 1-minute bars, not trades. Each bar is loaded as four bar-derived ticks (open, high, low, close). The continuous aggregate rebuilds exact 1-minute OHLC from them. A live feed would insert real trades into the same hypertable.
 
 ## Tools used
