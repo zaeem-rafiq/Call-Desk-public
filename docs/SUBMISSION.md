@@ -12,6 +12,10 @@ Call Desk
 
 https://github.com/zaeem-rafiq/Call-Desk-public. It is the full commit history, without the call audio, third-party transcripts or vendor price data. `scripts/fetch_audio.py` and `scripts/fetch_prices.py` rebuild those locally.
 
+## Demo video
+
+https://www.youtube.com/watch?v=x-ajGaHqXfs (3:10). It explains what Call Desk is, shows it live on PepsiCo's real call, and ends with a recap of what each tool does. The narration voice is Gemini text-to-speech.
+
 ## One-line pitch (at most 140 characters)
 
 Executives hint forecasts changed. Call Desk listens live and shows the new number, with proof.

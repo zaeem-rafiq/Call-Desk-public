@@ -21,6 +21,7 @@ Nimble agent runs are a paid budget. Rehearse without fresh verification, and tu
 5. Sign in to Sentry in a second tab, so the trace link opens without a login page.
 6. Turn the laptop volume to about half, so you can talk over the call.
 7. **Fallback:** if Wi-Fi or a key fails, click **REPLAY** in the header, then **Play call**. Replay plays the cached live run with its original timing, spends **0** agent runs, and the same `?start=132` applies.
+8. **Last resort:** if the laptop or the remote connection fails, play the demo video on another device: https://www.youtube.com/watch?v=x-ajGaHqXfs.
 
 Measured in real time with all five sponsors live (final stage run 20261011-150448): the red card appears about **12 seconds** after the finance chief's sentence, and the agent's numbers fill in about **12 seconds** after that (+24 s from the quote). The call ends with the Snowflake call summary.
 

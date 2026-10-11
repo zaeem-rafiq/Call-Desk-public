@@ -8,6 +8,8 @@
 
 <sub>A recorded live run, sped up 3×. PepsiCo's finance chief says "it's the margin piece that's driving the guide down in EPS". The red card then shows the new forecast: profit per share growing 2.5% to 3.5% this year, down from about 5%.</sub>
 
+**Demo video (3:10):** https://www.youtube.com/watch?v=x-ajGaHqXfs. It explains what Call Desk is, shows it live on PepsiCo's real call, and ends with a recap of what each tool does.
+
 > Research demo built in one day. Not investment advice.
 
 ## What it does, in 30 seconds
