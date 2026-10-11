@@ -15,3 +15,4 @@
 .tiger-peers { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 4px 0 0; font: 11px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
 .tiger-peers .peers-label { color: var(--faint); font-size: 10px; letter-spacing: 0.08em; }
 .tiger-peers .peer.subject { font-weight: 700; }
+.tiger-peers .peer.flat { color: var(--faint); }

@@ -69,11 +69,16 @@ function renderPeers(box, pr) {
   label.className = "peers-label";
   label.textContent = `PEERS VS ${pr.benchmark}`;
   label.title = `Each stock's move minus ${pr.benchmark} over the same window${pr.window ? ` (${pr.window})` : ""}`;
-  const items = [...peers].sort((a, b) => (b.subject - a.subject) || (a.vs_benchmark - b.vs_benchmark)).map((p) => {
+  // A peer whose price did not change has no reaction to compare: before the 9:30 ET open it often has no trades at all.
+  // Its "move minus the benchmark" would only be the benchmark's move with the sign flipped, so it reads "unchanged".
+  const flat = (p) => !p.subject && p.move === 0;
+  const pct = (v) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}`;
+  const items = [...peers].sort((a, b) => (b.subject - a.subject) || (flat(a) - flat(b)) || (a.vs_benchmark - b.vs_benchmark)).map((p) => {
     const s = document.createElement("span");
-    s.className = `peer${p.subject ? " subject" : ""} ${p.vs_benchmark >= 0 ? "pos" : "neg"}`;
-    s.textContent = `${p.ticker} ${p.vs_benchmark >= 0 ? "+" : "−"}${Math.abs(p.vs_benchmark).toFixed(2)}pp`;
-    s.title = `${p.ticker} ${p.move >= 0 ? "+" : ""}${p.move.toFixed(2)}% vs ${pr.benchmark}`;
+    s.className = `peer${p.subject ? " subject" : ""} ${flat(p) ? "flat" : p.vs_benchmark >= 0 ? "pos" : "neg"}`;
+    s.textContent = flat(p) ? `${p.ticker} unchanged` : `${p.ticker} ${pct(p.vs_benchmark)}pp`;
+    s.title = flat(p) ? `${p.ticker}'s price did not change in this window, often because it had no trades before the 9:30 ET open`
+      : `${p.ticker} ${pct(p.move)}% · ${pr.benchmark} ${pct(p.move - p.vs_benchmark)}%`;
     return s;
   });
   row.replaceChildren(label, ...items);
