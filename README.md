@@ -12,9 +12,9 @@
 
 ## What it does, in 30 seconds
 
-Every three months, big companies like PepsiCo hold an **earnings call**. The bosses tell investors how the business is doing and what they expect next. One sentence can move the stock price.
+Every three months, big companies like PepsiCo hold an **earnings call**. Their executives tell investors how the business is doing and what they expect next. One sentence can move the stock price.
 
-On the call, bosses often talk about a change without repeating the number. The number is in the company's press release, so listeners must stop and look it up. On October 8, 2026, PepsiCo's finance chief said "it's the margin piece that's driving the guide down in EPS". In plain words: *"We now expect profits to grow less than we said before."* The exact number was in that morning's press release, not in the sentence.
+On the call, executives often talk about a change without repeating the number. The number is in the company's press release, so listeners must stop and look it up. On October 8, 2026, PepsiCo's finance chief said "it's the margin piece that's driving the guide down in EPS". In plain words: *"We now expect profits to grow less than we said before."* The exact number was in that morning's press release, not in the sentence.
 
 Call Desk listens to the call as it happens.
 
@@ -42,16 +42,16 @@ Five tools work together. Each one has one job.
 | **Watch the stock** | Measures how the stock moved right after the sentence, next to similar companies. | Tiger Data |
 | **Keep a record** | Records every step the AI took, like a flight recorder, so anyone can check its work. | Sentry |
 
-- Any number the boss did not say out loud is labelled **"not spoken"**, with the place it came from.
+- Any number nobody said out loud on the call is labelled **"not spoken"**, with the place it came from.
 - If a tool fails, the card says so and the confidence score goes down. The call keeps going.
 
 ### Words you'll see
 
 | Word | Plain meaning |
 |---|---|
-| Earnings call | A call every three months where a company's bosses tell investors how it is doing. |
+| Earnings call | A call every three months where a company's executives tell investors how it is doing. |
 | Q3 | The third three-month period of the year (July to September). |
-| CFO | Chief financial officer: the boss in charge of the company's money. |
+| CFO | Chief financial officer: the executive in charge of the company's money. |
 | Guidance | The company's forecast of how it will do this year. "Guide down" means it lowered the forecast. |
 | EPS | Earnings per share: the company's profit divided by its number of shares. "Core EPS growth" on a card means how fast profit per share is growing. |
 | Margin | The share of each sale that a company keeps as profit. |

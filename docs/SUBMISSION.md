@@ -22,9 +22,9 @@ Paste the five sections below, from "What it does" to "What's next", into the de
 
 ## What it does
 
-Every three months, big companies like PepsiCo hold an earnings call. The bosses tell investors how the business is doing and what they expect next. One sentence can move the stock price.
+Every three months, big companies like PepsiCo hold an earnings call. Their executives tell investors how the business is doing and what they expect next. One sentence can move the stock price.
 
-On the call, bosses often talk about a change without repeating the number. The number is in the company's press release, so listeners must stop and look it up. On October 8, 2026, PepsiCo's finance chief said "it's the margin piece that's driving the guide down in EPS". In plain words: "We now expect profits to grow less than we said before." The exact number was in that morning's press release, not in the sentence.
+On the call, executives often talk about a change without repeating the number. The number is in the company's press release, so listeners must stop and look it up. On October 8, 2026, PepsiCo's finance chief said "it's the margin piece that's driving the guide down in EPS". In plain words: "We now expect profits to grow less than we said before." The exact number was in that morning's press release, not in the sentence.
 
 Call Desk listens to the call live. About 12 seconds after that sentence, a red card pops up: PepsiCo lowered its profit forecast. About 12 seconds later, the card fills in:
 
@@ -82,7 +82,7 @@ Paste each answer into its category's field. Each one is under 1000 characters.
 
 ### Best Overall
 
-Every three months, big companies hold a call to tell investors how they are doing. One sentence can move the stock. But on the call, bosses often mention a change without repeating the number. Call Desk listens live. On PepsiCo's real call on October 8, 2026, the finance chief said "it's the margin piece that's driving the guide down in EPS", meaning profits will grow less than forecast. About 12 seconds later, a red card appeared. About 12 seconds after that, it showed the new forecast (profit per share up 2.5% to 3.5%, down from about 5%), the press release it came from, the old forecast, how the stock moved next to similar companies, and a 92% confidence score with its math. The same engine works on Delta Air Lines' call. It uses all five sponsors, each with one clear job. It scores 8 of 8 and 10 of 10 on answer keys written from the companies' own press releases.
+Every three months, big companies hold a call to tell investors how they are doing. One sentence can move the stock. But on the call, executives often mention a change without repeating the number. Call Desk listens live. On PepsiCo's real call on October 8, 2026, the finance chief said "it's the margin piece that's driving the guide down in EPS", meaning profits will grow less than forecast. About 12 seconds later, a red card appeared. About 12 seconds after that, it showed the new forecast (profit per share up 2.5% to 3.5%, down from about 5%), the press release it came from, the old forecast, how the stock moved next to similar companies, and a 92% confidence score with its math. The same engine works on Delta Air Lines' call. It uses all five sponsors, each with one clear job. It scores 8 of 8 and 10 of 10 on answer keys written from the companies' own press releases.
 
 ### Gemini
 
@@ -98,7 +98,7 @@ Snowflake is Call Desk's memory of what each company said before the call. To kn
 
 ### Nimble
 
-Nimble is Call Desk's web researcher. On a call, bosses often mention a change without repeating the number. The number is in that morning's press release, and Nimble finds it live. For every card, a team of Nimble specialists runs at once. One searches only the company's own investor website and SEC filings, and returns the company's full forecast table in about half a second. Others search the wider web, Google results right now, and the company's site map. After the answer is on screen, Nimble's Web Search Agent re-checks the claim and returns a trust report with official sources and citations. On PepsiCo's profit forecast it rated the evidence SURE, with 7 official sources, in 17 seconds. Its answer also moves the confidence score: up 3 points if it agrees, down 10 if not. Other specialists read news, Reddit, and articles on sites with bot protection. If a specialist has no answer, the card says so, and the rest keep going.
+Nimble is Call Desk's web researcher. On a call, executives often mention a change without repeating the number. The number is in that morning's press release, and Nimble finds it live. For every card, a team of Nimble specialists runs at once. One searches only the company's own investor website and SEC filings, and returns the company's full forecast table in about half a second. Others search the wider web, Google results right now, and the company's site map. After the answer is on screen, Nimble's Web Search Agent re-checks the claim and returns a trust report with official sources and citations. On PepsiCo's profit forecast it rated the evidence SURE, with 7 official sources, in 17 seconds. Its answer also moves the confidence score: up 3 points if it agrees, down 10 if not. Other specialists read news, Reddit, and articles on sites with bot protection. If a specialist has no answer, the card says so, and the rest keep going.
 
 ### Sentry
 
