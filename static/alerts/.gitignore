@@ -1,2 +1,4 @@
 *.wav
 !.gitkeep
+# The spoken alert the committed replay plays (our own Gemini TTS output).
+!core-eps-growth-cut-3e1fa4a9ea.wav

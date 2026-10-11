@@ -674,7 +674,9 @@ async function init() {
   renderCallPicker(s.calls, state.callId);
   state.clipStart = new Date(s.call.clip_start);
   state.hasAudio = s.audio;
-  if (s.audio_url && audio.getAttribute("src") !== s.audio_url) { audio.src = s.audio_url; audio.load(); }
+  // Load the call audio only when the server has it (a fresh public clone has no audio; replay still runs on the clock).
+  const audioUrl = s.audio ? (s.audio_url || "/audio/call.mp3") : null;
+  if (audioUrl && audio.getAttribute("src") !== audioUrl) { audio.src = audioUrl; audio.load(); }
   $("#ticker").textContent = s.call.ticker;
   $("#call-title").textContent = s.call.title;
   document.title = `Call Desk · ${s.call.ticker}`;
