@@ -91,6 +91,8 @@ class Flag(BaseModel):
     confidence_components: ConfidenceComponents | None = None
     confidence_rationale: str = ""
     materiality: float = 0.0
+    latency_s: float | None = None  # audio seconds from the quote to the flag appearing
+    checked_latency_s: float | None = None  # ... to the fact-check finishing
     sentry_trace_id: str | None = None
     sentry_trace_url: str | None = None
     tool_calls: list[ToolCall] = Field(default_factory=list)

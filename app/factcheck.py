@@ -74,16 +74,27 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
         plan = default_queries(claim, flag.metric_label, info)
         plan["get_price_reaction"]["since_ts"] = flag.call_ts
         use_llm = not config.is_mock("gemini")
+
+        async def run_and_show(calls: list[tuple[str, dict]]) -> dict[str, tools.ToolResult]:
+            """Run the tools, then publish their timings and the price chart before the verdict is written."""
+            res = await run_tools(calls)
+            flag.tool_calls = [r.call for r in res.values()]
+            price = res.get("get_price_reaction")
+            if price and price.ok and price.data:
+                flag.price_reaction = PriceReaction(**price.data)
+            publish(flag)
+            return res
+
         try:
             if use_llm:
-                results, synthesis = await gemini.agent_fact_check(claim, flag, info, plan, run_tools)
+                results, synthesis = await gemini.agent_fact_check(claim, flag, info, plan, run_and_show)
             else:
-                results = await run_tools(list(plan.items()))
+                results = await run_and_show(list(plan.items()))
                 synthesis = None
         except Exception as exc:  # noqa: BLE001 - agent failure degrades to the deterministic plan
             observability.capture(exc)
             log.warning("agent failed, using deterministic plan: %s", exc)
-            results, synthesis = await run_tools(list(plan.items())), None
+            results, synthesis = await run_and_show(list(plan.items())), None
 
         prior_res, web_res, price_res = (results.get(k) for k in ("search_prior_guidance", "search_live_web", "get_price_reaction"))
         prior_hits = prior_res.data if prior_res and prior_res.ok else []

@@ -38,19 +38,19 @@ class RunManager:
     def running(self) -> bool:
         return self.task is not None and not self.task.done()
 
-    def start(self, mode: str, speed: float) -> str:
+    def start(self, mode: str, speed: float, start_s: float = 0.0) -> str:
         self.stop()
         run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
         record = mode == "live"
         hub.start_run(run_id, record=record)
         self.mode = mode
-        self.task = asyncio.create_task(self._run(mode, speed, run_id, record))
+        self.task = asyncio.create_task(self._run(mode, speed, run_id, record, start_s))
         return run_id
 
-    async def _run(self, mode: str, speed: float, run_id: str, record: bool) -> None:
+    async def _run(self, mode: str, speed: float, run_id: str, record: bool, start_s: float) -> None:
         try:
-            summary = await (pipeline.run_live(hub, speed) if mode == "live" else replay.run_replay(hub, speed))
-            if record:
+            summary = await (pipeline.run_live(hub, speed, start_s) if mode == "live" else replay.run_replay(hub, speed, start_s))
+            if record and start_s == 0:
                 _promote(run_id, summary)
         except asyncio.CancelledError:
             hub.publish("status", {"state": "stopped", "mode": mode})
@@ -84,6 +84,7 @@ runs = RunManager()
 class RunRequest(BaseModel):
     mode: str | None = None  # live | replay
     speed: float = 1.0  # 1.0 = real time, 0 = as fast as possible
+    start_s: float = 0.0  # start this many seconds into the clip (snapped to a chunk boundary)
 
 
 @app.post("/api/run")
@@ -93,7 +94,7 @@ async def start_run(req: RunRequest) -> dict:
         raise HTTPException(409, "no replay cache yet; run live once first")
     if mode not in ("live", "replay"):
         raise HTTPException(400, "mode must be live or replay")
-    run_id = runs.start(mode, req.speed)
+    run_id = runs.start(mode, req.speed, max(0.0, req.start_s))
     return {"run_id": run_id, "mode": mode}
 
 
@@ -177,7 +178,7 @@ def cli() -> None:
     DEFAULT_MODE = "replay" if args.replay else "live"
     import uvicorn
 
-    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info", timeout_graceful_shutdown=2)
 
 
 if __name__ == "__main__":

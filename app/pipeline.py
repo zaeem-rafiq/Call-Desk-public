@@ -60,7 +60,7 @@ def _iso(dt: datetime) -> str:
     return dt.isoformat(timespec="seconds")
 
 
-async def run_live(hub: EventHub, speed: float = 1.0) -> dict:
+async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> dict:
     info = config.call_info()
     chunk_s = float(config.get("CHUNK_SECONDS") or 12)
     threshold = float(config.get("MATERIALITY_THRESHOLD") or 0.6)
@@ -74,9 +74,11 @@ async def run_live(hub: EventHub, speed: float = 1.0) -> dict:
         transcriber = MockTranscriber()
         duration = call_audio.duration if call_audio else transcriber.duration
 
+    k0 = max(0, min(int(start_s // chunk_s), int(duration // chunk_s)))  # start on a chunk boundary
+    start_s = k0 * chunk_s
     hub.publish("status", {
         "state": "running", "mode": "live", "transcriber": transcriber.name, "integrations": modes,
-        "duration": duration, "chunk_s": chunk_s, "speed": speed, "audio": call_audio is not None,
+        "duration": duration, "chunk_s": chunk_s, "speed": speed, "audio": call_audio is not None, "start_s": start_s,
         "call": {"title": info.title, "ticker": info.ticker, "benchmark": info.primary_benchmark, "clip_start": _iso(info.clip_start)},
     })
 
@@ -89,10 +91,14 @@ async def run_live(hub: EventHub, speed: float = 1.0) -> dict:
     n_chunks = max(1, int(-(-duration // chunk_s)))
     t0 = hub.elapsed()
 
-    for k in range(n_chunks):
+    def audio_now() -> float | None:
+        """Current position in the call audio, or None when not running in real time."""
+        return start_s + (hub.elapsed() - t0) * speed if speed > 0 else None
+
+    for k in range(k0, n_chunks):
         start, end = k * chunk_s, min((k + 1) * chunk_s, duration)
         if speed > 0:
-            await asyncio.sleep(max(0.0, end / speed - (hub.elapsed() - t0)))
+            await asyncio.sleep(max(0.0, (end - start_s) / speed - (hub.elapsed() - t0)))
         wav = call_audio.wav_chunk(start, end) if call_audio else None
         try:
             result = await transcriber.process(k, start, end, wav, list(context))
@@ -122,8 +128,10 @@ async def run_live(hub: EventHub, speed: float = 1.0) -> dict:
                 metric_label=metric_label(claim.metric), direction=claim.direction, prior_value=claim.prior_value,
                 new_value=claim.new_value, materiality=claim.materiality,
             )
+            now = audio_now()
+            flag.latency_s = None if now is None else round(now - t, 1)
             publish_flag(flag)
-            checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag)))
+            checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag, audio_now)))
 
     await asyncio.gather(*checks)
     summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(seen)}
@@ -131,12 +139,18 @@ async def run_live(hub: EventHub, speed: float = 1.0) -> dict:
     return summary
 
 
-async def _safe_check(claim: Claim, flag: Flag, info: config.CallInfo, publish) -> None:
+async def _safe_check(claim: Claim, flag: Flag, info: config.CallInfo, publish, audio_now) -> None:
+    def publish_with_latency(f: Flag) -> None:
+        now = audio_now()
+        if f.status == "checked" and now is not None:
+            f.checked_latency_s = round(now - f.t_offset, 1)
+        publish(f)
+
     try:
-        await fact_check(claim, flag, info, publish)
+        await fact_check(claim, flag, info, publish_with_latency)
     except Exception as exc:  # noqa: BLE001 - keep the provisional flag, mark it checked with zero confidence
         observability.capture(exc)
         flag.status = "checked"
         flag.confidence = 0.0
         flag.confidence_rationale = f"fact-check failed: {type(exc).__name__}"
-        publish(flag)
+        publish_with_latency(flag)

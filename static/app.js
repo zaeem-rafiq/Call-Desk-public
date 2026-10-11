@@ -54,7 +54,7 @@ function setMode(mode) {
 // ---------- clock + progress ----------
 function currentOffset() {
   if (state.hasAudio && !audio.paused) state.lastOffset = audio.currentTime;
-  else if (state.running) state.lastOffset = ((performance.now() - state.runStartedAt) / 1000) * (state.speed || 1);
+  else if (state.running) state.lastOffset = (state.startS || 0) + ((performance.now() - state.runStartedAt) / 1000) * (state.speed || 1);
   return state.lastOffset;
 }
 
@@ -152,7 +152,14 @@ function renderFlag(f) {
   node.className = `flag ${dirClass(f.direction)}${node.classList.contains("fresh") ? " fresh" : ""}`;
   node.querySelector(".badge").textContent = BADGE[f.direction] || f.direction.toUpperCase();
   node.querySelector(".metric").textContent = f.metric_label;
-  node.querySelector(".flag-time").textContent = `${fmtET(f.call_ts)} ET`;
+  const timeEl = node.querySelector(".flag-time");
+  timeEl.replaceChildren(`${fmtET(f.call_ts)} ET`);
+  if (f.latency_s !== null && f.latency_s !== undefined) {
+    const lat = el("span", "latency", ` · flagged +${f.latency_s.toFixed(1)}s`);
+    if (f.checked_latency_s !== null && f.checked_latency_s !== undefined) lat.textContent += ` · checked +${f.checked_latency_s.toFixed(1)}s`;
+    lat.title = "Seconds after the quote was spoken";
+    timeEl.append(lat);
+  }
   const prior = node.querySelector(".prior");
   prior.textContent = f.prior_value || "no prior";
   prior.classList.toggle("none", !f.prior_value);
@@ -170,6 +177,16 @@ function renderFlag(f) {
 
   const checking = f.status !== "checked";
   node.querySelector(".checking").hidden = !checking;
+  if (checking) {
+    const calls = Object.fromEntries((f.tool_calls || []).map((t) => [t.backend, t]));
+    node.querySelector(".checking-label").textContent = f.tool_calls?.length ? "Writing verdict" : "Fact-checking";
+    for (const chip of node.querySelectorAll(".tool-chip")) {
+      const t = calls[chip.dataset.backend];
+      const name = chip.dataset.backend[0].toUpperCase() + chip.dataset.backend.slice(1);
+      chip.className = `tool-chip${t ? (t.ok ? " done" : " failed") : ""}`;
+      chip.textContent = t ? `${name} ${t.ok ? "✓" : "✗"} ${t.ms}ms` : name;
+    }
+  }
 
   const pr = f.price_reaction;
   const market = node.querySelector(".market");
@@ -327,7 +344,8 @@ async function play() {
     setRunning(false, "STOPPED");
     return;
   }
-  const res = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: state.mode }) });
+  const startParam = Number(new URLSearchParams(location.search).get("start") || 0);
+  const res = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: state.mode, start_s: startParam }) });
   if (!res.ok) {
     $("#audio-state").textContent = (await res.json()).detail || "ERROR";
     return;
@@ -335,7 +353,8 @@ async function play() {
   state.runStartedAt = performance.now();
   setRunning(true);
   if (state.hasAudio) {
-    audio.currentTime = 0;
+    // The server snaps the start to a chunk boundary; the status event re-syncs if it differs.
+    audio.currentTime = Math.floor(startParam / (state.chunkS || 12)) * (state.chunkS || 12);
     audio.play().catch(() => { $("#audio-state").textContent = "AUDIO BLOCKED — CLICK PLAY AGAIN"; });
   }
 }
@@ -348,6 +367,11 @@ function connect() {
     const s = JSON.parse(e.data);
     if (s.integrations) renderPills(s.integrations);
     if (s.speed) state.speed = s.speed;
+    if (s.chunk_s) state.chunkS = s.chunk_s;
+    if (s.state === "running" && s.start_s !== undefined) {
+      state.startS = s.start_s;
+      if (state.hasAudio && Math.abs(audio.currentTime - s.start_s) > 1.5 && !audio.paused) audio.currentTime = s.start_s;
+    }
     if (s.duration) { state.duration = s.duration; $("#duration").textContent = fmtTime(s.duration); }
     if (s.call?.clip_start) state.clipStart = new Date(s.call.clip_start);
     if (s.transcriber) $("#transcriber").textContent = s.transcriber === "gemini" ? `Gemini · ${s.chunk_s}s chunks` : "MOCK transcript (no Gemini key)";
