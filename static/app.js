@@ -339,15 +339,34 @@ function renderFlag(f) {
   const conf = node.querySelector(".conf");
   conf.hidden = checking || f.confidence === null || f.confidence === undefined;
   if (!conf.hidden) {
-    node.querySelector(".conf-fill").style.width = `${Math.round(f.confidence * 100)}%`;
-    node.querySelector(".conf-value").textContent = `${Math.round(f.confidence * 100)}%`;
+    const pct = (v) => `${Math.round(v * 100)}%`;
+    const moved = f.confidence_base !== null && f.confidence_base !== undefined && pct(f.confidence_base) !== pct(f.confidence);
+    node.querySelector(".conf-fill").style.width = pct(f.confidence);
+    node.querySelector(".conf-value").textContent = moved ? `${pct(f.confidence_base)} → ${pct(f.confidence)}` : pct(f.confidence);
   }
+  renderCrossChecks(node, f, conf.hidden);
   renderAgents(node, f);
   renderDetail(node, f);
   renderDeskDetail(node, f);
   renderSnowflakeDetail(node, f);
   if (f.status === "checked") addMarker(f);
   updateTally();
+}
+
+// After the verdict, Snowflake's agent and Nimble's check move the score: one line under the bar says how.
+function renderCrossChecks(node, f, hidden) {
+  let line = node.querySelector(".cross-checks");
+  if (!line) { line = el("p", "cross-checks"); node.querySelector(".conf").after(line); }
+  const checks = f.cross_checks || [];
+  line.hidden = hidden || !checks.length;
+  line.replaceChildren();
+  checks.forEach((c, i) => {
+    const pts = Math.round(Math.abs(c.delta) * 100);
+    const item = el("span", "xc", `${c.source} ${c.result} `);
+    item.append(el("span", c.delta >= 0 ? "pos" : "neg", `${c.delta >= 0 ? "+" : "−"}${pts}`));
+    if (c.reason) item.title = c.reason;
+    line.append(...(i ? [el("span", "xc-sep", " · "), item] : [item]));
+  });
 }
 
 function renderRelated(node, f) {
@@ -464,6 +483,16 @@ function renderAgents(node, f) {
         : vs.summary.startsWith("agent still working") ? "verification agent still working" : `verification agent ${vs.status}`));
     }
     if (desk.mock) v.append(el("span", "mock-tag", "MOCK"));
+    // How the specialists fed each other: each step that used another's output, from its finished sources.
+    const okIds = new Set(desk.steps.filter((s) => s.status === "ok").map((s) => s.id));
+    const nameOf = (id) => (id === "verify" ? "verification agent" : STEP_NAME[id] || id);
+    const chains = desk.steps.filter((s) => s.feeds?.length && s.status !== "skipped" && s.status !== "failed")
+      .map((s) => [s.feeds.filter((id) => okIds.has(id)), s]).filter(([src]) => src.length)
+      .map(([src, s]) => `${src.map(nameOf).join(" + ")} → ${nameOf(s.id)}`);
+    let flow = nrow.querySelector(".desk-flow");
+    if (!flow) { flow = el("p", "desk-flow"); nrow.append(flow); }
+    flow.replaceChildren(el("span", "flow-label", "passed on:"), chains.join(" · "));
+    flow.hidden = !chains.length;
     let line = nrow.querySelector(".agent-answer");
     if (!line) { line = el("p", "agent-answer"); nrow.append(line); }
     line.textContent = desk.verify ? verifyLine(desk.verify) : "";

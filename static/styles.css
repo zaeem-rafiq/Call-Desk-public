@@ -366,6 +366,11 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .vrun { color: var(--blue); animation: fade 1.2s ease-in-out infinite; }
 .agent-answer { flex-basis: 100%; margin: 2px 0 0; font: 12px/1.45 var(--sans); color: #b9c4d0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .agent-answer:empty { display: none; }
+.desk-flow { flex-basis: 100%; margin: 0; font: 10px/1.6 var(--mono); letter-spacing: 0.04em; color: var(--muted); }
+.desk-flow .flow-label { color: var(--faint); margin-right: 6px; }
+.cross-checks { margin: 3px 0 0; font: 11px/1.4 var(--mono); color: var(--muted); }
+.cross-checks .xc { cursor: help; }
+.cross-checks .xc-sep { color: var(--faint); }
 
 /* ---------- agents detail ---------- */
 .agents-detail { margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--line-2); }
