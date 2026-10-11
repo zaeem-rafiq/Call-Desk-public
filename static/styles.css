@@ -140,6 +140,9 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .pane-head h2 { font: 600 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 .pane-sub { font: 11px var(--mono); color: var(--faint); }
 .empty { color: var(--muted); padding: 18px 16px; margin: 0; }
+/* Before the first line or flag, the empty list steps aside so its message sits in the middle of the pane. */
+.transcript:empty, .feed:empty { display: none; }
+#transcript-empty { margin: auto; max-width: 340px; text-align: center; }
 
 /* ---------- audio ---------- */
 .audio { padding: 14px 16px 12px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
