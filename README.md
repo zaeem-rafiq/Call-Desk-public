@@ -1,6 +1,6 @@
 # Call Desk
 
-**The stock moves the moment a boss says “we'll earn less than we said.” Call Desk tells you how much less, with proof, in seconds.**
+**The stock moves the moment an executive says “we'll earn less than we said.” Call Desk tells you how much less, with proof, in seconds.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white) ![Built at AI Engineer NYC 2026](docs/media/badge-built-at.svg)
 
@@ -220,6 +220,7 @@ MLH asks every team to name the AI tools it used. This section lists every AI to
   - `setup-timescaledb-hypertables` and `timescaledb-hyperfunctions` from Tiger Data (`timescale/pg-aiguide`),
   - `nimble-web-expert` from Nimble (`Nimbleway/agent-skills`).
 - **whisper.cpp (`base.en` model)** ran offline during data preparation. It located the demo clip inside the full call and produced the transcript used in mock mode (`app/mocks/mock_call.json`).
+- **Gemini TTS** generated the narration voice of the demo video.
 
 ### AI services inside Call Desk
 
