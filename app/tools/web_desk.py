@@ -329,7 +329,7 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
     `found` is the verdict phase's output: the primary document URL feeds `verify`, its news and broad hits feed `wall`.
     """
     if mock:
-        return await _mock_enrich(desk, metric_label=metric_label, on_change=on_change)
+        return await _mock_enrich(desk, metric_label=metric_label, new_value=new_value, on_change=on_change)
     steps = {sid: _step(sid) for sid in ("verify", "wall", "social", "newswire")}
     primary_url = found.get("primary_url") or ""
     steps["verify"].feeds = ["primary"] if primary_url else []
@@ -436,7 +436,7 @@ def _mock() -> dict:
     return json.loads(MOCK_FILE.read_text())
 
 
-async def _mock_enrich(desk: WebDesk, *, metric_label: str, on_change: Callable[[], None]) -> None:
+async def _mock_enrich(desk: WebDesk, *, metric_label: str, new_value: str | None, on_change: Callable[[], None]) -> None:
     m = _mock()
     order = ("newswire", "wall", "social", "verify")
     steps = {sid: _step(sid, mock=True) for sid in order}
@@ -453,6 +453,8 @@ async def _mock_enrich(desk: WebDesk, *, metric_label: str, on_change: Callable[
             desk.social = [WebItem(**x) for x in m["social"]]
         elif sid == "wall":
             desk.wall = m["wall"]
+        elif sid == "verify" and not parse_range(new_value):  # same rule as live: numeric guidance lines only
+            s.status, s.summary = "skipped", "not a numeric guidance line; agent not run"
         elif sid == "verify":
             v = m["verify"].get(metric_label) or m["verify"]["default"]
             desk.verify = WebVerify(**v)
