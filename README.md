@@ -224,6 +224,7 @@ MLH asks every team to name the AI tools it used. This section lists every AI to
   - `nimble-web-expert` from Nimble (`Nimbleway/agent-skills`).
 - **whisper.cpp (`base.en` model)** ran offline during data preparation. It located the demo clip inside the full call and produced the transcript used in mock mode (`app/mocks/mock_call.json`).
 - **Seer (Sentry's AI debugger)** explained the root cause of issue `CALL-DESK-2` after we had fixed it. It read only the public repository and wrote no code.
+- **Gemini TTS** (`gemini-3.8-flash-tts`, voice "Charon") generated the narration voice of the demo video.
 
 ### AI services inside Call Desk
 
