@@ -115,8 +115,8 @@ MLH asks every team to name the AI tools it used. This section lists every AI to
 
 [Sponsor tools](#sponsor-tools) describes each one in detail.
 
-- **Gemini API (`gemini-3.8-flash`)** transcribes the call, extracts claims, runs the fact-check agent, and writes the verdicts.
-- **Snowflake Cortex** finds last quarter's guidance with Cortex Search. Its Cortex Agent, `GUIDANCE_AGENT`, re-checks each claim with Cortex Analyst.
+- **Gemini API (`gemini-3.8-flash`)** transcribes the call, extracts claims, runs the fact-check agent, and writes the verdicts. Gemini TTS (`gemini-3.8-flash-tts`) speaks a voice alert for each guidance cut or raise.
+- **Snowflake Cortex** finds last quarter's guidance with Cortex Search. Its Cortex Agent, `GUIDANCE_AGENT`, re-checks each claim with Cortex Analyst. When the call ends, `AI_COMPLETE` writes the IR brief inside Snowflake with Claude Sonnet 4.6 (`claude-sonnet-4-6`), or with Llama 3.3 70B (`llama3.3-70b`) if that model errors.
 - **Nimble** searches and reads the live web. Its Web Search Agent returns a trust report with citations for each claim.
 
 ### Other services and libraries
