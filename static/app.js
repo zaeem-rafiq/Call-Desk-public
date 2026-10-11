@@ -807,7 +807,7 @@ async function init() {
     if (!state.duration) { state.duration = audio.duration; $("#duration").textContent = fmtTime(audio.duration); }
   });
   for (const b of document.querySelectorAll(".mode button")) b.addEventListener("click", () => !b.disabled && setMode(b.dataset.mode));
-  let lastToggle = 0;
+  let lastToggle = -Infinity;  // not 0: performance.now() starts at page load, so 0 would block clicks in the first 1.5 s
   $("#play").addEventListener("click", (e) => {
     if (e.detail > 1 || performance.now() - lastToggle < 1500) return;  // a double-click would start the run, then stop it
     lastToggle = performance.now();
