@@ -1,22 +1,69 @@
 # Call Desk
 
-**Hears earnings calls live and fact-checks every market-moving line in seconds.**
+**Listens to company earnings calls live and shows what just changed, with proof, in seconds.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) ![Python 3.11](https://img.shields.io/badge/python-3.11-3776AB?logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-SSE-009688?logo=fastapi&logoColor=white) ![Built at AI Engineer NYC 2026](docs/media/badge-built-at.svg)
 
-![Call Desk replaying PepsiCo's Q3 2026 earnings call. The live transcript fills in on the left. A red CUT card for core EPS growth appears, then fills in with the old and new guidance, the guidance table, the guidance history, the price move against XLP and a confidence of 0.92.](docs/media/demo.gif)
+![Call Desk playing PepsiCo's earnings call. The words of the call appear on the left as they are spoken. A red card appears that says PepsiCo lowered its profit forecast, then fills in with the old and new numbers, where each number came from, how the stock moved, and a confidence score of 92%.](docs/media/demo.gif)
 
-<sub>Replay of a recorded live run at 3× speed. The CFO says "it's the margin piece that's driving the guide down in EPS", and the card shows core EPS growth cut from the low end of +5% to +7% to +2.5% to +3.5%.</sub>
+<sub>A recorded live run, sped up 3×. PepsiCo's finance chief says "it's the margin piece that's driving the guide down in EPS". The red card then shows the new forecast: profit per share growing 2.5% to 3.5% this year, down from about 5%.</sub>
 
 > Research demo built in one day. Not investment advice.
 
-Corporate IR and FP&A teams track their peers' earnings calls. On a live Q&A call, executives rarely restate the numbers. They say "it's the margin piece that's driving the guide down in EPS" and move on. Call Desk catches that line as it is spoken. Within seconds it puts a flag in front of the team: what changed, why it matters, the evidence, the market reaction, and a confidence score.
+## What it does, in 30 seconds
 
-**Demo:** PepsiCo (PEP) Q3 2026 earnings Q&A, October 8, 2026, using the real call audio. When the CFO says "guide down in EPS", a red flag appears. It reads: core EPS growth cut to +2.5% to +3.5%, from the low end of +5% to +7%. The new number comes from the 6 AM release (found live on the web) and the old one from last quarter's guidance (from the warehouse). The flag also shows PEP's move against XLP, the full guidance table, the guidance history since December, and a Sentry trace. Seconds later, Snowflake's Cortex Agent and a Nimble Web Search Agent re-check the claim on their own, Gemini reads the cut aloud, and when the call ends Snowflake writes a short brief for the IR team.
+Every three months, big companies like PepsiCo hold an **earnings call**. The bosses tell investors how the business is doing and what they expect next. One sentence can move the stock price.
+
+On the call, bosses often talk about a change without repeating the number. The number is in the company's press release, so listeners must stop and look it up. On October 8, 2026, PepsiCo's finance chief said "it's the margin piece that's driving the guide down in EPS". In plain words: *"We now expect profits to grow less than we said before."* The exact number was in that morning's press release, not in the sentence.
+
+Call Desk listens to the call as it happens.
+
+1. **About 12 seconds** after that sentence, a red card pops up: *PepsiCo lowered its profit forecast.*
+2. **About 12 seconds later**, the card fills in with the answer:
+   - **Before:** profit per share growing about 5% this year.
+   - **Now:** growing only 2.5% to 3.5%.
+   - **Proof:** PepsiCo's own press release from that morning, and the forecast it gave three months earlier.
+   - **The stock:** how PepsiCo's stock moved, next to similar food and drink companies.
+   - **How sure:** a confidence score of 92%, with its reasons shown.
+
+**Think of a sports announcer** who shouts "that changes the score!" but never says the score. Call Desk is the friend beside you who checks the scoreboard and says: "It was 5, now it's 3. Here's a photo of the scoreboard."
+
+**Who it's for:** people who must keep up with many of these calls at once, such as investors, analysts, and teams that watch their competitors.
+
+## How it works, in plain words
+
+Five tools work together. Each one has one job.
+
+| Job | What it does | Tool |
+|---|---|---|
+| **Listen** | Writes down the call as it happens and picks out sentences that could move the stock. | Gemini (Google's AI) |
+| **Remember** | Looks up what the company forecast three months ago. | Snowflake |
+| **Search** | Finds the company's own press release and news on the live web. | Nimble |
+| **Watch the stock** | Measures how the stock moved right after the sentence, next to similar companies. | Tiger Data |
+| **Keep a record** | Records every step the AI took, like a flight recorder, so anyone can check its work. | Sentry |
+
+- Any number the boss did not say out loud is labelled **"not spoken"**, with the place it came from.
+- If a tool fails, the card says so and the confidence score goes down. The call keeps going.
+
+### Words you'll see
+
+| Word | Plain meaning |
+|---|---|
+| Earnings call | A call every three months where a company's bosses tell investors how it is doing. |
+| Q3 | The third three-month period of the year (July to September). |
+| CFO | Chief financial officer: the boss in charge of the company's money. |
+| Guidance | The company's forecast of how it will do this year. "Guide down" means it lowered the forecast. |
+| EPS | Earnings per share: the company's profit divided by its number of shares. "Core EPS growth" on a card means how fast profit per share is growing. |
+| Margin | The share of each sale that a company keeps as profit. |
+| LOWERED / RAISED / UNCHANGED | The company lowered, raised, or kept a forecast. |
+| PEP, KO, DAL | Stock symbols: PepsiCo, Coca-Cola, Delta Air Lines. |
+| XLP, JETS | Funds that hold many similar companies (food and drink, airlines). Comparing with them shows whether the stock moved because of this company or because the whole group moved. |
+| IR team | Investor relations: the people at a company who talk to investors. |
+| Confidence | A score from 0% to 100%. It adds up three checks: does the old forecast back up the change, does the web back it up, and did the stock react. |
 
 ## Try it in one minute
 
-Replay mode plays a recorded live run of the demo call. It needs no API keys.
+You can watch the PepsiCo demo on your own computer. Replay mode plays a recorded live run of the call. It needs no API keys.
 
 ```bash
 git clone https://github.com/zaeem-rafiq/Call-Desk-public.git && cd Call-Desk-public
@@ -24,27 +71,27 @@ uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requi
 .venv/bin/python -m app.main --replay     # open http://localhost:8000/?start=132 and press "Play call"
 ```
 
-`?start=132` starts 15 seconds before the CFO's guidance line. Replay plays without the call audio; to hear the call, rebuild it with `scripts/fetch_audio.py` (see [Run it](#run-it)). To run the live pipeline on your own keys, see [Run it](#run-it) too.
+`?start=132` starts 15 seconds before the finance chief's key sentence. Replay plays without the call audio. To hear the call, rebuild it with `scripts/fetch_audio.py` (see [Run it](#run-it)). To run the live pipeline on your own keys, see [Run it](#run-it) too.
 
 ## Results
 
-From the recorded live run in `data/replay/latest/` (run `20261011-134427`, the stage replay): all five sponsor services live, real-time speed, one call.
+All numbers come from one recorded live run: `20261011-134427` in `data/replay/latest/`, the run we show on stage. All five tools were live, at real-time speed, on one call.
 
-| Measure | Result |
+| What we measured | Result |
 |---|---|
-| Golden checks passed (`tests/golden.json`) | 8 of 8 |
-| CFO's "guide down in EPS" to a red flag on screen | about 12 s |
-| CFO's line to the verdict with the old and new numbers | about 24 s |
-| Confidence on the EPS cut | 0.92 |
-| Nimble verification agent on the EPS cut (a fresh run, not a stored result) | high trust, 7 official sources, 17 s |
-| Tiger Data: PEP in the 30 minutes after the quote, vs the XLP staples ETF | −0.91 points; peer KO +0.03, MDLZ and KDP unchanged (no trades before the open); 2 ms query |
-| Flags raised, errors, degraded flags | 9, 0, 0 |
+| Answer-key checks passed (`tests/golden.json`, written from the company's own press release) | 8 of 8 |
+| From the finance chief's sentence to the red card on screen | about 12 s |
+| From the sentence to the full answer, with the old and new numbers | about 24 s |
+| Confidence score on the lowered profit forecast | 92% (0.92) |
+| Nimble's web research agent on that card (a fresh run, not a stored result) | SURE (its highest trust grade), 7 official sources, 17 s |
+| Tiger Data: PepsiCo's stock (PEP) in the 30 minutes after the sentence, against a fund of food and drink companies (XLP) | 0.91 percentage points worse than the fund. Coca-Cola (KO) did 0.03 points better than the fund. Mondelez (MDLZ) and Keurig Dr Pepper (KDP) show no change, because nobody had traded them yet that morning (the market opens at 9:30 AM). The query took 2 ms. |
+| Cards shown, errors, cards where the checking agent failed | 9, 0, 0 |
 
-A second call shows it is not built for one company: **Delta Air Lines (DAL) Q3 2026**, October 9, 2026, whose CFO reads the outlook aloud. Pick it in the header, or open `?call=dal_q3_2026`. Its recorded live run (`20261011-125425`) passes 10 of 10 golden checks with 0 errors; the headline card reads adjusted EPS cut from $6.50–$7.50 to $5.10–$5.60 per share (confidence 0.92), benchmarked against the JETS airline ETF.
+**It works on other companies too.** The second demo is **Delta Air Lines (DAL)**, from its call on October 9, 2026. Delta's finance chief reads the forecast out loud. Call Desk shows that Delta now expects to earn $5.10 to $5.60 per share this year, down from a range of $6.50 to $7.50 (confidence 92%). It compares Delta's stock with a fund of airlines (JETS). Its recorded live run, `20261011-125425`, passes 10 of 10 answer-key checks with 0 errors. Pick it in the header, or open `?call=dal_q3_2026`.
 
-Latency varies with the network and model load. These are single runs, not a benchmark.
+Speed depends on the network and on how busy the AI models are. These are single runs, not a benchmark.
 
-## How it works
+## Under the hood (for engineers)
 
 ```mermaid
 flowchart LR
@@ -74,20 +121,20 @@ flowchart LR
    - Nimble: the company's own guidance table from its IR site, plus web, Google and site-map specialists;
    - Tiger Data: the price reaction against XLP, computed in SQL.
 
-   A second Gemini call writes a structured verdict: the exact numbers, what changed, why it matters, the evidence with each source's stance, and the guidance table. A CUT or RAISE badge needs numbers on both sides.
+   A second Gemini call writes a structured verdict: the exact numbers, what changed, why it matters, the evidence with each source's stance, and the guidance table. A LOWERED or RAISED badge needs numbers on both sides.
 4. **Score.** Confidence is a transparent weighted sum: `0.45 × prior + 0.35 × web + 0.20 × price`. The card shows each component and its reason. A failed tool scores 0 for its component. It lowers confidence and never crashes the feed.
 5. **Re-check.** After the verdict is on screen, Snowflake's Cortex Agent and Nimble's Web Search Agent each re-check the claim on their own, Nimble's wall-breaker, Reddit and newswire specialists add reaction, and Gemini speaks an alert for a material cut or raise. They fill in the card and never change the verdict.
-6. **Brief.** When the call ends, the run's flags are written to Snowflake and `AI_COMPLETE` writes a headline and 3–5 bullets for the IR team inside Snowflake.
+6. **Brief.** When the call ends, the run's flags are written to Snowflake and `AI_COMPLETE` writes a headline and 3–5 bullets for the investor relations (IR) team inside Snowflake.
 
 ## Sponsor tools
 
-- **Gemini API** (`gemini-3.8-flash`) does the work of five steps:
+- **Gemini API** (`gemini-3.8-flash`) is the ears and the brain. It does the work of five steps:
   - audio transcription and understanding, with speakers judged by what they say;
   - claim extraction with materiality scoring;
   - the fact-check agent with parallel function calling;
   - structured verdicts (slow calls are hedged: a duplicate request after 6–8 s, first answer wins);
   - spoken alerts with Gemini TTS (`gemini-3.8-flash-tts`). The sentence is built from the flag's own fields, so the voice never says a number the card doesn't show.
-- **Nimble** runs a "web desk" of eight specialists for every flag, each on a different Nimble capability. They feed each other.
+- **Nimble** is the web researcher. It runs a "web desk" of eight specialists for every flag, each on a different Nimble capability. They feed each other.
   - **Before the verdict**, four run in parallel within 6.5 s:
     - The *primary-source reader* uses standard-depth search limited to PepsiCo's IR site and the SEC. It returns the company's own guidance table (each line's current and previous value) in about 0.5 s. That table is the first web source in every verdict.
     - The *broad web search* runs the model's query plus a fixed recall query.
@@ -98,13 +145,13 @@ flowchart LR
     - The *wall-breaker* uses Domain Knowledge to find which news sites run antibot systems (DataDome, Cloudflare and others), then reads the protected article with the driver Nimble recommends.
     - The *Reddit pulse* uses the pre-built `reddit_answers` Extract Template.
     - The *newswire* runs news search (`focus=news`), falling back to plain search.
-- **Tiger Data** stores prices. `price_ticks` is a hypertable in the columnstore (several times smaller; the card shows the current ratio), and `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. One SQL query over `bars_1m` computes PEP's move since each quote minus XLP's (the abnormal move), the day move and the close move, in about 2 ms on the server. The card shows the query and its speed.
-- **Snowflake** holds the prior guidance and the call's flags. It never stores call transcripts.
+- **Tiger Data** is the stock-price stopwatch. It stores prices. `price_ticks` is a hypertable in the columnstore (several times smaller; the card shows the current ratio), and `bars_1m` is a 1-minute continuous aggregate with real-time aggregation. One SQL query over `bars_1m` computes PEP's move since each quote minus XLP's (the abnormal move), the day move and the close move, in about 2 ms on the server. The card shows the query and its speed.
+- **Snowflake** is the memory of what each company said before. It holds the prior guidance and the call's flags. It never stores call transcripts.
   - **Cortex Search** runs over the Q2 2026 guidance documents, filtered by ticker. It answers questions such as "What was PepsiCo's core EPS guidance last quarter?"
   - **`GUIDANCE_LINES`** records every FY2026 guidance statement made before the call, from Dec 2025 to Jul 2026. The fact-check reads the metric's history from it by SQL, and the card draws that history as a timeline.
   - **The Cortex Agent `GUIDANCE_AGENT`** re-checks each claim after the verdict, inside Snowflake. It uses Cortex Analyst over the semantic view `GUIDANCE_SV`, Cortex Search, and SQL on the warehouse. The card shows its verdict (matches, changes or conflicts with prior guidance), the SQL it wrote, and the rows it read.
   - **The end-of-call brief.** The run's flags go into `CALL_FLAGS` (structured fields only), and one `AI_COMPLETE` query writes the IR brief inside Snowflake.
-- **Sentry** covers errors and AI agent monitoring:
+- **Sentry** is the flight recorder. It covers errors and AI agent monitoring:
   - Each flag is its own `gen_ai.invoke_agent` trace, with the quote-to-flag and quote-to-verdict latencies as measurements.
   - Every Gemini call is a `gen_ai.chat` span; every tool call, Nimble specialist and the Cortex Agent are spans in the same trace.
   - The browser loads Sentry's official SDK (pinned with its integrity hash) and records each card's render inside that flag's server trace.

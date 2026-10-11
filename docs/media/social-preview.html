@@ -52,13 +52,16 @@
   .metric { font-size: 26px; font-weight: 650; }
   .change { margin-top: 26px; font-family: var(--mono); }
   .old { font-size: 24px; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 2px; }
+  .old i { font-style: normal; text-decoration: none; display: inline-block; margin-right: 8px; }
   .new { display: block; margin-top: 6px; font-size: 54px; font-weight: 700; color: var(--red); letter-spacing: -0.02em; }
+  .plain { margin-top: 12px; font-size: 19px; line-height: 1.4; color: var(--text); }
+  .plain b { font-weight: 600; }
   blockquote {
     margin-top: 24px; padding-left: 16px; border-left: 2px solid var(--line-2);
     font-size: 21px; line-height: 1.4; font-style: italic; color: var(--text);
   }
   cite { display: block; margin-top: 8px; font-size: 16px; font-style: normal; color: var(--muted); }
-  .facts { display: flex; gap: 28px; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 17px; color: var(--muted); }
+  .facts { display: flex; justify-content: space-between; white-space: nowrap; gap: 20px; margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 17px; color: var(--muted); }
   .facts b { color: var(--text); font-family: var(--mono); font-weight: 600; }
 </style>
 </head>
@@ -68,14 +71,15 @@
       <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#0c1015" stroke="#273242"/><path d="M6 20 L12 12 L17 17 L26 8" stroke="#ff4d5e" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Call Desk</span>
     </div>
-    <h1>Hears earnings calls live and fact-checks every market-moving line in seconds.</h1>
+    <h1>Listens to company earnings calls live and shows what just changed, with proof, in seconds.</h1>
   </section>
 
   <section class="card">
-    <div class="head"><span class="badge">CUT</span><span class="metric">Core EPS growth</span></div>
-    <p class="change"><span class="old">low end of +5% to +7%</span><span class="new">+2.5% to +3.5%</span></p>
-    <blockquote>“it’s the margin piece that’s driving the guide down in EPS”<cite>CFO, PepsiCo Q3 2026 earnings call</cite></blockquote>
-    <div class="facts"><span>Flagged <b>11</b> s after the line</span><span>Confidence <b>0.92</b></span></div>
+    <div class="head"><span class="badge">LOWERED</span><span class="metric">Profit growth forecast</span></div>
+    <p class="change"><span class="old"><i>was</i>about +5%</span><span class="new">+2.5% to +3.5%</span></p>
+    <blockquote>“it’s the margin piece that’s driving the guide down in EPS”<cite>Finance chief, PepsiCo earnings call, Oct 8, 2026</cite></blockquote>
+    <p class="plain">In plain words: <b>“We now expect profits to grow less than we said.”</b></p>
+    <div class="facts"><span>Shown <b>12</b> s after the sentence</span><span>Confidence <b>92%</b></span></div>
   </section>
 
   <p class="stack">Built with <b>Gemini</b>, <b>Snowflake Cortex</b>, <b>Nimble</b>, <b>Tiger Data</b> and <b>Sentry</b>.</p>
