@@ -113,7 +113,8 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
         if result.segments:
             context.append(" ".join(f"{s.speaker}: {s.text}" for s in result.segments))
 
-        for claim in result.claims:
+        # Least material first, so the most material flag from this chunk lands on top of the feed.
+        for claim in sorted(result.claims, key=lambda c: c.materiality):
             key = dedupe_key(claim)
             accepted = claim.materiality >= threshold and key not in seen
             hub.publish("claim", {"chunk": k, "quote": claim.quote, "metric": claim.metric, "materiality": claim.materiality,

@@ -114,6 +114,7 @@ async def state() -> dict:
         "running": runs.running,
         "mode": runs.mode,
         "position_s": round(runs.start_s + hub.elapsed() * runs.speed, 2) if runs.running else None,
+        "speed": runs.speed,
         "integrations": config.integration_modes(),
         "replay_available": replay.available(),
         "audio": info.audio_path.exists(),

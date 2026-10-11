@@ -90,21 +90,36 @@ function addLine(seg) {
   const pane = $("#transcript");
   const atBottom = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 120;
   pane.append(li);
-  state.lines.push({ li, text: seg.text });
+  state.lines.push({ li, text: seg.text, marks: [] });
   if (atBottom) pane.scrollTop = pane.scrollHeight;
 }
 
 function highlightQuote(quote, direction) {
   if (!quote) return;
   const needle = quote.toLowerCase().replace(/[.,]$/, "");
-  for (let i = state.lines.length - 1; i >= Math.max(0, state.lines.length - 6); i--) {
-    const { li, text } = state.lines[i];
-    const idx = text.toLowerCase().indexOf(needle);
-    if (idx < 0) continue;
-    const span = li.querySelector(".line-text");
-    span.replaceChildren(text.slice(0, idx), el("mark", dirClass(direction), text.slice(idx, idx + needle.length)), text.slice(idx + needle.length));
+  for (let i = state.lines.length - 1; i >= Math.max(0, state.lines.length - 8); i--) {
+    const line = state.lines[i];
+    const start = line.text.toLowerCase().indexOf(needle);
+    if (start < 0) continue;
+    const end = start + needle.length;
+    const existing = line.marks.find((m) => m.start === start && m.end === end);
+    if (existing) existing.dir = direction || existing.dir;
+    else if (!line.marks.some((m) => start < m.end && end > m.start)) line.marks.push({ start, end, dir: direction });
+    renderMarks(line);
     return;
   }
+}
+
+function renderMarks(line) {
+  const span = line.li.querySelector(".line-text");
+  const parts = [];
+  let pos = 0;
+  for (const m of [...line.marks].sort((a, b) => a.start - b.start)) {
+    parts.push(line.text.slice(pos, m.start), el("mark", dirClass(m.dir), line.text.slice(m.start, m.end)));
+    pos = m.end;
+  }
+  parts.push(line.text.slice(pos));
+  span.replaceChildren(...parts);
 }
 
 // ---------- flags ----------
@@ -410,8 +425,9 @@ async function init() {
   if (s.running && s.position_s !== null) {
     // Joined mid-run (page reload): pick the clock up where the server is.
     state.startS = 0;
+    state.speed = s.speed || 1;
     state.joinedMidRun = true;
-    state.runStartedAt = performance.now() - s.position_s * 1000;
+    state.runStartedAt = performance.now() - (s.position_s / state.speed) * 1000;
     state.mode = s.mode;
     setRunning(true);
   }
