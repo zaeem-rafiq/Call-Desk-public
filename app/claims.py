@@ -27,6 +27,9 @@ METRICS: dict[str, str] = {
     "dividend": "Dividend",
     "cash_returns": "Cash returns",
     "productivity": "Productivity savings",
+    "input_costs": "Input costs",
+    "mix": "Mix",
+    "marketing_investment": "Marketing investment",
     "outlook_next_year": "Next-year outlook",
     "macro": "Macro / consumer",
     "other": "Other",
@@ -56,7 +59,15 @@ class ChunkResult(BaseModel):
     claims: list[Claim] = Field(default_factory=list)
 
 
-def metric_label(slug: str) -> str:
+# Titles for the catch-all metric, by claim type, so no card is ever titled just "Other".
+OTHER_TITLES = {"macro": "Macro commentary", "tone": "Tone shift", "pricing": "Pricing", "tariffs": "Tariffs",
+                "margin": "Margin commentary", "kpi": "Business update", "guidance": "Outlook commentary",
+                "capex": "Capital spending", "buyback": "Capital returns"}
+
+
+def metric_label(slug: str, claim_type: str | None = None) -> str:
+    if slug == "other":
+        return OTHER_TITLES.get((claim_type or "").lower(), "Commentary")
     return METRICS.get(slug, slug.replace("_", " ").capitalize())
 
 

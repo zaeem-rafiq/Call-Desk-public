@@ -170,7 +170,7 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
                 flag = Flag(
                     id=flag_id, call_ts=_iso(info.call_ts(t)), t_offset=round(t, 1),
                     speaker=claim.speaker, quote=claim.quote, claim_type=claim.claim_type, metric=claim.metric,
-                    metric_label=metric_label(claim.metric), direction=claim.direction, prior_value=claim.prior_value,
+                    metric_label=metric_label(claim.metric, claim.claim_type), direction=claim.direction, prior_value=claim.prior_value,
                     new_value=claim.new_value, materiality=claim.materiality,
                 )
                 now = audio_now()

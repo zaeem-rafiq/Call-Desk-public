@@ -133,3 +133,11 @@ def test_one_card_per_metric_but_guidance_keeps_its_own():
     assert card_slot(c("organic_revenue_growth", "guidance", "robust")) == card_slot(c("organic_revenue_growth", "guidance", "long-term 4%"))
     assert card_slot(c("core_eps_growth", "kpi", "2%")) != card_slot(c("core_eps_growth", "guidance", None))
     assert card_slot(c("other", "tone", "a")) != card_slot(c("other", "tone", "b"))
+
+
+def test_no_card_is_titled_other():
+    from app.claims import metric_label
+
+    assert metric_label("other", "macro") == "Macro commentary"
+    assert metric_label("other", None) == "Commentary"
+    assert metric_label("input_costs") == "Input costs"
