@@ -51,7 +51,7 @@ The judges do not work in finance. Say the plain words. Use a finance word only 
 
 | Time | Do | Say |
 |---|---|---|
-| 0:00 | Page idle | "Every three months, big companies like PepsiCo get on a call and tell investors how they're doing. One sentence can move the stock price. But on the call, bosses often talk about a change without repeating the number. It's in the press release, and you have to go find it. On Thursday, PepsiCo's finance chief said 'it's the margin piece that's driving the guide down in EPS'. In plain English: 'we now expect profits to grow less than we said.' By how much? Call Desk tells you, in seconds." |
+| 0:00 | Page idle | "Every three months, big companies like PepsiCo get on a call and tell investors how they're doing. One sentence can move the stock price. But on the call, executives often talk about a change without repeating the number. It's in the press release, and you have to go find it. On Thursday, PepsiCo's finance chief said 'it's the margin piece that's driving the guide down in EPS'. In plain English: 'we now expect profits to grow less than we said.' By how much? Call Desk tells you, in seconds." |
 | 0:15 | Click **Play call** | "This is the real PepsiCo call from Thursday, playing in real time. Google's Gemini listens, writes it down, and picks out every sentence that could move the stock." |
 | 0:30 | CFO: "it's the margin piece that's driving the guide down in EPS" | "Listen to this sentence. Notice there's no number in it." |
 | ~0:42 | **Red card pops up**, showing "finding the number…" and the tool chips | "There's a red card: PepsiCo lowered its profit forecast. Now an AI agent is checking three places at the same time." |
