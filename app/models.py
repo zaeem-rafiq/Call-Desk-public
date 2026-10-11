@@ -139,6 +139,7 @@ class WebVerify(BaseModel):
     sources: list[WebItem] = Field(default_factory=list)
     official_sources: int = 0
     run_s: float | None = None
+    cached_at: str = ""  # set when this is a stored result of an earlier live agent run (agent runs are billed per task)
 
 
 class WebDesk(BaseModel):

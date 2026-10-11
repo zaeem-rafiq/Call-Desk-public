@@ -1,6 +1,7 @@
 """Snowflake and Nimble integration logic that runs without keys."""
 
 import asyncio
+from pathlib import Path
 
 from app import config
 from app.tools import live_web, prior_guidance, snowflake_agent
@@ -146,11 +147,47 @@ def test_nimble_billing_limit_shows_as_unavailable(monkeypatch):
         raise nimble.NimbleError("POST /v2/agents/runs -> 402: {'detail': {'message': 'This account cannot be billed'}}")
     monkeypatch.setattr(nimble, "agent_run", billing)
     monkeypatch.setattr(web_desk, "_agents_unbillable_until", 0.0)
+    monkeypatch.setattr(web_desk, "VERIFY_CACHE", Path("/nonexistent/verify.json"))
     desk = WebDesk()
-    asyncio.run(web_desk.enrich(desk, company="PepsiCo", ticker="PEP", metric_label="Core EPS growth", new_value=None,
+    asyncio.run(web_desk.enrich(desk, company="PepsiCo", ticker="PEP", metric_label="Core EPS growth", new_value="+2.5% to +3.5%",
                                 found={"broad": []}, mock=False, on_change=lambda: None))
     verify = next(s for s in desk.steps if s.id == "verify")
     assert verify.status == "skipped" and verify.summary.startswith("unavailable")
+
+
+def test_verification_agent_runs_only_on_numeric_lines_and_reuses_stored_results(monkeypatch, tmp_path):
+    """Agent runs are billed per task: non-numeric flags never run one, and a stored live result is reused, labelled."""
+    import json
+
+    from app.models import WebDesk, WebVerify
+    from app.tools import nimble, web_desk
+
+    _slow_nimble(monkeypatch, seconds=0.01)
+    runs = []
+
+    async def agent(*a, **k):
+        runs.append(1)
+        return {"output": {"type": "json", "content": {"guidance_in_oct_8_2026_release": "+2.5% to +3.5%"},
+                           "trust": {"confidence": "high", "sources": [{"type": "primary", "url": "https://investors.pepsico.com/x"}]}},
+                "run_s": 12.0}
+    monkeypatch.setattr(nimble, "agent_run", agent)
+    monkeypatch.setattr(web_desk, "_agents_unbillable_until", 0.0)
+    monkeypatch.setattr(web_desk, "VERIFY_CACHE", tmp_path / "verify.json")
+
+    def run(label, value):
+        desk = WebDesk()
+        asyncio.run(web_desk.enrich(desk, company="PepsiCo", ticker="PEP", metric_label=label, new_value=value,
+                                    found={"broad": []}, mock=False, on_change=lambda: None))
+        return desk, next(s for s in desk.steps if s.id == "verify")
+
+    _, step = run("Next-year outlook", "in Feb when we report the fourth quarter")
+    assert step.status == "skipped" and "not a numeric" in step.summary and not runs
+    desk, step = run("Core EPS growth", "+2.5% to +3.5%")
+    assert step.status == "ok" and len(runs) == 1 and desk.verify.answer["now"] == "+2.5% to +3.5%"
+    assert "pepsico|core eps growth" in json.loads((tmp_path / "verify.json").read_text())
+    desk, step = run("Core EPS growth", "+2.5% to +3.5%")
+    assert len(runs) == 1, "a stored result must be reused, not re-billed"
+    assert desk.verify.cached_at and "cached result" in step.summary
 
 
 def test_snowflake_agent_runs_do_not_queue_behind_each_other(monkeypatch):

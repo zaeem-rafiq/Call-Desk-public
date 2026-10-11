@@ -338,7 +338,7 @@ function renderAgents(node, f) {
     const vs = desk.steps.find((s) => s.id === "verify");
     if (desk.verify) {
       v.append(el("span", `vbadge c-${desk.verify.confidence || "na"}`, `VERIFIED · ${(desk.verify.confidence || "?").toUpperCase()}`),
-        el("span", "vmeta", `${plural(desk.verify.official_sources, "official source")} · ${desk.verify.run_s ?? "?"}s`));
+        el("span", "vmeta", `${plural(desk.verify.official_sources, "official source")} · ${desk.verify.cached_at ? `cached ${desk.verify.cached_at}` : `${desk.verify.run_s ?? "?"}s`}`));
     } else if (vs && vs.status === "running") v.append(el("span", "vrun", "verification agent running…"));
     else if (vs && vs.status !== "ok") v.append(el("span", "vmeta", vs.summary.startsWith("unavailable") ? "verification agent unavailable" : `verification agent ${vs.status}`));
     if (desk.mock) v.append(el("span", "mock-tag", "MOCK"));

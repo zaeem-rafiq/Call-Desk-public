@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import re
 import time
 
@@ -31,6 +32,7 @@ from pathlib import Path
 from typing import Awaitable, Callable
 
 from .. import config, observability
+from ..claims import parse_range
 from ..models import TrustClaim, WebDesk, WebItem, WebStep, WebVerify
 from . import nimble
 from .live_web import IR_DOMAINS, _passages, guidance_table, interleave, ir_query, mock_search_live_web, recall_query
@@ -228,6 +230,30 @@ async def mock_verdict(query: str, metric_label: str = "", new_value: str | None
 
 # ------------------------------------------------------------------ enrich phase
 _agents_unbillable_until = 0.0  # set for 10 minutes after a 402 from /v2/agents/runs
+VERIFY_CACHE = config.DATA / "cache" / "nimble_verify.json"  # one stored live result per company+metric; NIMBLE_VERIFY_FRESH=1 re-runs
+
+
+def _verify_key(company: str, metric_label: str) -> str:
+    return f"{company}|{metric_label}".lower()
+
+
+def load_verify_cache() -> dict:
+    try:
+        return json.loads(VERIFY_CACHE.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def save_verify(company: str, metric_label: str, v: WebVerify) -> None:
+    from datetime import datetime
+
+    cache = load_verify_cache()
+    cache[_verify_key(company, metric_label)] = {**v.model_dump(), "cached_at": datetime.now(config.ET).strftime("%b %d %H:%M ET")}
+    try:
+        VERIFY_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        VERIFY_CACHE.write_text(json.dumps(cache, indent=1))
+    except OSError:
+        pass
 def _verify_schema() -> dict:
     s = {"type": "string"}
     return {"type": "object", "properties": {
@@ -314,6 +340,16 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
     async with nimble.client(timeout=15.0) as http:
         async def verify():
             global _agents_unbillable_until
+            if not parse_range(new_value):  # the agent is reliable on numeric guidance lines only, and each run is billed
+                steps["verify"].status, steps["verify"].summary = "skipped", "not a numeric guidance line; agent not run"
+                return
+            cached = load_verify_cache().get(_verify_key(company, metric_label))
+            if cached and os.environ.get("NIMBLE_VERIFY_FRESH") != "1":
+                desk.verify = WebVerify(**cached)
+                v = desk.verify
+                steps["verify"].summary = (f"confidence {v.confidence or '?'} · {v.official_sources} official sources · "
+                                           f"cached result of the {v.cached_at} live run")
+                return
             if time.monotonic() < _agents_unbillable_until:
                 steps["verify"].status, steps["verify"].summary = "skipped", "unavailable: Nimble account cannot be billed for agent runs (402)"
                 return
@@ -330,6 +366,8 @@ async def enrich(desk: WebDesk, *, company: str, ticker: str, metric_label: str,
                 return
             desk.verify = to_verify(out["output"], out["run_s"])
             v = desk.verify
+            if v.confidence in ("high", "medium"):
+                save_verify(company, metric_label, v)
             steps["verify"].summary = (f"confidence {v.confidence or '?'} · {v.official_sources} official sources · "
                                        f"{len(v.claims)} cited claims · {v.run_s:.0f}s")
 
