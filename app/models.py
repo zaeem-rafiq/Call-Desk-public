@@ -68,6 +68,87 @@ class RelatedChange(BaseModel):
     direction: Direction
 
 
+class GuidancePoint(BaseModel):
+    """One earlier statement of the flagged metric's guidance (Snowflake GUIDANCE_LINES)."""
+
+    as_of_date: str
+    event: str
+    value_text: str
+    low: float | None = None
+    high: float | None = None
+    unit: str = ""
+    basis: str = ""  # stated | implied
+    status: str = ""  # first given | continues to expect | affirmed
+    qualifier: str = ""
+    source_url: str = ""
+
+
+class SnowflakeAgent(BaseModel):
+    """Snowflake Cortex Agent's own check of the claim (Cortex Analyst SQL + Cortex Search)."""
+
+    status: Literal["running", "done", "failed", "skipped"] = "running"
+    verdict: str = ""  # CONSISTENT | CONTRADICTS | NEW | UNVERIFIABLE
+    answer: str = ""
+    sql: str = ""
+    rows: list[dict] = Field(default_factory=list)
+    citations: list[str] = Field(default_factory=list)
+    tools: list[str] = Field(default_factory=list)  # tools the agent chose, in order
+    ms: int | None = None
+    error: str | None = None
+    mock: bool = False
+
+
+class WebStep(BaseModel):
+    """One Nimble specialist's call on the web desk."""
+
+    id: str  # newswire | primary | serp | sitemap | verify | wall | social | aio | health
+    label: str  # e.g. "Newswire scout"
+    endpoint: str  # e.g. "POST /v2/search · focus=news"
+    phase: Literal["verdict", "enrich"] = "verdict"
+    status: Literal["running", "ok", "failed", "skipped"] = "running"
+    ms: int | None = None
+    summary: str = ""
+    feeds: list[str] = Field(default_factory=list)  # step ids whose output this step used
+    mock: bool = False
+
+
+class WebItem(BaseModel):
+    title: str = ""
+    url: str = ""
+    source: str = ""
+    snippet: str = ""
+    published: str = ""
+
+
+class TrustClaim(BaseModel):
+    claim: str
+    confidence: str = ""
+    citations: list[WebItem] = Field(default_factory=list)
+
+
+class WebVerify(BaseModel):
+    """Nimble Web Search Agent's independent answer with its trust report."""
+
+    confidence: str = ""  # high | medium | low
+    reasoning: str = ""
+    answer: dict = Field(default_factory=dict)
+    claims: list[TrustClaim] = Field(default_factory=list)
+    sources: list[WebItem] = Field(default_factory=list)
+    official_sources: int = 0
+    run_s: float | None = None
+
+
+class WebDesk(BaseModel):
+    steps: list[WebStep] = Field(default_factory=list)
+    verify: WebVerify | None = None
+    social: list[WebItem] = Field(default_factory=list)
+    street: list[WebItem] = Field(default_factory=list)
+    wall: dict = Field(default_factory=dict)  # {"domain", "antibots", "driver", "status", "snippet", "url"}
+    aio: dict = Field(default_factory=dict)  # {"engine", "text", "stale"}
+    health: list[dict] = Field(default_factory=list)  # [{"domain", "status", "success_rate"}]
+    mock: bool = False
+
+
 class Flag(BaseModel):
     id: str
     status: Literal["checking", "checked"] = "checking"
@@ -98,6 +179,9 @@ class Flag(BaseModel):
     tool_calls: list[ToolCall] = Field(default_factory=list)
     mocked: list[str] = Field(default_factory=list)  # integrations that were mocked for this flag
     degraded: bool = False  # the live agent failed; the card shows the claim as heard plus raw tool evidence
+    guidance_history: list[GuidancePoint] = Field(default_factory=list)  # Snowflake: every earlier statement of this metric
+    snowflake_agent: SnowflakeAgent | None = None  # filled after the verdict
+    web_desk: WebDesk | None = None  # Nimble specialists; enrich steps land after the verdict
 
 
 class TranscriptSegment(BaseModel):

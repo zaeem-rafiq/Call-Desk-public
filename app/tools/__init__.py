@@ -6,19 +6,19 @@ from . import live_web, prices, prior_guidance
 from .base import ToolResult, run_tool
 
 
-async def search_prior_guidance(query: str) -> ToolResult:
-    """Search last quarter's PepsiCo transcripts and guidance (Snowflake Cortex Search)."""
+async def search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP") -> ToolResult:
+    """Last quarter's guidance (Snowflake Cortex Search) plus the metric's guidance history (SQL). Data: {hits, history}."""
     return await run_tool(
-        "search_prior_guidance", "snowflake", {"query": query},
-        prior_guidance.live_search_prior_guidance, prior_guidance.mock_search_prior_guidance, timeout_s=20,
+        "search_prior_guidance", "snowflake", {"query": query, "metric": metric, "ticker": ticker},
+        prior_guidance.live_search_prior_guidance, prior_guidance.mock_search_prior_guidance, timeout_s=8,
     )
 
 
-async def search_live_web(query: str) -> ToolResult:
+async def search_live_web(query: str, metric_label: str = "", company: str = "PepsiCo") -> ToolResult:
     """Search the live web for news, the press release, and analyst reaction (Nimble)."""
     return await run_tool(
-        "search_live_web", "nimble", {"query": query},
-        live_web.live_search_live_web, live_web.mock_search_live_web, timeout_s=20,
+        "search_live_web", "nimble", {"query": query, "metric_label": metric_label, "company": company},
+        live_web.live_search_live_web, live_web.mock_search_live_web, timeout_s=8,
     )
 
 

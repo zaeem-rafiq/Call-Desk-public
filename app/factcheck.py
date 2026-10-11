@@ -16,7 +16,7 @@ from typing import Callable
 
 from . import confidence, config, observability, tools
 from .claims import Claim, numeric_direction, parse_range
-from .models import Evidence, Flag, PriceReaction, RelatedChange
+from .models import Evidence, Flag, GuidancePoint, PriceReaction, RelatedChange
 
 log = logging.getLogger("calldesk")
 MOCKS = Path(__file__).resolve().parent / "mocks"
@@ -24,8 +24,9 @@ MOCKS = Path(__file__).resolve().parent / "mocks"
 
 def default_queries(claim: Claim, label: str, info: config.CallInfo) -> dict[str, dict]:
     return {
-        "search_prior_guidance": {"query": f"{info.company} fiscal 2026 {label} guidance outlook"},
-        "search_live_web": {"query": f"{info.company} Q3 2026 {label} {claim.new_value or ''} guidance".strip()},
+        "search_prior_guidance": {"query": f"{info.company} fiscal 2026 {label} guidance outlook", "metric": claim.metric, "ticker": info.ticker},
+        "search_live_web": {"query": f"{info.company} Q3 2026 {label} {claim.new_value or ''} guidance".strip(),
+                            "metric_label": label, "company": info.company},
         "get_price_reaction": {"ticker": info.ticker, "since_ts": "", "benchmark": info.primary_benchmark},
     }
 
@@ -60,9 +61,16 @@ def _mock_synthesis(claim: Claim, label: str, prior_hits: list[dict], web_hits: 
     }
 
 
+def _hits(res: tools.ToolResult | None) -> list[dict]:
+    """Search hits from a tool result; the prior-guidance tool returns {"hits", "history"}, the others a list."""
+    if not (res and res.ok and res.data):
+        return []
+    return res.data.get("hits") or [] if isinstance(res.data, dict) else res.data
+
+
 def _claim_only_synthesis(claim: Claim, label: str, results: dict) -> dict:
     """Verdict when the live agent failed: only what was heard, with the raw tool hits as neutral evidence."""
-    n_prior = len(results["search_prior_guidance"].data or []) if results.get("search_prior_guidance") and results["search_prior_guidance"].ok else 0
+    n_prior = len(_hits(results.get("search_prior_guidance")))
     n_web = len(results["search_live_web"].data or []) if results.get("search_live_web") and results["search_live_web"].ok else 0
     return {
         "direction": claim.direction,
@@ -123,7 +131,8 @@ async def fact_check(claim: Claim, flag: Flag, info: config.CallInfo, publish: C
             flag.degraded = True
 
         prior_res, web_res, price_res = (results.get(k) for k in ("search_prior_guidance", "search_live_web", "get_price_reaction"))
-        prior_hits = prior_res.data if prior_res and prior_res.ok else []
+        prior_hits = _hits(prior_res)
+        flag.guidance_history = [GuidancePoint(**h) for h in ((prior_res.data or {}).get("history") or [])] if prior_res and prior_res.ok else []
         web_hits = web_res.data if web_res and web_res.ok else []
         if synthesis is None:  # Gemini key missing: canned demo text, labelled MOCK in the UI and the eval
             synthesis = _mock_synthesis(claim, flag.metric_label, prior_hits, web_hits)
@@ -159,7 +168,9 @@ def _apply_synthesis(flag, claim, s, prior_hits, web_hits, prior_res, web_res) -
         if not (0 <= idx < len(hits)):
             continue
         h = hits[idx]
-        if prefix == "Nimble":
+        if h.get("doc_type") == "guidance_history":
+            src, ref = "Snowflake SQL · GUIDANCE_LINES", h.get("source_url", "")
+        elif prefix == "Nimble":
             src, ref = f"Nimble · {h.get('source') or h.get('domain') or 'web'}", h.get("url", "")
         else:
             src, ref = f"{prefix} · {h.get('doc_title', 'prior quarter')}", h.get("source_url") or h.get("doc_title", "")

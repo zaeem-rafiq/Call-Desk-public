@@ -15,6 +15,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from .. import config
+from . import guidance_history
 
 SERVICE = "PRIOR_GUIDANCE_SEARCH"
 COLUMNS = ["CHUNK", "DOC_TITLE", "QUARTER", "DOC_TYPE", "SOURCE_URL"]
@@ -66,7 +67,8 @@ def load_prior_chunks(max_chars: int = 1200) -> list[dict]:
     """Split data/prior/* into paragraph-packed chunks. Shared by the seed script and the mock."""
     chunks: list[dict] = []
     for path in sorted((config.DATA / "prior").glob("*")):
-        if path.suffix.lower() not in {".txt", ".md"}:
+        # Guidance documents only: third-party call transcripts stay on this machine (owner decision, Oct 11).
+        if path.suffix.lower() not in {".txt", ".md"} or "transcript" in path.stem.lower():
             continue
         meta = _doc_meta(path)
         if meta["DOC_TYPE"] == "guidance":
@@ -101,7 +103,22 @@ def _shape(rows: list[dict]) -> list[dict]:
     ]
 
 
-async def mock_search_prior_guidance(query: str, limit: int = 4) -> list[dict]:
+def _with_history(hits: list[dict], history: list[dict]) -> dict:
+    """Search hits first (the top guidance row stays [P1]), then the metric's guidance history as one more source."""
+    if history:
+        last = history[-1]
+        hits = hits + [{"doc_title": f"Guidance history: {last['metric_label']} (Snowflake SQL, GUIDANCE_LINES)", "quarter": last["as_of_quarter"],
+                        "doc_type": "guidance_history", "source_url": last["source_url"],
+                        "snippet": guidance_history.summary_line(history)}]
+    return {"hits": hits, "history": history}
+
+
+async def mock_search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP", limit: int = 4) -> dict:
+    history = await guidance_history.mock_guidance_history(ticker, metric) if metric else []
+    return _with_history(_mock_ranked(query, limit), history)
+
+
+def _mock_ranked(query: str, limit: int) -> list[dict]:
     q = set(_WORD.findall(query.lower()))
     boost = {"guidance", "outlook", "expect", "expects", "now", "core", "eps", "organic", "tax", "rate"}
     scored = []
@@ -144,7 +161,7 @@ _shared_conn = None
 _shared_lock = threading.Lock()
 
 
-def _query_shared(sql: str, params: tuple):
+def query_shared(sql: str, params: tuple, fetch: str = "one"):
     """Run one query on a long-lived connection (Snowflake logins take seconds); reconnect once on failure."""
     global _shared_conn
     with _shared_lock:
@@ -154,7 +171,7 @@ def _query_shared(sql: str, params: tuple):
                     _shared_conn = connect()
                 with _shared_conn.cursor() as cur:
                     cur.execute(sql, params, timeout=10)
-                    return cur.fetchone()
+                    return cur.fetchall() if fetch == "all" else cur.fetchone()
             except Exception:
                 try:
                     if _shared_conn is not None:
@@ -166,14 +183,14 @@ def _query_shared(sql: str, params: tuple):
 
 
 def warmup() -> None:
-    _query_shared("SELECT 1", ())
+    query_shared("SELECT 1", ())
 
 
-def _cortex_query(query: str, limit: int) -> list[dict]:
+def _cortex_query(query: str, limit: int, ticker: str = "PEP") -> list[dict]:
     e = config.env()
     svc = f"{e['SNOWFLAKE_DATABASE']}.{e['SNOWFLAKE_SCHEMA']}.{SERVICE}"
-    body = json.dumps({"query": query, "columns": COLUMNS, "limit": limit})
-    raw = _query_shared("SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(%s, %s)", (svc, body))[0]
+    body = json.dumps({"query": query, "columns": COLUMNS, "limit": limit, "filter": {"@eq": {"TICKER": ticker}}})
+    raw = query_shared("SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(%s, %s)", (svc, body))[0]
     return [{k.upper(): v for k, v in r.items()} for r in json.loads(raw).get("results", [])]
 
 
@@ -189,6 +206,8 @@ def _cortex_query_fresh(query: str, limit: int) -> list[dict]:
     return [{k.upper(): v for k, v in r.items()} for r in json.loads(raw).get("results", [])]
 
 
-async def live_search_prior_guidance(query: str, limit: int = 4) -> list[dict]:
-    rows = await asyncio.to_thread(_cortex_query, query, limit)
-    return _shape(rows)
+async def live_search_prior_guidance(query: str, metric: str = "", ticker: str = "PEP", limit: int = 4) -> dict:
+    """Cortex Search (filtered to the ticker) plus the metric's guidance history by SQL; both on the shared connection."""
+    rows = await asyncio.to_thread(_cortex_query, query, limit, ticker)
+    history = await guidance_history.live_guidance_history(ticker, metric) if metric else []
+    return _with_history(_shape(rows), history)

@@ -172,7 +172,10 @@ class Synthesis(BaseModel):
 SYNTH_SYSTEM = """You are Call Desk's fact-check agent. Write the verdict for one live earnings-call claim using ONLY the numbered sources.
 Cite sources by their number. Prior values come from [P#] sources (last quarter); current values come from the call itself or [W#] sources.
 Be exact with numbers and units; never invent a number that is not in the claim or a source. Keep CFO tone: plain, specific, no hype.
-If the claim is a full-year guidance change and a source shows the full guidance table, fill related_changes with each line (current vs previous)."""
+If the claim is a full-year guidance change and a source shows the full guidance table, fill related_changes with each line (current vs previous).
+Core EPS and core constant-currency EPS are DIFFERENT metrics. Report the one named in Metric; put the other in related_changes.
+If no number was spoken, you MUST take new_value from a [W#] source that states it for this exact metric. Use 'not stated' only when no source does.
+Take prior_value from [P#] sources first."""
 
 
 def _claim_block(claim: Claim, flag: Flag) -> str:
@@ -197,13 +200,15 @@ async def agent_fact_check(claim: Claim, flag: Flag, info: config.CallInfo, plan
     resp = await client().aio.models.generate_content(model=model, contents=[_claim_block(claim, flag)], config=tool_cfg)
     calls = [(c.name, dict(c.args or {})) for c in (resp.function_calls or []) if c.name in plan]
     # Pin the price lookup to the plan (quote time, ticker, benchmark); the model may reformat them.
-    calls = [(n, plan[n]) if n == "get_price_reaction" else (n, a) for n, a in calls]
+    # The model only writes the query; the plan's other arguments (metric, company) always apply.
+    calls = [(n, plan[n]) if n == "get_price_reaction" else (n, {**plan[n], **{k: v for k, v in a.items() if k in plan[n]}}) for n, a in calls]
     requested = {n for n, _ in calls}
     calls += [(n, args) for n, args in plan.items() if n not in requested]  # every flag gets all three checks
     log.info("agent %s tool calls: %s", flag.id, [(n, a.get("query", a.get("ticker"))) for n, a in calls])
     results = await run_tools(calls)
 
-    prior_hits = results["search_prior_guidance"].data if results["search_prior_guidance"].ok else []
+    prior_res = results["search_prior_guidance"]
+    prior_hits = (prior_res.data or {}).get("hits") or [] if prior_res.ok else []
     web_hits = results["search_live_web"].data if results["search_live_web"].ok else []
     price = results["get_price_reaction"]
     sources = ["PRIOR-QUARTER SOURCES (Snowflake Cortex Search):"]

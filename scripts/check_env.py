@@ -43,7 +43,7 @@ async def ping(name: str) -> str:
         if name == "snowflake":
             from app.tools.prior_guidance import live_search_prior_guidance
 
-            r = await live_search_prior_guidance("PepsiCo core EPS guidance", limit=1)
+            r = (await live_search_prior_guidance("PepsiCo core EPS guidance", metric="core_eps_growth", limit=1))["hits"]
             return f"ok ({r[0]['snippet'][:60]!r})" if r else "connected, but no results (run scripts/seed_snowflake.py)"
         if name == "sentry":
             return "configured (send a test event: GET /api/debug/sentry)"
