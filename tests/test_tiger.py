@@ -80,6 +80,8 @@ class FakeConn:
             result = [(3, 2, 9000, 1000)]
         elif "hypertable_size" in sql:
             result = [(12345,)]
+        elif sql == "SELECT count(*) FROM price_ticks":
+            result = [(1461976,)]
         else:
             raise AssertionError(f"unexpected query: {sql[:60]}")
         cur = type("Cur", (), {})()
@@ -126,14 +128,14 @@ def test_live_reaction_uses_sql_numbers_and_caches_storage(monkeypatch):
     assert r["sql"] == prices.display_sql(prices._reaction_params("PEP", "XLP", prices._parse_ts(SINCE)))
     assert r["query_ms"] == 2  # planning 0.7 + execution 1.6 ms
     assert r["storage"] == {"chunks": 3, "compressed_chunks": 2, "before_bytes": 9000, "after_bytes": 1000, "ratio": 9.0,
-                            "total_bytes": 12345}  # fell back to hypertable_compression_stats
+                            "total_bytes": 12345, "rows": 1461976}  # fell back to hypertable_compression_stats
     assert r["series"] and not r["mock"] and "Tiger" in r["source"]
     assert prices.REACTION_SQL in conn.queries  # executed with bound parameters, not the display text
     assert r["sql"] not in conn.queries
 
     conn.queries.clear()
     asyncio.run(prices.live_price_reaction("PEP", SINCE, "XLP"))
-    assert not any("stats" in q or "hypertable_size" in q for q in conn.queries)  # storage read once per process
+    assert not any("stats" in q or "hypertable_size" in q or "count(*)" in q for q in conn.queries)  # storage read once per process
 
 
 def test_storage_without_compressed_chunks_has_no_ratio(monkeypatch):

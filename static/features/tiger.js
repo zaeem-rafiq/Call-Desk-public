@@ -11,8 +11,9 @@ const chunksText = (s) => (hasChunks(s) ? `${s.chunks} chunk${s.chunks === 1 ? "
 // The storage fact for the card face: compression when Tiger reports it, else the hypertable size.
 function storageText(s) {
   if (!hasChunks(s)) return "";
-  if (s.ratio) return `data stored ${s.ratio}× smaller`;
-  return s.total_bytes ? `data stored in ${bytes(s.total_bytes)}` : "";
+  const rows = s.rows >= 1e6 ? ` · ${(s.rows / 1e6).toFixed(2)}M price rows` : s.rows >= 1e3 ? ` · ${Math.round(s.rows / 1e3)}K price rows` : "";
+  if (s.ratio) return `data stored ${s.ratio}× smaller${rows}`;
+  return s.total_bytes ? `data stored in ${bytes(s.total_bytes)}${rows}` : "";
 }
 
 // One collapsed line under the market stats: query time and storage; opens to where the numbers came

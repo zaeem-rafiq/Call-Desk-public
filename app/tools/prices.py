@@ -260,12 +260,13 @@ def _storage(conn) -> dict:
             except psycopg.Error:
                 conn.rollback()
         total = conn.execute("SELECT hypertable_size('price_ticks')").fetchone()[0]
+        rows = conn.execute("SELECT count(*) FROM price_ticks").fetchone()[0]  # about 50 ms on the columnstore, once
     except psycopg.Error:
         conn.rollback()
         return {}
     chunks, compressed, before, after = stats or (None, None, None, None)
     _storage_cache.update(chunks=chunks, compressed_chunks=compressed, before_bytes=before, after_bytes=after,
-                          ratio=round(before / after, 1) if before and after else None, total_bytes=total)
+                          ratio=round(before / after, 1) if before and after else None, total_bytes=total, rows=rows)
     return _storage_cache
 
 
