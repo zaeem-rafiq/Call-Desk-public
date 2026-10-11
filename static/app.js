@@ -86,17 +86,82 @@ function addMarker(flag) {
 }
 
 // ---------- transcript ----------
+// Chunks overlap by a few seconds and can stop mid-sentence, so the next piece often re-hears the end of the previous
+// one: "…earnings of $1.72" + "we delivered earnings of $1.72 per share…", "is grow-" + "-ing…", "…the Fly Delta app."
+// + "and completed the rollout…". The same speaker's continuation drops the re-heard words and finishes the previous
+// line's sentence; whatever follows that sentence starts a line of its own.
+const ENDS_SENTENCE = /[.!?…]["”’')]*$/;
+const STARTS_LOWER = /^-?\p{Ll}[\p{Ll}'’]*(?=[\s,.;:!?]|$)/u;  // "and", "-ing"; not "iPhone"
+const SENTENCE_BREAK = /[.!?…]["”’')]*(?=\s+\S)/;
+const normWords = (t) => t.toLowerCase().replace(/[-–—]/g, " ").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter(Boolean);
+
+function continues(prev, seg) {
+  return Boolean(prev) && prev.speaker === seg.speaker && (!ENDS_SENTENCE.test(prev.text) || STARTS_LOWER.test(seg.text));
+}
+
+// How many raw words at the start of `tokens` re-hear the end of `prev`: the longest run of prev's last words found
+// near the start of the new piece (after at most 4 re-worded words; its first word may be the cut-off tail of one,
+// "6" for "$1.6"). 0 when the piece does not overlap by at least `minWords`.
+function overlap(prev, tokens, minWords = 1) {
+  const tail = normWords(prev).slice(-20);
+  const head = tokens.flatMap((tok, i) => normWords(tok).map((w) => [w, i]));
+  const hw = head.map(([w]) => w);
+  for (let k = Math.min(tail.length, hw.length); k >= minWords; k--) {
+    const suffix = tail.slice(-k);
+    for (let s = 0; s <= Math.min(4, hw.length - k); s++) {
+      if (s > 0 && k < 3) break;  // a short match after re-worded words is a coincidence
+      const ok = suffix.every((w, j) => hw[s + j] === w || (s === 0 && j === 0 && w.endsWith(hw[0])));
+      if (ok) return head[s + k - 1][1] + 1;
+    }
+  }
+  return 0;
+}
+
+// Returns [the previous line completed, the rest of the new piece or ""].
+function joinText(prev, next) {
+  if (prev.endsWith("-") && STARTS_LOWER.test(next)) {  // a word cut in two
+    next = prev.slice(0, -1).split(/\s+/).pop() + next.replace(/^-/, "");
+    prev = prev.slice(0, prev.lastIndexOf(" ") + 1).trimEnd();
+  }
+  const tokens = next.split(/\s+/);
+  const rest = tokens.slice(overlap(prev, tokens)).join(" ");
+  if (!rest) return [prev, ""];
+  if (ENDS_SENTENCE.test(prev) && !STARTS_LOWER.test(rest)) return [prev, rest];  // a new sentence: its own line
+  const head = STARTS_LOWER.test(rest) ? prev.replace(/\.$/, "") : prev;  // the period was revised to a comma
+  const m = SENTENCE_BREAK.exec(rest);
+  const end = m ? m.index + m[0].length : rest.length;
+  return [`${head} ${rest.slice(0, end)}`.trim(), rest.slice(end).trim()];
+}
+
+// A piece that only repeats the end of the previous line (even under another speaker label) adds nothing.
+function repeatsPrevious(prev, text) {
+  const words = normWords(text);
+  return Boolean(prev) && words.length >= 4 && ` ${normWords(prev.text).slice(-30).join(" ")} `.includes(` ${words.join(" ")} `);
+}
+
 function addLine(seg) {
   $("#transcript-empty").hidden = true;
-  const li = el("li", "line");
-  li.append(el("span", "line-time", fmtET(seg.call_ts)));
-  const body = el("div");
-  body.append(el("span", `line-speaker${EXEC.test(seg.speaker) ? " exec" : ""}`, seg.speaker), el("span", "line-text", seg.text));
-  li.append(body);
   const pane = $("#transcript");
   const atBottom = pane.scrollHeight - pane.scrollTop - pane.clientHeight < 120;
-  pane.append(li);
-  state.lines.push({ li, text: seg.text, marks: [] });
+  const prev = state.lines[state.lines.length - 1];
+  let text = seg.text;
+  if (repeatsPrevious(prev, text)) return;
+  if (continues(prev, seg)) {
+    [prev.text, text] = joinText(prev.text, seg.text);
+    renderMarks(prev);
+  } else if (prev) {  // a new speaker label can still re-hear the previous line's last words
+    const tokens = text.split(/\s+/);
+    text = tokens.slice(overlap(prev.text, tokens, 3)).join(" ");
+  }
+  if (text) {
+    const li = el("li", "line");
+    li.append(el("span", "line-time", fmtET(seg.call_ts)));
+    const body = el("div");
+    body.append(el("span", `line-speaker${EXEC.test(seg.speaker) ? " exec" : ""}`, seg.speaker), el("span", "line-text", text));
+    li.append(body);
+    pane.append(li);
+    state.lines.push({ li, text, speaker: seg.speaker, marks: [] });
+  }
   if (atBottom) pane.scrollTop = pane.scrollHeight;
 }
 
