@@ -41,10 +41,13 @@ const fmtET = (iso) => ET.format(new Date(iso));
 const signed = (v, d = 2) => (v === null || v === undefined ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(d)}`);
 const dirClass = (d) => (d === "n/a" ? "na" : d || "na");
 // A raise in a lower-is-better metric (leverage, a tax rate, unit costs, fuel) is bad news: amber "RAISED · WORSE", not green.
+// The mirror (owner, Oct 11: "better in green"): a cut in such a metric is good news: green "LOWERED · BETTER", not red.
 const LOWER_IS_BETTER = new Set(["leverage", "core_tax_rate", "unit_cost_growth", "fuel_price", "input_costs"]);
 const LOWER_IS_BETTER_LABEL = /tax rate|leverage|unit cost|casm|fuel|input cost|debt/i;
 const worseRaise = (direction, metric, label) => direction === "raise" && (LOWER_IS_BETTER.has(metric) || LOWER_IS_BETTER_LABEL.test(label || ""));
-const dirKey = (direction, metric, label) => (worseRaise(direction, metric, label) ? "raise worse" : direction);
+const betterCut = (direction, metric, label) => direction === "cut" && (LOWER_IS_BETTER.has(metric) || LOWER_IS_BETTER_LABEL.test(label || ""));
+const dirKey = (direction, metric, label) =>
+  (worseRaise(direction, metric, label) ? "raise worse" : betterCut(direction, metric, label) ? "cut better" : direction);
 
 // ---------- integration pills ----------
 function renderPills(modes = {}) {
@@ -261,7 +264,8 @@ function renderFlag(f) {
   const compact = f.direction === "n/a";  // a NOTE: one line under the material cards, expandable on click
   node.className = ["flag", dirClass(dirKey(f.direction, f.metric, f.metric_label)), ...keep, ...(compact ? ["compact"] : [])].join(" ");
   placeCard(node, compact, isNew);
-  node.querySelector(".badge").textContent = worseRaise(f.direction, f.metric, f.metric_label) ? "RAISED · WORSE" : BADGE[f.direction] || f.direction.toUpperCase();
+  node.querySelector(".badge").textContent = worseRaise(f.direction, f.metric, f.metric_label) ? "RAISED · WORSE"
+    : betterCut(f.direction, f.metric, f.metric_label) ? "LOWERED · BETTER" : BADGE[f.direction] || f.direction.toUpperCase();
   node.querySelector(".metric").textContent = f.metric_label;
   const timeEl = node.querySelector(".flag-time");
   timeEl.replaceChildren(`${fmtET(f.call_ts)} ET`);
@@ -653,12 +657,12 @@ function renderDetail(node, f) {
 function updateTally() {
   const counts = {};
   for (const n of document.querySelectorAll(".feed .flag")) {
-    const d = n.classList.contains("worse") ? "worse" : [...n.classList].find((c) => ["cut", "raise", "reaffirm", "new", "na"].includes(c)) || "na";
+    const d = n.classList.contains("worse") ? "worse" : n.classList.contains("better") ? "better" : [...n.classList].find((c) => ["cut", "raise", "reaffirm", "new", "na"].includes(c)) || "na";
     counts[d] = (counts[d] || 0) + 1;
   }
   const t = $("#tally");
   t.replaceChildren();
-  for (const [d, label] of [["cut", "LOWERED"], ["raise", "RAISED"], ["worse", "RAISED · WORSE"], ["reaffirm", "UNCHANGED"], ["new", "NEW"], ["na", "NOTE"]]) {
+  for (const [d, label] of [["cut", "LOWERED"], ["better", "LOWERED · BETTER"], ["raise", "RAISED"], ["worse", "RAISED · WORSE"], ["reaffirm", "UNCHANGED"], ["new", "NEW"], ["na", "NOTE"]]) {
     if (counts[d]) t.append(el("span", `t-${d}`, `${counts[d]} ${label}${d === "na" && counts[d] > 1 ? "S" : ""}`));
   }
 }

@@ -167,6 +167,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .marker.cut { background: var(--red); }
 .marker.raise { background: var(--green); }
 .marker.reaffirm, .marker.raise.worse { background: var(--amber); }
+.marker.cut.better { background: var(--green); }
 .marker.new, .marker.na { background: var(--blue); }
 
 /* ---------- transcript ---------- */
@@ -179,6 +180,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .line mark { background: var(--red-bg); color: inherit; border-bottom: 1px solid var(--red); padding: 0 1px; }
 .line mark.raise { background: var(--green-bg); border-color: var(--green); }
 .line mark.reaffirm, .line mark.raise.worse { background: var(--amber-bg); border-color: var(--amber); }
+.line mark.cut.better { background: var(--green-bg); border-color: var(--green); }
 .line mark.new, .line mark.na { background: var(--blue-bg); border-color: var(--blue); }
 .line { transition: opacity 0.4s, translate 0.4s; }
 @starting-style { .line { opacity: 0; translate: 0 6px; } }
@@ -189,6 +191,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .tally .t-cut { color: var(--red); }
 .tally .t-raise { color: var(--green); }
 .tally .t-worse { color: var(--amber); }
+.tally .t-better { color: var(--green); }
 .feed { list-style: none; margin: 0; padding: 12px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px; }
 .feed-empty { margin: auto; text-align: center; max-width: 420px; }
 
@@ -209,6 +212,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .flag.cut { --accent: var(--red); --accent-bg: var(--red-bg); }
 .flag.raise { --accent: var(--green); --accent-bg: var(--green-bg); }
 .flag.reaffirm, .flag.raise.worse { --accent: var(--amber); --accent-bg: var(--amber-bg); }
+.flag.cut.better { --accent: var(--green); --accent-bg: var(--green-bg); }
 .flag.na { --accent: var(--muted); --accent-bg: var(--grey-bg); }
 
 .flag-head { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
@@ -243,6 +247,7 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .related .r-dir.cut { color: var(--red); }
 .related .r-dir.raise { color: var(--green); }
 .related .r-dir.reaffirm, .related .r-dir.raise.worse { color: var(--amber); }
+.related .r-dir.cut.better { color: var(--green); }
 .related .r-dir.new, .related .r-dir.na { color: var(--blue); }
 .quote {
   margin: 10px 0 0; padding: 0 0 0 10px;
