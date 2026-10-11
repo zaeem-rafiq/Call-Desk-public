@@ -15,11 +15,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Awaitable, Callable
 
-from . import audio, config, observability, resilience
+from . import audio, briefing, config, observability, resilience
 from .claims import ChunkResult, Claim, Segment, dedupe_key, metric_label
 from .factcheck import fact_check
 from .hub import EventHub
-from .models import Flag, TranscriptSegment
+from .models import CallBrief, Flag, TranscriptSegment
 
 log = logging.getLogger("calldesk")
 MOCKS = Path(__file__).resolve().parent / "mocks"
@@ -170,6 +170,16 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
                 checks.append(asyncio.create_task(_safe_check(claim, flag, info, publish_flag, audio_now)))
 
         await asyncio.gather(*checks)
+
+        # End-of-call brief (Snowflake). Inside the run so Stop cancels it; capped and never fatal.
+        checked = [t.result() for t in checks if not t.cancelled() and t.exception() is None and t.result()]
+        hub.publish("brief", CallBrief(status="running").model_dump())
+        try:
+            brief = await asyncio.wait_for(briefing.call_brief(checked, info), timeout=45)
+        except Exception as exc:  # noqa: BLE001
+            observability.capture(exc)
+            brief = CallBrief(status="failed", error=f"{type(exc).__name__}: {exc}"[:200])
+        hub.publish("brief", brief.model_dump())
     finally:
         # A stopped run must not leave fact-checks publishing into the next run.
         extras = [t for t in (warm, pre) if t is not None]

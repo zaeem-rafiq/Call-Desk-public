@@ -141,6 +141,7 @@ async def state() -> dict:
         "call": {"title": info.title, "ticker": info.ticker, "benchmark": info.primary_benchmark,
                  "clip_start": info.clip_start.isoformat(timespec="seconds")},
         "sentry": observability.enabled(),
+        "sentry_browser": getattr(observability, "browser_config", lambda: None)(),
     }
 
 
