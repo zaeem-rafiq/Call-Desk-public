@@ -165,7 +165,7 @@ MLH asks every team to name the AI tools it used. This section lists every AI to
 
 ### AI tools used to build Call Desk
 
-- **Claude Code (Claude Opus 5.5)** wrote and tested the code in this repository, researched the sponsor SDKs, and prepared the demo data. Every commit carries its co-author line. Zaeem Khan decided what to build and directed the work.
+- **Claude Code (Claude Opus 5.5, with Claude Fable 5.1 for the demo recording and the MLH submission)** wrote and tested the code in this repository, researched the sponsor SDKs, and prepared the demo data. Every commit carries its co-author line. Zaeem Khan decided what to build and directed the work.
 - **Official sponsor skills** gave Claude Code each sponsor's own guidance. Unmodified copies are in `.claude/skills/`:
   - `gemini-api-dev` from Google (`google-gemini/gemini-skills`),
   - `setup-timescaledb-hypertables` and `timescaledb-hyperfunctions` from Tiger Data (`timescale/pg-aiguide`),
