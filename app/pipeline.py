@@ -85,6 +85,7 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
     def publish_flag(flag: Flag) -> None:
         hub.publish("flag", flag.model_dump(mode="json"))
 
+    asyncio.create_task(_warmup(modes))
     seen: set[str] = set()
     context: deque[str] = deque(maxlen=2)
     checks: list[asyncio.Task] = []
@@ -138,6 +139,17 @@ async def run_live(hub: EventHub, speed: float = 1.0, start_s: float = 0.0) -> d
     summary = {"state": "done", "mode": "live", "transcriber": transcriber.name, "integrations": modes, "flags": len(seen)}
     hub.publish("status", summary)
     return summary
+
+
+async def _warmup(modes: dict[str, str]) -> None:
+    """Open slow connections before the first flag needs them. Failures are left to the real call."""
+    if modes.get("snowflake") == "live":
+        from .tools import prior_guidance
+
+        try:
+            await asyncio.to_thread(prior_guidance.warmup)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("snowflake warmup failed: %s", exc)
 
 
 async def _safe_check(claim: Claim, flag: Flag, info: config.CallInfo, publish, audio_now) -> None:

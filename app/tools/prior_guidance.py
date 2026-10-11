@@ -10,6 +10,7 @@ import asyncio
 import json
 import math
 import re
+import threading
 from functools import lru_cache
 from pathlib import Path
 
@@ -139,7 +140,45 @@ def connect(database=_UNSET, schema=_UNSET):
     return snowflake.connector.connect(**{k: v for k, v in kwargs.items() if v is not None})
 
 
+_shared_conn = None
+_shared_lock = threading.Lock()
+
+
+def _query_shared(sql: str, params: tuple):
+    """Run one query on a long-lived connection (Snowflake logins take seconds); reconnect once on failure."""
+    global _shared_conn
+    with _shared_lock:
+        for attempt in range(2):
+            try:
+                if _shared_conn is None or _shared_conn.is_closed():
+                    _shared_conn = connect()
+                cur = _shared_conn.cursor()
+                cur.execute(sql, params)
+                return cur.fetchone()
+            except Exception:
+                try:
+                    if _shared_conn is not None:
+                        _shared_conn.close()
+                finally:
+                    _shared_conn = None
+                if attempt == 1:
+                    raise
+
+
+def warmup() -> None:
+    _query_shared("SELECT 1", ())
+
+
 def _cortex_query(query: str, limit: int) -> list[dict]:
+    e = config.env()
+    svc = f"{e['SNOWFLAKE_DATABASE']}.{e['SNOWFLAKE_SCHEMA']}.{SERVICE}"
+    body = json.dumps({"query": query, "columns": COLUMNS, "limit": limit})
+    raw = _query_shared("SELECT SNOWFLAKE.CORTEX.SEARCH_PREVIEW(%s, %s)", (svc, body))[0]
+    return json.loads(raw).get("results", [])
+
+
+def _cortex_query_fresh(query: str, limit: int) -> list[dict]:
+    """Same query on a fresh connection (used by the seed script's self-test)."""
     e = config.env()
     with connect() as conn:
         svc = f"{e['SNOWFLAKE_DATABASE']}.{e['SNOWFLAKE_SCHEMA']}.{SERVICE}"

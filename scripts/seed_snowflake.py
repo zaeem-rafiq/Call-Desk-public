@@ -61,7 +61,7 @@ def main() -> int:
             AS (SELECT CHUNK, DOC_TITLE, QUARTER, DOC_TYPE, SOURCE_URL, TICKER, DOC_ID FROM PRIOR_DOCS)""")
         print(f"Cortex Search service {db}.{schema}.{prior_guidance.SERVICE} built in {time.monotonic() - started:.0f}s")
 
-    rows = prior_guidance._cortex_query(TEST_QUERY, 3)
+    rows = prior_guidance._cortex_query_fresh(TEST_QUERY, 3)
     print(f"test query: {TEST_QUERY}")
     for r in rows:
         print("  ->", json.dumps(r.get("CHUNK", ""))[:160])
