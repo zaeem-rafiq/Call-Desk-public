@@ -74,9 +74,13 @@ Label executives as "Name (CEO)" / "Name (CFO)", analysts as "Name (Firm)" when 
    - direction versus prior guidance: cut | raise | reaffirm; "new" for a newly reported fact or KPI; "n/a" otherwise.
    - new_value: the value exactly as spoken with units and period (e.g. "+3.1% in Q3"); null if no number or level is stated.
    - prior_value: only if the speaker states it; else null.
-   - materiality 0-1: 0.9-1.0 full-year EPS or revenue guidance change; 0.7-0.9 margin outlook, segment outlook, next-year framework;
-     0.6-0.7 reported quarterly KPIs and cost actions; below 0.6 color, repetition, pleasantries.
-     An analyst's question or restatement is at most 0.5. Return an empty claims list when nothing material is said."""
+   - materiality 0-1, judged for a peer company's IR/FP&A team who ALREADY have this morning's press release:
+     0.9-1.0 a change to full-year guidance (EPS, revenue, margin), stated or implied ("driving the guide down in EPS");
+     0.7-0.89 forward-looking information the release does not spell out: margin trajectory, segment outlook, cost or pricing actions,
+     next-year framework or its timing, capital allocation changes;
+     0.4-0.59 restating the quarter's reported results (growth rates, volumes, margins for the quarter just reported), tone, color;
+     at most 0.4 analyst questions or restatements, pleasantries.
+     Group a run of quarterly statistics into at most one claim. Return an empty claims list when nothing material is said."""
 
 
 async def transcribe_and_extract(wav: bytes, context: list[str], k: int, start: float, end: float, info: config.CallInfo) -> ChunkResult:
