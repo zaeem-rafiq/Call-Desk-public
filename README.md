@@ -98,10 +98,29 @@ Set `MOCK_<NAME>=1` to force a mock even when a key is present.
 - **Call transcripts are not in this repository.** They are third-party text, so they stay on the developer's machine. Without them, the prior-quarter warehouse loads only our own summary, `data/prior/q2_2026_guidance.md`, which holds every guidance number the demo checks. PepsiCo posts its own call transcripts on its [investor earnings page](https://www.pepsico.com/investors/earnings).
 - **Price data.** yfinance provides 1-minute bars, not trades. Each bar is loaded as four bar-derived ticks (open, high, low, close). The continuous aggregate rebuilds exact 1-minute OHLC from them. A live feed would insert real trades into the same hypertable.
 
-## AI tools used
+## Tools used
 
-MLH asks every team to name the AI tools it used. Call Desk used these:
+MLH asks every team to name the AI tools it used. This section lists every AI tool used to build Call Desk and every tool Call Desk runs on. No other AI tools were used.
+
+### AI tools used to build Call Desk
 
 - **Claude Code (Claude Opus 5.5)** wrote and tested the code in this repository, researched the sponsor SDKs, and prepared the demo data. Every commit carries its co-author line. Zaeem Khan decided what to build and directed the work.
-- **Gemini API (`gemini-3.8-flash`)** is part of the product. It transcribes the call, extracts claims, runs the fact-check agent, and writes the verdicts (see [Sponsor tools](#sponsor-tools)).
+- **Official sponsor skills** gave Claude Code each sponsor's own guidance. Unmodified copies are in `.claude/skills/`:
+  - `gemini-api-dev` from Google (`google-gemini/gemini-skills`),
+  - `setup-timescaledb-hypertables` and `timescaledb-hyperfunctions` from Tiger Data (`timescale/pg-aiguide`),
+  - `nimble-web-expert` from Nimble (`Nimbleway/agent-skills`).
 - **whisper.cpp (`base.en` model)** ran offline during data preparation. It located the demo clip inside the full call and produced the transcript used in mock mode (`app/mocks/mock_call.json`).
+
+### AI services inside Call Desk
+
+[Sponsor tools](#sponsor-tools) describes each one in detail.
+
+- **Gemini API (`gemini-3.8-flash`)** transcribes the call, extracts claims, runs the fact-check agent, and writes the verdicts.
+- **Snowflake Cortex** finds last quarter's guidance with Cortex Search. Its Cortex Agent, `GUIDANCE_AGENT`, re-checks each claim with Cortex Analyst.
+- **Nimble** searches and reads the live web. Its Web Search Agent returns a trust report with citations for each claim.
+
+### Other services and libraries
+
+- **Tiger Data** stores the price ticks and the 1-minute bars.
+- **Sentry** records errors and traces every agent, model, and tool call.
+- **Open-source Python libraries:** FastAPI, Uvicorn, google-genai, snowflake-connector-python, psycopg, sentry-sdk, httpx, pandas, pydantic, and yfinance. `requirements.txt` pins their versions.
