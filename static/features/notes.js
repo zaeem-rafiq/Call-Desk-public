@@ -24,8 +24,10 @@ function update() {
   const cards = [...feed.children].filter((c) => c.classList.contains("flag"));
   const notes = cards.filter((c) => c.classList.contains("compact"));
   if (!cards.length) open = false;  // a new run starts with the notes folded
-  feed.classList.toggle("notes-hidden", !open);
-  if (!notes.length) {
+  // Until the first main card arrives the notes are the only news, so they stay visible (no empty pane at the start).
+  const main = cards.length - notes.length;
+  feed.classList.toggle("notes-hidden", !open && main > 0);
+  if (!notes.length || !main) {
     row?.remove();
     return;
   }
