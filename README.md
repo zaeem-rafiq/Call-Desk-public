@@ -157,10 +157,13 @@ flowchart LR
   - The browser loads Sentry's official SDK (pinned with its integrity hash) and records each card's render inside that flag's server trace.
   - Each flag links to its trace.
   - **What it caught today.** During a live run, issue `CALL-DESK-2` grouped 11 `TimeoutError`s in the fact-check agent: one Snowflake connection was making each flag's Cortex Agent wait for the previous one. The trace showed the agent spans queued end to end; the fix gave each run its own pooled connection, and three concurrent agent runs then finished in 22.7 s.
+  - **Seer explained why.** Sentry caught the bug. Seer, Sentry's AI debugger, explained why it happened, and its answer matches the fix we shipped. Its root cause: the old `_run_sql` sent every `DATA_AGENT_RUN` through one global lock and one connection, and retried a 40 s statement once, so queued or retried runs went past the 45 s `wait_for` limit. It cites the trace, `app/tools/snowflake_agent.py` and commit `73225f4`. The fix uses pooled connections, no retry, and a 38 s statement timeout. We ran Seer on a trial with only the public repository (`Call-Desk-public`) connected, and it did not write code or open a pull request.
 
   ![Sentry trace of one flag: the Gemini planning call, Snowflake, the Nimble web desk specialists and Tiger Data in parallel, the Gemini verdict, then the Snowflake Cortex Agent and the remaining Nimble specialists. 32 spans, 42 s.](docs/sentry/trace-eps-flag.jpg)
 
   ![Sentry AI Agents view: estimated cost per Gemini model, agent runs per agent, tool calls, and a table of traces with LLM calls, tool calls, tokens and cost.](docs/sentry/ai-agents.jpg)
+
+  ![Seer's root cause for Sentry issue CALL-DESK-2: the old _run_sql pushed every DATA_AGENT_RUN through one global lock and one connection, with a retry of a 40 s statement, so queued or retried runs went past the 45 s wait_for cap. Below it: why it happened, reproduction steps, and evidence links to the error, snowflake_agent.py, the trace and commit 73225f4.](docs/sentry/seer-root-cause.jpg)
 
 ### Optional: streaming listener
 
@@ -220,6 +223,7 @@ MLH asks every team to name the AI tools it used. This section lists every AI to
   - `setup-timescaledb-hypertables` and `timescaledb-hyperfunctions` from Tiger Data (`timescale/pg-aiguide`),
   - `nimble-web-expert` from Nimble (`Nimbleway/agent-skills`).
 - **whisper.cpp (`base.en` model)** ran offline during data preparation. It located the demo clip inside the full call and produced the transcript used in mock mode (`app/mocks/mock_call.json`).
+- **Seer (Sentry's AI debugger)** explained the root cause of issue `CALL-DESK-2` after we had fixed it. It read only the public repository and wrote no code.
 
 ### AI services inside Call Desk
 

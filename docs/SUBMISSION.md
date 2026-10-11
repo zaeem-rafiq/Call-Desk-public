@@ -102,7 +102,7 @@ Nimble is Call Desk's web researcher. On a call, executives often mention a chan
 
 ### Sentry
 
-Sentry is Call Desk's flight recorder: it records every step the AI takes, so anyone can check its work. Each card is its own AI agent trace (gen_ai.invoke_agent). Every Gemini call is a gen_ai.chat span. Every tool call (Snowflake, each Nimble specialist, Tiger Data, the Cortex Agent) is a gen_ai.execute_tool span in the same trace, with timings. The time from the spoken sentence to the card, and to the full answer, is recorded as a measurement. Sentry's browser SDK records each card appearing on screen inside the same trace, and every card links to its trace. Sentry also earned its place during the build. It grouped 11 timeouts in our fact-check agent, and the trace showed the Snowflake agent runs waiting in line behind each other. We gave each run its own connection, and three runs at once then finished in 22.7 seconds.
+Sentry is Call Desk's flight recorder: it records every step the AI takes, so anyone can check its work. Each card is its own AI agent trace (gen_ai.invoke_agent). Every Gemini call is a gen_ai.chat span. Every tool call (Snowflake, each Nimble specialist, Tiger Data, the Cortex Agent) is a gen_ai.execute_tool span in the same trace, with timings. The time from the spoken sentence to the card, and to the full answer, is recorded as a measurement. Sentry's browser SDK records each card appearing on screen inside the same trace, and every card links to its trace. Sentry also earned its place during the build. It grouped 11 timeouts in our fact-check agent, and the trace showed the Snowflake agent runs waiting in line behind each other. We gave each run its own connection, and three runs at once then finished in 22.7 seconds. Seer, Sentry's AI debugger, then explained why it happened, and its answer matches our fix.
 
 ## Built with
 
@@ -110,4 +110,4 @@ Gemini API (gemini-3.8-flash, Gemini Live, Gemini TTS), Nimble, Tiger Data (Time
 
 ## AI tools used
 
-Claude Code (Claude Opus 5.5) wrote and tested the code, researched the sponsor SDKs and prepared the demo data, under the team's direction. whisper.cpp located the demo clips offline. Inside the product: Gemini, plus the Snowflake Cortex models listed in the README's "Tools used" section.
+Claude Code (Claude Opus 5.5) wrote and tested the code, researched the sponsor SDKs and prepared the demo data, under the team's direction. whisper.cpp located the demo clips offline. Seer, Sentry's AI debugger, explained the cause of one bug after we had fixed it. It read only the public repository and wrote no code. Inside the product: Gemini, plus the Snowflake Cortex models listed in the README's "Tools used" section.
