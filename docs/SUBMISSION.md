@@ -50,7 +50,7 @@ Five tools work together. Each one has one job.
    - **Tiger Data** measures how the stock moved, with one SQL query.
 
    A second Gemini call then writes the card's answer.
-3. **Score.** Confidence = 0.45 × old-forecast check + 0.35 × web check + 0.20 × stock check. A failed tool lowers the score. It never stops the call. After the answer, Snowflake's agent and Nimble's agent check again. Each one that agrees adds 3 points, each one that disagrees takes away 10, and the score never goes above 98%.
+3. **Score.** Confidence = 0.45 × old-forecast check + 0.35 × web check + 0.20 × stock check. A failed tool lowers the score. It never stops the call. After the answer, Snowflake's agent and Nimble's agent check again. Each one that agrees adds 3 points, each one that disagrees takes away 10, and the score never goes above 98%. The demo run in the video and screenshots was recorded before this rule was added, so it shows 92%.
 4. **Keep a record (Sentry).** Sentry records every agent run, AI model call and tool call. Each card links to its record.
 5. **Show.** A Python web server (FastAPI) streams everything to a one-page app. Every run is recorded, so a replay mode can play it back with the original timing.
 
