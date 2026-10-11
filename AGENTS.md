@@ -27,7 +27,8 @@ The preview pane cannot launch servers from this folder (the space in "Call Desk
 ## Data rules
 
 - `data/q3_transcript.txt` and `data/raw/` are for evaluation only. Never feed them to the agent.
-- Call transcripts (`data/q3_transcript.txt`, `data/prior/*_transcript.txt`) are Motley Fool text. They stay on this Mac and out of Git (owner decision, October 11, 2026). Commits before that date still contain them, so remove them from the history before the repository goes public.
+- Call transcripts (`data/q3_transcript.txt`, `data/prior/*_transcript.txt`) are Motley Fool text. They stay on this Mac and out of Git (owner decision, October 11, 2026). Early commits in this working repository still contain them.
+- Publish only a copy made by `.venv/bin/python scripts/make_public_copy.py`. It removes the transcripts, the webcast audio (`call.mp3`) and the yfinance price files (`prices.csv`, `day_close.csv`, `prior_close.csv`, also under `data/calls/`) from every commit, keeps every commit and timestamp, and checks the history for credentials. Name new third-party files so its rules match them, or add a rule (tests in `tests/test_public_copy.py`). Never push that copy to this repository.
 - Do not take transcripts or other data from Financial Modeling Prep. Its terms forbid showing its data in an app other people use without a separate agreement.
 - The call clock maps clip offsets to real call time using `data/call_meta.json` (`estimated_clip_start_et`).
 - Never print or log `.env` values. `scripts/check_env.py` reports presence only.
