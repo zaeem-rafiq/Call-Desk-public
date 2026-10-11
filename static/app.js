@@ -343,7 +343,10 @@ function renderAgents(node, f) {
       v.append(el("span", `vbadge c-${desk.verify.confidence || "na"}`, `NIMBLE TRUST · ${(desk.verify.confidence || "?").toUpperCase()}`),
         el("span", "vmeta", `${plural(desk.verify.official_sources, "official source")} · ${desk.verify.cached_at ? `cached ${desk.verify.cached_at}` : `${desk.verify.run_s ?? "?"}s`}`));
     } else if (vs && vs.status === "running") v.append(el("span", "vrun", "verification agent running…"));
-    else if (vs && vs.status !== "ok") v.append(el("span", "vmeta", vs.summary.startsWith("unavailable") ? "verification agent unavailable" : `verification agent ${vs.status}`));
+    else if (vs && vs.status !== "ok" && !vs.summary.startsWith("not a numeric")) {  // by design on non-numeric lines: say nothing
+      v.append(el("span", "vmeta", vs.summary.startsWith("unavailable") ? "verification agent unavailable"
+        : vs.summary.startsWith("agent still working") ? "verification agent still working" : `verification agent ${vs.status}`));
+    }
     if (desk.mock) v.append(el("span", "mock-tag", "MOCK"));
     let line = nrow.querySelector(".agent-answer");
     if (!line) { line = el("p", "agent-answer"); nrow.append(line); }
@@ -568,6 +571,8 @@ function setRunning(on, label) {
   $("#play-label").textContent = on ? "Stop" : "Play call";
   $("#live-dot").classList.toggle("on", on);
   $("#audio-state").textContent = label || (on ? (state.mode === "replay" ? "REPLAY" : "LIVE") : "READY");
+  const empty = $("#transcript-empty");  // before the first chunk lands (~10 s), say what is happening, not "Press Play"
+  empty.replaceChildren(...(on ? ["Listening… the first lines appear about 10 seconds in."] : ["Press ", el("b", null, "Play call"), " to start listening."]));
 }
 
 async function play() {
