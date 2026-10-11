@@ -55,6 +55,7 @@ def init_sentry() -> bool:
         release=RELEASE,
         traces_sample_rate=1.0,
         send_default_pii=True,  # needed for prompts/responses on gen_ai spans; no end-user PII here
+        include_local_variables=False,  # a failed Snowflake or Tiger connect holds the password / database URL in its frames
         integrations=integrations,
     )
     _enabled = True

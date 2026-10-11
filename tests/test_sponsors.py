@@ -86,6 +86,19 @@ def test_sentry_starts_when_its_key_appears_after_server_start(monkeypatch):
     assert observability.trace_url("def") and calls == [1]  # started once
 
 
+def test_sentry_never_captures_frame_variables(monkeypatch):
+    """A failed Snowflake or Tiger connect holds the password / database URL in its stack frames."""
+    from app import observability
+
+    seen = {}
+    monkeypatch.setattr(observability, "_enabled", False)
+    monkeypatch.setattr(observability.sentry_sdk, "init", lambda **kw: seen.update(kw))
+    monkeypatch.setenv("MOCK_SENTRY", "0")
+    monkeypatch.setenv("SENTRY_DSN", "https://public@o0.ingest.sentry.io/0")
+    assert observability.init_sentry()
+    assert seen["include_local_variables"] is False
+
+
 def _slow_nimble(monkeypatch, seconds=5.0):
     from app.tools import nimble
 
