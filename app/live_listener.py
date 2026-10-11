@@ -26,7 +26,9 @@ log = logging.getLogger("calldesk")
 
 FRAME_S = 0.1  # 100 ms of 16 kHz PCM per websocket frame
 HISTORY_S = 600.0  # Gemini Live's final text can re-send a long turn minutes after its interim text was sent
-_END = re.compile(r"[.!?]+(?=\s|$)")  # the dot in "$1.72" or "3.1%" is no sentence end
+# A sentence ends at a dot before a space, the end, or a capital: Gemini Live glues sentences ("rapidly.Our").
+# The dot in "$1.72" or "3.1%" is no sentence end.
+_END = re.compile(r"[.!?]+(?=\s|$|[A-Z])")
 _ABBREV = {"mr", "mrs", "ms", "dr", "vs", "st"}
 
 TEXT_LISTEN = """You are the listening layer of Call Desk, which monitors earnings calls live for corporate IR and FP&A teams.
@@ -62,19 +64,66 @@ def _seen(sentence: str, emitted: list[str]) -> bool:
     n = _norm(sentence)
     if not n:
         return True
-    nums = {w for w in n.split() if any(ch.isdigit() for ch in w)}
+    nums = _digits(n)
     pool = emitted if len(n.split()) >= 4 else emitted[-24:]  # short lines ("Thank you.") recur: only recent ones repeat
     if n in pool:
         return True
     if any(n in e or (len(n) > 12 and 2 * min(len(n), len(e)) / (len(n) + len(e)) > 0.85  # cheap length check first
-                      and difflib.SequenceMatcher(None, n, e).ratio() > 0.85 and nums <= set(e.split()))
+                      and difflib.SequenceMatcher(None, n, e).ratio() > 0.85 and nums <= _digits(e))
            for e in pool):
         return True
     words = n.split()
+    if len(words) >= 8 and (_run_of_sent(_flat(n), pool, nums) or _ends_with_sent(_flat(n), emitted[-8:], nums)):
+        return True
     recent = set(" ".join(emitted[-8:]).split())
-    if any(any(ch.isdigit() for ch in w) and w not in recent for w in words):
+    if not nums <= _digits(" ".join(emitted[-8:])):
         return False  # a new number means new information, however familiar the wording
     return len(words) >= 3 and sum(w in recent for w in words) / len(words) >= 0.85
+
+
+def _digits(text: str) -> set[str]:
+    """Numbers as digit runs, so interim text that glues words ("$700million") still matches the final's "700 million"."""
+    return set(re.findall(r"\d+", text))
+
+
+def _flat(norm: str) -> str:
+    """Letters and digits only: interim text glues words ("aroughly", "fuelexpenses") that the final spaces out."""
+    return norm.replace(" ", "")
+
+
+def _covers(text: str, e: str, need: float = 0.85) -> int | None:
+    """If `text` starts with sentence `e` (at least `need` of e's letters, in order, within a little slack for
+    revisions such as "1 to 2" → "one to two"), the length of `text` that e spans; otherwise None."""
+    blocks = [b for b in difflib.SequenceMatcher(None, text[:len(e) + 12], e, autojunk=False).get_matching_blocks() if b.size]
+    if not blocks or blocks[0].a > 3 or sum(b.size for b in blocks) < need * len(e):
+        return None
+    return blocks[-1].a + blocks[-1].size
+
+
+def _run_of_sent(flat: str, pool: list[str], nums: set[str]) -> bool:
+    """Two or more consecutive sent sentences run together: a final re-sends a turn with periods revised to commas."""
+    for i in range(len(pool)):
+        if flat[:3] != _flat(pool[i])[:3]:  # cheap first-letters check
+            continue
+        pos, j, heard = 0, i, set()
+        while j < len(pool) and (span := _covers(flat[pos:], _flat(pool[j]))) is not None:
+            pos, j, heard = pos + span, j + 1, heard | _digits(pool[j])
+            if len(flat) - pos < 12:
+                if j - i >= 2 and nums <= heard:
+                    return True
+                break
+    return False
+
+
+def _ends_with_sent(flat: str, recent: list[str], nums: set[str]) -> bool:
+    """A recent sentence with a short new start: a final restores the opening words that the interim text lost."""
+    for e in recent:
+        ef = _flat(e)
+        if 20 <= len(ef) < len(flat) <= 2.5 * len(ef) and nums <= _digits(e):
+            # read backwards, so the sentence must reach the end of the new text
+            if _covers(flat[::-1], ef[::-1]) is not None:
+                return True
+    return False
 
 
 class _Tracker:
@@ -103,13 +152,13 @@ class _Tracker:
         emitted = [e for _, e in self._sent]
         out = []
         for s in sentences:
-            if _seen(s, emitted):
+            n = _norm(s)
+            if n in (emitted if len(n.split()) >= 4 else emitted[-24:]):  # most updates repeat sent sentences unchanged
                 continue
-            rest = _extension(s, emitted[-8:])
-            if rest is None:
-                out.append(s)
-            elif rest:
-                out.append(rest)
+            rest = _extension(s, emitted[-8:])  # checked first: a revision that adds words must send them
+            if rest == "" or _seen(s if rest is None else rest, emitted):  # new words can be a sentence already sent
+                continue
+            out.append(rest or s)
             emitted.append(_norm(s))
             self._sent.append((now, emitted[-1]))
         return out
@@ -117,19 +166,30 @@ class _Tracker:
 
 def _extension(sentence: str, recent: list[str]) -> str | None:
     """Interim text often ends a sentence, then revises the period to a comma and goes on ("…the Fly Delta app."
-    → "…the Fly Delta app and completed the rollout…"). Return only the words after the part already sent
-    ("" if nothing new is left), or None if this sentence does not extend a recent one."""
-    words = _norm(sentence).split()
+    → "…the Fly Delta app and completed the rollout…"). Return only the words after the part already sent,
+    "" if a recent sentence already covers all of it, or None if it does not start with a recent sentence.
+    Letters are compared without spaces, so glued interim words do not shift the cut."""
+    flat = _flat(_norm(sentence))
     for e in reversed(recent):
-        k = len(e.split())
-        if k < 4 or len(words) <= k or difflib.SequenceMatcher(None, " ".join(words[:k]), e).ratio() < 0.9:
+        ef = _flat(e)
+        span = _covers(flat, ef, need=0.9) if len(e.split()) >= 4 else None
+        # its re-sent part must hold no new number ("item 10" is not "item 9" revised)
+        if span is None or not set(re.findall(r"\d+", flat[:span])) <= set(re.findall(r"\d+", ef)):
             continue
+        if len(flat) - span < 4:
+            return ""
         raw = sentence.split()
         seen = 0
         for i, tok in enumerate(raw):
-            seen += len(_norm(tok).split())
-            if seen >= k:
-                return " ".join(raw[i + 1:])
+            seen += len(_flat(_norm(tok)))
+            if seen >= span:
+                if seen == span:
+                    return " ".join(raw[i + 1:])
+                parts = re.split(r"[.!?,;:]", tok)  # "mid-teens.capital": keep the new word, not the token
+                if len(parts) > 1 and parts[-1] and len(_flat(_norm(parts[-1]))) <= seen - span:
+                    return " ".join([parts[-1]] + raw[i + 1:])
+                # a cut a few letters into a word is drift from glued filler words; a deeper one is no clean extension
+                return " ".join(raw[i + 1:]) if seen - span <= 3 else None
     return None
 
 

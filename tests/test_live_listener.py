@@ -71,3 +71,44 @@ def test_a_short_line_said_again_minutes_later_is_kept():
     for i in range(30):
         t.update(f"Fuel, capacity and cost item {i} moved during the quarter. Next", False, 1 + i)
     assert t.update("Thank you. Our", False, 200) == ["Thank you."]
+
+
+# The cases below are Gemini Live updates captured on the Delta clip (Oct 11 run, 347 updates).
+
+def test_sentences_glued_without_a_space_are_split():
+    done, tail = _complete_sentences("Customer adoption is scaling rapidly.Our operational expertise creates value. I'm")
+    assert done == ["Customer adoption is scaling rapidly.", "Our operational expertise creates value."] and tail == "I'm"
+
+
+def test_glued_interim_words_still_match_the_spaced_final():
+    sent = [_norm("Our outlook includes a refinerybenefit of more than $700million, underscoring its uniquevalue.")]
+    assert _seen("Our outlook includes a refinery benefit of more than $700 million, underscoring its unique value.", sent)
+
+
+def test_a_final_that_runs_two_sent_sentences_together_sends_nothing():
+    t = _Tracker()
+    proud = "I'm proud of the Tech Ops team for delivering a billion dollars of maintenance, repair, and overhaul revenue year to date."
+    rise = "An increase of nearly 60% over last year while expanding margins and growing our customer base."
+    assert t.update(f"{proud} {rise} Next", False, 0) == [proud, rise]
+    for i in range(10):
+        t.update(f"Fuel, capacity and cost item {i} moved during the quarter. Next", False, 1 + i)
+    merged = proud[:-1] + ", an increase of nearly 60% over last year, while expanding margins and growing our customer base."
+    assert t.update(merged, True, 90) == []
+
+
+def test_a_final_that_restores_a_lost_opening_sends_nothing():
+    t = _Tracker()
+    short = "We expect non-fuel unit cost growth to improve 1 to 2 points sequentially."
+    assert t.update(short + " Next", False, 0) == [short]
+    full = ("With slightly higher capacity and continued operational efficiencies, "
+            "we expect non-fuel unit cost growth to improve one to two points sequentially.")
+    assert t.update(full, True, 1) == []
+
+
+def test_a_final_that_extends_a_glued_interim_sentence_sends_only_the_new_words():
+    t = _Tracker()
+    glued = "Delivering this level of performance despite aroughly $6 billion increase in fuelexpenses this year reflectsthe power of Delta's strategicadvantages."
+    assert t.update(glued + " Next", False, 0) == [glued]
+    final = ("Delivering this level of performance, despite a roughly $6 billion increase in fuel expenses this year, "
+             "reflects the power of Delta's strategic advantages and differentiated from the industry.")
+    assert t.update(final, True, 1) == ["and differentiated from the industry."]
