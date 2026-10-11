@@ -14,7 +14,7 @@ https://github.com/zaeem-rafiq/Call-Desk-public. It is the full commit history, 
 
 ## One-line pitch (at most 140 characters)
 
-The stock moves the moment an executive says “we'll earn less than we said.” Call Desk tells you how much less, with proof, in seconds.
+Executives hint forecasts changed. Call Desk listens live and shows the new number, with proof.
 
 ## Description
 
