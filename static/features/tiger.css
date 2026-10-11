@@ -10,3 +10,8 @@
 .tiger-sql > summary:focus-visible { outline: 1px solid var(--line-2); outline-offset: 2px; border-radius: 2px; }
 .tiger-source { margin: 6px 0 0; font: 10px/1.5 var(--mono); letter-spacing: 0.04em; color: var(--faint); }
 .tiger-sql > pre { margin-top: 6px; max-height: 300px; overflow: auto; }
+
+/* peers vs the benchmark, one line under the Tiger line */
+.tiger-peers { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 4px 0 0; font: 11px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
+.tiger-peers .peers-label { color: var(--faint); font-size: 10px; letter-spacing: 0.08em; }
+.tiger-peers .peer.subject { font-weight: 700; }

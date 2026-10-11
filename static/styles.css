@@ -410,3 +410,8 @@ button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- NOTE cards: one line under the material cards, expandable on click ---------- */
+.flag.compact:not(.expanded) { padding-top: 7px; padding-bottom: 7px; cursor: zoom-in; }
+.flag.compact:not(.expanded) :is(.chip-row, .what, .why, .related, .trajectory, .checking, .market, .agents, .conf, .detail, .voice-line) { display: none !important; }
+.flag.compact:not(.expanded) .quote { margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }

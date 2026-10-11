@@ -23,6 +23,7 @@ const state = {
   lines: [],
   hasAudio: false,
   lastOffset: 0,
+  listen: true, // false while the server's last run belongs to another call than the one on screen
 };
 
 const audio = $("#audio");
@@ -102,15 +103,15 @@ function continues(prev, seg) {
 // How many raw words at the start of `tokens` re-hear the end of `prev`: the longest run of prev's last words found
 // near the start of the new piece (after at most 4 re-worded words; its first word may be the cut-off tail of one,
 // "6" for "$1.6"). 0 when the piece does not overlap by at least `minWords`.
-function overlap(prev, tokens, minWords = 1) {
+function overlap(prev, tokens, minWords = 1, maxSkip = 4) {
   const tail = normWords(prev).slice(-20);
   const head = tokens.flatMap((tok, i) => normWords(tok).map((w) => [w, i]));
   const hw = head.map(([w]) => w);
   for (let k = Math.min(tail.length, hw.length); k >= minWords; k--) {
     const suffix = tail.slice(-k);
-    for (let s = 0; s <= Math.min(4, hw.length - k); s++) {
+    for (let s = 0; s <= Math.min(maxSkip, hw.length - k); s++) {
       if (s > 0 && k < 3) break;  // a short match after re-worded words is a coincidence
-      const ok = suffix.every((w, j) => hw[s + j] === w || (s === 0 && j === 0 && w.endsWith(hw[0])));
+      const ok = suffix.every((w, j) => hw[s + j] === w || (s === 0 && j === 0 && k >= 2 && hw[0].length >= 3 && w.endsWith(hw[0])));
       if (ok) return head[s + k - 1][1] + 1;
     }
   }
@@ -151,7 +152,7 @@ function addLine(seg) {
     renderMarks(prev);
   } else if (prev) {  // a new speaker label can still re-hear the previous line's last words
     const tokens = text.split(/\s+/);
-    text = tokens.slice(overlap(prev.text, tokens, 3)).join(" ");
+    text = tokens.slice(overlap(prev.text, tokens, 3, 0)).join(" ");
   }
   if (text) {
     const li = el("li", "line");
@@ -220,6 +221,17 @@ function sparkline(svg, pr) {
   svg.setAttribute("aria-label", `${pr.ticker} versus ${pr.benchmark}, percent change from prior close`);
 }
 
+// Material cards (CUT, RAISE, REAFFIRM, NEW) stay on top, newest first; NOTE cards sit below them, newest first.
+function placeCard(node, compact, isNew) {
+  const feed = $("#feed");
+  const wasCompact = node.dataset.group === "note";
+  if (!isNew && wasCompact === compact) return;
+  node.dataset.group = compact ? "note" : "material";
+  if (!compact) { feed.prepend(node); return; }
+  const firstNote = [...feed.children].find((c) => c !== node && c.dataset.group === "note");
+  feed.insertBefore(node, firstNote || null);
+}
+
 function renderFlag(f) {
   let node = document.getElementById(`flag-${f.id}`);
   const isNew = !node;
@@ -228,14 +240,17 @@ function renderFlag(f) {
     node.id = `flag-${f.id}`;
     node.addEventListener("click", (e) => {
       if (e.target.closest("a, .detail")) return;
+      if (node.classList.contains("compact") && !node.classList.contains("expanded")) { node.classList.add("expanded"); return; }
       toggleDetail(node);
     });
-    $("#feed").prepend(node);
     $("#feed-empty").hidden = true;
     node.classList.add("fresh");
     setTimeout(() => node.classList.remove("fresh"), 2500);
   }
-  node.className = `flag ${dirClass(f.direction)}${node.classList.contains("fresh") ? " fresh" : ""}`;
+  const keep = ["fresh", "expanded"].filter((c) => node.classList.contains(c));
+  const compact = f.direction === "n/a";  // a NOTE: one line under the material cards, expandable on click
+  node.className = ["flag", dirClass(f.direction), ...keep, ...(compact ? ["compact"] : [])].join(" ");
+  placeCard(node, compact, isNew);
   node.querySelector(".badge").textContent = BADGE[f.direction] || f.direction.toUpperCase();
   node.querySelector(".metric").textContent = f.metric_label;
   const timeEl = node.querySelector(".flag-time");
@@ -656,6 +671,8 @@ async function play() {
     return;
   }
   const startParam = Number(new URLSearchParams(location.search).get("start") || 0);
+  state.listen = true;
+  resetUI();  // a fresh run of the selected call
   const body = { mode: state.mode, start_s: startParam, ...(state.callId ? { call: state.callId } : {}) };
   const res = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   if (!res.ok) {
@@ -675,8 +692,9 @@ async function play() {
 // ---------- SSE ----------
 function connect() {
   const es = new EventSource("/api/events");
-  es.addEventListener("reset", () => resetUI());
+  es.addEventListener("reset", () => { if (state.listen) resetUI(); });
   es.addEventListener("status", (e) => {
+    if (!state.listen) return;  // the server's last run is another call's: show nothing until Play
     const s = JSON.parse(e.data);
     if (s.integrations) renderPills(s.integrations);
     if (s.speed) state.speed = s.speed;
@@ -696,12 +714,14 @@ function connect() {
     if (s.state === "done") setRunning(false, s.mode === "replay" ? "REPLAY DONE" : "CALL ENDED");
     if (s.state === "stopped" || s.state === "error") setRunning(false, s.state.toUpperCase());
   });
-  es.addEventListener("transcript", (e) => addLine(JSON.parse(e.data)));
+  es.addEventListener("transcript", (e) => { if (state.listen) addLine(JSON.parse(e.data)); });
   es.addEventListener("claim", (e) => {
+    if (!state.listen) return;
     const c = JSON.parse(e.data);
     if (c.accepted) highlightQuote(c.quote, null);
   });
   es.addEventListener("flag", (e) => {
+    if (!state.listen) return;
     const f = JSON.parse(e.data);
     state.flags.set(f.id, f);
     renderFlag(f);
@@ -709,7 +729,7 @@ function connect() {
     onFlagVoice(f);
     traceFlagRender(f);
   });
-  es.addEventListener("brief", (e) => renderBrief(JSON.parse(e.data)));
+  es.addEventListener("brief", (e) => { if (state.listen) renderBrief(JSON.parse(e.data)); });
   es.addEventListener("error", (e) => {
     if (e.data) console.warn("pipeline error", e.data);
   });
@@ -748,6 +768,8 @@ async function init() {
   renderPills(s.integrations);
   setMode(s.default_mode);
   state.callId = s.call.id || s.active_call || wanted || null;
+  // The event stream replays the server's last run. If that was another call, ignore it until Play.
+  state.listen = !(state.callId && s.active_call && state.callId !== s.active_call);
   renderCallPicker(s.calls, state.callId);
   state.clipStart = new Date(s.call.clip_start);
   state.hasAudio = s.audio;
@@ -760,7 +782,7 @@ async function init() {
   document.title = `Call Desk · ${s.call.ticker}`;
   document.querySelector('.mode button[data-mode="replay"]').disabled = !s.replay_available;
   if (!s.audio) $("#audio-state").textContent = "NO AUDIO FILE — MOCK CLOCK";
-  if (s.running && s.position_s !== null) {
+  if (s.running && s.position_s !== null && state.listen) {
     // Joined mid-run (page reload): pick the clock up where the server is.
     state.startS = 0;
     state.speed = s.speed || 1;

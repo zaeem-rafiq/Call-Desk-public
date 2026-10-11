@@ -55,5 +55,26 @@ export function renderTigerExtra(node, f) {
   line.textContent = text;
   line.title = text;
   details.querySelector(".tiger-source").textContent = ["bars_1m continuous aggregate", chunksText(pr.storage)].filter(Boolean).join(" · ");
-  details.querySelector("pre").textContent = pr.sql;
+  details.querySelector("pre").textContent = pr.peers_sql ? `${pr.sql}\n\n-- peers, same window\n${pr.peers_sql}` : pr.sql;
+  renderPeers(box, pr);
+}
+
+// One line: how the company and its peers moved against the benchmark in the same window after the quote.
+function renderPeers(box, pr) {
+  let row = box.querySelector(".tiger-peers");
+  const peers = pr.peers || [];
+  if (!peers.length) { if (row) row.remove(); return; }
+  if (!row) { row = document.createElement("p"); row.className = "tiger-peers"; box.append(row); }
+  const label = document.createElement("span");
+  label.className = "peers-label";
+  label.textContent = `PEERS VS ${pr.benchmark}`;
+  label.title = `Each stock's move minus ${pr.benchmark} over the same window${pr.window ? ` (${pr.window})` : ""}`;
+  const items = [...peers].sort((a, b) => (b.subject - a.subject) || (a.vs_benchmark - b.vs_benchmark)).map((p) => {
+    const s = document.createElement("span");
+    s.className = `peer${p.subject ? " subject" : ""} ${p.vs_benchmark >= 0 ? "pos" : "neg"}`;
+    s.textContent = `${p.ticker} ${p.vs_benchmark >= 0 ? "+" : "−"}${Math.abs(p.vs_benchmark).toFixed(2)}pp`;
+    s.title = `${p.ticker} ${p.move >= 0 ? "+" : ""}${p.move.toFixed(2)}% vs ${pr.benchmark}`;
+    return s;
+  });
+  row.replaceChildren(label, ...items);
 }
