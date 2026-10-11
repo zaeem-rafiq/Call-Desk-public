@@ -1,14 +1,16 @@
 """Record the README demo from replay mode: docs/media/demo.gif (sped up) and demo.mp4 (real time, with the call audio).
 
-Usage: .venv/bin/python scripts/record_demo.py [--url http://127.0.0.1:8000] [--start 132] [--until 195]
+Usage: .venv/bin/python scripts/record_demo.py [--url http://127.0.0.1:8000] [--start 96] [--until 194]
 
 Without --url it starts its own server in replay mode on a free port. It drives a headless Chromium over the
 DevTools protocol, presses Play call, screenshots the page every --interval seconds of the call, and builds both
 files with ffmpeg. No API keys are needed: replay plays the cached live run in data/replay/latest/.
 Needs ffmpeg and a Chromium build: set CHROME_PATH, or run `playwright install chromium-headless-shell` once.
 
-Defaults frame the key moment: the clip starts at 2:12, the CFO says "guide down in EPS" at 2:27, and the
-Core EPS flag fills in by 2:50 and keeps gaining evidence until the next flag lands on top at 3:15.
+Defaults frame the stage replay (PepsiCo run 20261011-134427). Replay leaves out lines spoken before the start,
+so the capture starts at 1:36 and the GIF opens at 2:06 with the transcript already full. The first flags land
+at 2:18, the CFO says "guide down in EPS" at 2:28, and the Core EPS CUT card lands at 2:40 and stays pinned on
+top to the end at 3:14.
 """
 
 from __future__ import annotations
@@ -140,12 +142,12 @@ def ffmpeg(*args: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--url", help="use a running Call Desk server instead of starting one")
-    parser.add_argument("--start", type=float, default=132, help="clip second to start from (a 12 s chunk boundary)")
+    parser.add_argument("--start", type=float, default=96, help="clip second to start from (a 12 s chunk boundary)")
     parser.add_argument("--until", type=float, default=194, help="clip second to stop at")
     parser.add_argument("--interval", type=float, default=0.25, help="seconds of call between screenshots")
     parser.add_argument("--speedup", type=float, default=3.0, help="GIF playback speed")
-    parser.add_argument("--gif-skip", type=float, default=12.0,
-                        help="seconds of the recording the GIF leaves out, so it opens on the first flags (the MP4 keeps them)")
+    parser.add_argument("--gif-skip", type=float, default=30.0,
+                        help="seconds of the recording the GIF leaves out, so it opens with the transcript full (the MP4 keeps them)")
     parser.add_argument("--gif-width", type=int, default=1200)
     parser.add_argument("--out", default=str(ROOT / "docs" / "media"))
     args = parser.parse_args()
