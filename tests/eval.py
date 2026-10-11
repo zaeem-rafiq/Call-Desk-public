@@ -47,6 +47,8 @@ def _value_ok(value: str | None, expected: list[float]) -> bool:
 
 
 def check(flags: list[dict]) -> list[tuple[str, bool, str]]:
+    """Degraded flags (live agent failed) never count toward a pass."""
+    flags = [f for f in flags if not f.get("degraded")]
     results = []
     for spec in GOLDEN["spoken_flags"]:
         metrics = spec.get("metric_any") or [spec["metric"]]
@@ -112,6 +114,9 @@ def main() -> int:
             lat = f"  +{f['_first_t'] - f['t_offset']:.0f}s flag / +{f['_final_t'] - f['t_offset']:.0f}s checked"
         print(f"  {f['t_offset']:6.1f}s {f['direction']:8} {f['metric_label']:<34} {str(f.get('new_value'))[:28]:<28} conf={f.get('confidence')}{lat}")
 
+    degraded = [f["id"] for f in flags if f.get("degraded")]
+    if degraded:
+        print(f"\ndegraded flags (agent failed, excluded from checks): {', '.join(degraded)}")
     results = check(flags)
     print("\nchecks:")
     for name, ok, detail in results:
