@@ -7,6 +7,9 @@ from datetime import datetime
 from . import config
 
 _RANK = {"cut": 0, "raise": 0, "reaffirm": 1, "new": 2, "n/a": 3}
+# Same plain words as the screen (static/app.js BADGE), for readers outside finance.
+_LABEL = {"cut": "LOWERED", "raise": "RAISED", "reaffirm": "UNCHANGED", "new": "NEW", "n/a": "NOTE"}
+_DIRECTION_WORD = {"cut": "lowered", "raise": "raised", "reaffirm": "unchanged", "new": "new", "n/a": "note"}
 
 
 def _pct(v: float | None) -> str:
@@ -58,7 +61,7 @@ def morning_note(history: list[dict]) -> str:
     for f in ordered:
         if f.get("status") != "checked":
             continue
-        label = {"n/a": "NOTE"}.get(f["direction"], f["direction"].upper())
+        label = _LABEL.get(f["direction"], f["direction"].upper())
         lines += ["", f"### {label} · {f['metric_label']}", f"{_time(f.get('call_ts', ''))} · {f.get('speaker', '')}", ""]
         change = f"{f.get('prior_value') or 'no prior guidance'} → {f.get('new_value') or 'not stated'}"
         source = f.get("new_value_source") or ""
@@ -80,7 +83,7 @@ def morning_note(history: list[dict]) -> str:
         rows = f.get("related_changes") or []
         if rows:
             lines += ["", "| Guidance line | Prior | Now | Change |", "|---|---|---|---|"]
-            lines += [f"| {r['metric_label']} | {r.get('prior_value') or 'n/a'} | {r['new_value']} | {r['direction']} |" for r in rows]
+            lines += [f"| {r['metric_label']} | {r.get('prior_value') or 'n/a'} | {r['new_value']} | {_DIRECTION_WORD.get(r['direction'], r['direction'])} |" for r in rows]
         sources = [e for e in f.get("evidence", []) if e.get("stance") in ("supports", "contradicts")][:4]
         if sources:
             lines += ["", "Sources:"] + [f"- {e['source']}: {e.get('ref', '')} ({e['stance']})" for e in sources]
