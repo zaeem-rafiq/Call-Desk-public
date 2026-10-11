@@ -28,15 +28,17 @@ uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requi
 
 ## Results
 
-From the recorded live run in `data/replay/latest/` (run `20261011-115458`): all five sponsor services live, real-time speed, one call.
+From the recorded live run in `data/replay/latest/` (run `20261011-134427`, the stage replay): all five sponsor services live, real-time speed, one call.
 
 | Measure | Result |
 |---|---|
 | Golden checks passed (`tests/golden.json`) | 8 of 8 |
-| CFO's "guide down in EPS" to a red flag on screen | about 11 s |
-| CFO's line to the verdict with the old and new numbers | about 21 s |
+| CFO's "guide down in EPS" to a red flag on screen | about 12 s |
+| CFO's line to the verdict with the old and new numbers | about 24 s |
 | Confidence on the EPS cut | 0.92 |
-| Flags raised, errors, degraded flags | 5, 0, 0 |
+| Nimble verification agent on the EPS cut (a fresh run, not a stored result) | high trust, 7 official sources, 17 s |
+| Tiger Data: PEP in the 30 minutes after the quote, vs the XLP staples ETF | −0.91 points; peer KO +0.03, MDLZ and KDP unchanged (no trades before the open); 2 ms query |
+| Flags raised, errors, degraded flags | 9, 0, 0 |
 
 A second call shows it is not built for one company: **Delta Air Lines (DAL) Q3 2026**, October 9, 2026, whose CFO reads the outlook aloud. Pick it in the header, or open `?call=dal_q3_2026`. Its recorded live run (`20261011-125425`) passes 10 of 10 golden checks with 0 errors; the headline card reads adjusted EPS cut from $6.50–$7.50 to $5.10–$5.60 per share (confidence 0.92), benchmarked against the JETS airline ETF.
 
