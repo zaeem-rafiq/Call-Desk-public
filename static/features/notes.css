@@ -1,0 +1,11 @@
+/* notes feature: NOTE cards stay folded behind one "Show N notes" row under the main cards */
+.feed.notes-hidden > .flag.compact { display: none; }
+.notes-toggle { list-style: none; }
+.notes-toggle button {
+  width: 100%; padding: 9px 14px; text-align: left;
+  background: transparent; border: 1px dashed var(--line-2); border-radius: var(--radius);
+  font: 600 10px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+}
+.notes-toggle button::after { content: " ▾"; }
+.notes-toggle button[aria-expanded="true"]::after { content: " ▴"; }
+.notes-toggle button:hover { color: var(--text); border-color: var(--muted); }
