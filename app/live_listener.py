@@ -15,6 +15,7 @@ import difflib
 import logging
 import re
 import time
+from collections import deque
 from typing import AsyncIterator
 
 from . import config, observability
@@ -24,7 +25,9 @@ from .claims import METRICS, ChunkResult
 log = logging.getLogger("calldesk")
 
 FRAME_S = 0.1  # 100 ms of 16 kHz PCM per websocket frame
-_SENTENCE = re.compile(r"[^.!?]+[.!?]+(?:\s+|$)")
+HISTORY_S = 600.0  # Gemini Live's final text can re-send a long turn minutes after its interim text was sent
+_END = re.compile(r"[.!?]+(?=\s|$)")  # the dot in "$1.72" or "3.1%" is no sentence end
+_ABBREV = {"mr", "mrs", "ms", "dr", "vs", "st"}
 
 TEXT_LISTEN = """You are the listening layer of Call Desk, which monitors earnings calls live for corporate IR and FP&A teams.
 The input is the newest sentences of a LIVE automatic transcript of {company} ({ticker}): {title}. {context}
@@ -60,8 +63,12 @@ def _seen(sentence: str, emitted: list[str]) -> bool:
     if not n:
         return True
     nums = {w for w in n.split() if any(ch.isdigit() for ch in w)}
-    if any(n == e or n in e or (len(n) > 12 and difflib.SequenceMatcher(None, n, e).ratio() > 0.85 and nums <= set(e.split()))
-           for e in emitted):
+    pool = emitted if len(n.split()) >= 4 else emitted[-24:]  # short lines ("Thank you.") recur: only recent ones repeat
+    if n in pool:
+        return True
+    if any(n in e or (len(n) > 12 and 2 * min(len(n), len(e)) / (len(n) + len(e)) > 0.85  # cheap length check first
+                      and difflib.SequenceMatcher(None, n, e).ratio() > 0.85 and nums <= set(e.split()))
+           for e in pool):
         return True
     words = n.split()
     recent = set(" ".join(emitted[-8:]).split())
@@ -70,10 +77,84 @@ def _seen(sentence: str, emitted: list[str]) -> bool:
     return len(words) >= 3 and sum(w in recent for w in words) / len(words) >= 0.85
 
 
-def _complete_sentences(text: str) -> tuple[list[str], str]:
-    sentences = [m.group(0).strip() for m in _SENTENCE.finditer(text)]
-    consumed = sum(len(m.group(0)) for m in _SENTENCE.finditer(text))
-    return sentences, text[consumed:].strip()
+class _Tracker:
+    """Turns Gemini Live's stream of interim and final transcripts into sentences to send, each once."""
+
+    def __init__(self) -> None:
+        self._sent: deque[tuple[float, str]] = deque()  # (when, normalised) for the last HISTORY_S seconds
+        self._last_done: list[str] = []
+        self._last_text = ""
+
+    def update(self, text: str, final: bool, now: float) -> list[str]:
+        unchanged = text == self._last_text
+        done, tail = _complete_sentences(text, settled=final or unchanged)
+        if final:
+            ready = done + ([tail] if tail else [])
+        else:
+            # Ready once more words follow it, or it is unchanged since the previous update.
+            ready = done if (tail or unchanged or (done and done == self._last_done)) else done[:-1]
+        self._last_done = [] if final else done
+        self._last_text = "" if final else text
+        return self._fresh(ready, now)
+
+    def _fresh(self, sentences: list[str], now: float) -> list[str]:
+        while self._sent and now - self._sent[0][0] > HISTORY_S:
+            self._sent.popleft()
+        emitted = [e for _, e in self._sent]
+        out = []
+        for s in sentences:
+            if _seen(s, emitted):
+                continue
+            rest = _extension(s, emitted[-8:])
+            if rest is None:
+                out.append(s)
+            elif rest:
+                out.append(rest)
+            emitted.append(_norm(s))
+            self._sent.append((now, emitted[-1]))
+        return out
+
+
+def _extension(sentence: str, recent: list[str]) -> str | None:
+    """Interim text often ends a sentence, then revises the period to a comma and goes on ("…the Fly Delta app."
+    → "…the Fly Delta app and completed the rollout…"). Return only the words after the part already sent
+    ("" if nothing new is left), or None if this sentence does not extend a recent one."""
+    words = _norm(sentence).split()
+    for e in reversed(recent):
+        k = len(e.split())
+        if k < 4 or len(words) <= k or difflib.SequenceMatcher(None, " ".join(words[:k]), e).ratio() < 0.9:
+            continue
+        raw = sentence.split()
+        seen = 0
+        for i, tok in enumerate(raw):
+            seen += len(_norm(tok).split())
+            if seen >= k:
+                return " ".join(raw[i + 1:])
+    return None
+
+
+def _abbreviation(head: str) -> bool:
+    """True if the dot after `head` belongs to "U.S.", "e.g." or "Mr." rather than ending a sentence."""
+    word = head.rsplit(None, 1)[-1].lstrip("(\"'") if head.strip() else ""
+    last = word.rsplit(".", 1)[-1]
+    return (len(last) == 1 and last.isalpha()) or last.lower() in _ABBREV
+
+
+def _complete_sentences(text: str, settled: bool = False) -> tuple[list[str], str]:
+    """Split off the finished sentences; the rest is the unfinished tail. No text is ever skipped.
+    `settled`: the text is final or unchanged since the last update, so a trailing "$1." is a sentence end."""
+    sentences: list[str] = []
+    start = 0
+    for m in _END.finditer(text):
+        head = text[start:m.start()]
+        if m.group() == "." and _abbreviation(head):
+            continue
+        if not settled and m.group() == "." and m.end() == len(text) and head[-1:].isdigit():
+            break  # "profit of $1." may still become "$1.6 billion"
+        if head.strip():
+            sentences.append(text[start:m.end()].strip())
+        start = m.end()
+    return sentences, text[start:].strip()
 
 
 def _model() -> str:
@@ -140,8 +221,7 @@ async def stream(info: config.CallInfo, call_audio: CallAudio, start_s: float, a
             await session.send_realtime_input(audio_stream_end=True)
 
         async def receive() -> None:
-            emitted: list[str] = []  # recent sentences already sent, normalised (interim text revises itself)
-            last_done: list[str] = []
+            tracker = _Tracker()
             async for msg in session.receive():
                 sc = msg.server_content
                 if not sc:
@@ -151,17 +231,8 @@ async def stream(info: config.CallInfo, call_audio: CallAudio, start_s: float, a
                 text = final or (interim_obj.text if interim_obj and interim_obj.text else None)
                 if not text:
                     continue
-                done, tail = _complete_sentences(text)
-                if final:
-                    ready = done + ([tail] if tail else [])
-                else:
-                    # Ready once more words follow it, or it is unchanged since the previous update.
-                    ready = done if (tail or (done and done == last_done)) else done[:-1]
-                last_done = [] if final else done
-                new = [x for x in ready if not _seen(x, emitted)]
+                new = tracker.update(text, bool(final), time.monotonic())
                 if new:
-                    emitted.extend(_norm(x) for x in new)
-                    del emitted[:-24]
                     await sentences_q.put((audio_now() or 0.0, new))
 
         async def extract() -> None:
