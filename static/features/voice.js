@@ -2,7 +2,8 @@
 // Gemini TTS alerts: shows the spoken line on cut / raise cards and plays each alert once per page session.
 
 const STORE_KEY = "calldesk.voiceAlerts";
-const played = new Set(); // flag ids whose audio already played (or was skipped) in this page session
+const played = new Set(); // "<run id>:<flag id>" whose audio already played (or was skipped) in this page session
+let runId = ""; // the run whose events are streaming; a new run's flags reuse ids like f01-core_eps_growth
 let muted = readMuted();
 let toggle = null;
 let queue = Promise.resolve(); // alerts play one after another, never on top of each other
@@ -88,6 +89,11 @@ function playOnce(url, card) {
 
 ensureToggle(); // module scripts run after the document is parsed, so the top bar exists
 
+// Called on each run's reset event (an SSE reconnect replays the same run id, so its alerts do not repeat).
+export function setVoiceRun(id) {
+  runId = id;
+}
+
 export function onFlagVoice(f) {
   ensureToggle();
   if (!f || !f.alert_text) return;
@@ -108,8 +114,9 @@ export function onFlagVoice(f) {
     }
     line.querySelector(".voice-text").textContent = f.alert_text;
   }
-  if (!isAlertUrl(f.alert_audio_url) || played.has(f.id)) return;
-  played.add(f.id);
+  const key = `${runId}:${f.id}`;
+  if (!isAlertUrl(f.alert_audio_url) || played.has(key)) return;
+  played.add(key);
   if (muted) return;
   queue = queue.then(() => playOnce(f.alert_audio_url, document.getElementById("flag-" + f.id)));
 }

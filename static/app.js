@@ -3,7 +3,7 @@
 // Feature modules (static/features/*.js) each own one sponsor feature; app.js only calls their exports.
 
 import { renderTigerExtra } from "./features/tiger.js";
-import { onFlagVoice } from "./features/voice.js";
+import { onFlagVoice, setVoiceRun } from "./features/voice.js";
 import { renderBrief, resetBrief } from "./features/brief.js";
 import { initSentryBrowser, traceFlagRender } from "./features/sentry.js";
 
@@ -687,21 +687,31 @@ async function play() {
   if (state.hasAudio) {
     // The server snaps the start to a chunk boundary; the status event re-syncs if it differs.
     audio.currentTime = Math.floor(startParam / (state.chunkS || 12)) * (state.chunkS || 12);
-    audio.play().catch(() => { $("#audio-state").textContent = "AUDIO BLOCKED — CLICK PLAY AGAIN"; });
+    audio.play().catch(() => {
+      $("#audio-state").textContent = "AUDIO BLOCKED — CLICK THE PAGE TO HEAR IT";
+      document.addEventListener("click", () => {  // a click is the user gesture the browser wants; join the call where the clock is
+        if (!state.running || !audio.paused) return;
+        audio.currentTime = currentOffset();
+        audio.play().then(() => { $("#audio-state").textContent = state.mode === "replay" ? "REPLAY" : "LIVE"; }).catch(() => {});
+      }, { once: true, capture: true });
+    });
   }
 }
 
 // ---------- SSE ----------
 function connect() {
   const es = new EventSource("/api/events");
-  es.addEventListener("reset", () => { if (state.listen) resetUI(); });
+  es.addEventListener("reset", (e) => {
+    setVoiceRun(JSON.parse(e.data || "{}").run_id || "");
+    if (state.listen) resetUI();
+  });
   es.addEventListener("status", (e) => {
     if (!state.listen) return;  // the server's last run is another call's: show nothing until Play
     const s = JSON.parse(e.data);
     if (s.integrations) renderPills(s.integrations);
     if (s.speed) state.speed = s.speed;
     if (s.chunk_s) state.chunkS = s.chunk_s;
-    if (s.state === "running" && s.start_s !== undefined && !state.joinedMidRun) {
+    if (s.state === "running" && s.start_s !== undefined && !state.joinedMidRun && (s.t ?? 0) < 2) {
       state.startS = s.start_s;
       if (state.hasAudio && Math.abs(audio.currentTime - s.start_s) > 1.5 && !audio.paused) audio.currentTime = s.start_s;
     }
@@ -797,7 +807,12 @@ async function init() {
     if (!state.duration) { state.duration = audio.duration; $("#duration").textContent = fmtTime(audio.duration); }
   });
   for (const b of document.querySelectorAll(".mode button")) b.addEventListener("click", () => !b.disabled && setMode(b.dataset.mode));
-  $("#play").addEventListener("click", play);
+  let lastToggle = 0;
+  $("#play").addEventListener("click", (e) => {
+    if (e.detail > 1 || performance.now() - lastToggle < 1500) return;  // a double-click would start the run, then stop it
+    lastToggle = performance.now();
+    play();
+  });
   document.addEventListener("click", (e) => {
     const btn = e.target.closest(".expand");
     if (btn) { e.stopPropagation(); toggleDetail(btn.closest(".flag")); }
