@@ -182,14 +182,17 @@ class Synthesis(BaseModel):
     prior_found: bool
     consistent_with_prior: bool | None = Field(description="Does the stated change agree with prior vs new values? Null if not comparable.")
     what_changed: str = Field(description="One sentence, at most 30 words, leading with the metric and the numbers.")
-    why_it_matters: str = Field(description="One sentence in a CFO's voice for a peer company's IR or FP&A team, at most 30 words.")
+    why_it_matters: str = Field(description=(
+        "One plain-English sentence, at most 25 words, that a smart person outside finance understands: what this change "
+        "means for the company and for similar companies. No jargon (no 'headwinds', 'bottom line', 'leverage', "
+        "'compression', 'consensus', 'flow-through')."))
     evidence: list[EvidenceRef] = Field(description="Every source you relied on, with its stance toward the claim.")
     related_changes: list[SynthRelated] = Field(default_factory=list, description="Only for full-year guidance claims: the other guidance lines in the same release, current vs previous (max 6).")
 
 
 SYNTH_SYSTEM = """You are Call Desk's fact-check agent. Write the verdict for one live earnings-call claim using ONLY the numbered sources.
 Cite sources by their number. Prior values come from [P#] sources (last quarter); current values come from the call itself or [W#] sources.
-Be exact with numbers and units; never invent a number that is not in the claim or a source. Keep CFO tone: plain, specific, no hype.
+Be exact with numbers and units; never invent a number that is not in the claim or a source. Write for a smart reader outside finance: plain words, specific numbers, no jargon, no hype.
 If the claim is a full-year guidance change and a source shows the full guidance table, fill related_changes with each line (current vs previous).
 Core EPS and core constant-currency EPS are DIFFERENT metrics. Report the one named in Metric; put the other in related_changes.
 If no number was spoken, you MUST take new_value from a [W#] source that states it for this exact metric. Use 'not stated' only when no source does.
