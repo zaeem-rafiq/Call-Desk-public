@@ -65,7 +65,7 @@ Five tools work together. Each one has one job.
 
 ## Try it in one minute
 
-You can watch the PepsiCo demo on your own computer. Replay mode plays a recorded live run of the call. It needs no API keys.
+You can watch the PepsiCo demo on your own computer. Replay mode plays a recorded live run of the call. It needs no API keys. The public copy's replay carries the cards and status, not the spoken words: the call transcript is left out, so the transcript panel stays empty.
 
 ```bash
 git clone https://github.com/zaeem-rafiq/Call-Desk-public.git && cd Call-Desk-public
@@ -187,7 +187,7 @@ cp .env.example .env        # fill in keys; any blank key runs that integration 
 - **Golden eval.** Run `.venv/bin/python tests/eval.py`. It checks the EPS cut heard in the audio and the five FY2026 guidance lines with the correct direction. A run with Gemini mocked is labelled MOCK.
 - **Unit tests.** Run `.venv/bin/python -m pytest -q`.
 - **Live self-check.** Run `.venv/bin/python scripts/verify_live.py`. It sends three claims at once through every sponsor, live, and prints PASS, WARN or FAIL for each check (`--only tiger,voice,brief,sentry` runs just those). With the stored Nimble results it starts no agent runs.
-- **Last-resort demo.** Run `.venv/bin/python -m app.main --replay`. It replays `data/replay/latest/` (the cached flags and transcript) with the original timing. Without the audio file `--replay` still works; a live run needs `data/call.mp3`.
+- **Last-resort demo.** Run `.venv/bin/python -m app.main --replay`. It replays `data/replay/latest/` (the cached flags, and in the working repository the transcript) with the original timing. Without the audio file `--replay` still works; a live run needs `data/call.mp3`.
 - **Demo media.** Run `.venv/bin/python scripts/record_demo.py` after a UI change or a new replay cache. It records `docs/media/demo.gif` from replay mode with headless Chromium, plus a local `demo.mp4` with the call audio, which stays out of Git.
 
 ### Environment
@@ -209,7 +209,7 @@ Set `MOCK_<NAME>=1` to force a mock even when a key is present. `ENRICH=0` turns
 - **Prior-quarter data.** The prior-quarter warehouse (`data/prior/`) holds only information published before the Q3 call.
 - **Evaluation-only text.** `data/q3_transcript.txt` and `data/raw/` are used only for evaluation and are never given to the agent. Neither is in this repository.
 - **Call transcripts are not in this repository.** They are third-party text, so they stay on the developer's machine. Without them, the prior-quarter warehouse loads only our own summary, `data/prior/q2_2026_guidance.md`, which holds every guidance number the demo checks. PepsiCo posts its own call transcripts on its [investor earnings page](https://www.pepsico.com/investors/earnings).
-- **Public repository.** It is made by `scripts/make_public_copy.py` and leaves out the call audio, the vendor price files and third-party transcripts; the scripts above rebuild the audio and prices locally.
+- **Public repository.** It is made by `scripts/make_public_copy.py` and leaves out the call audio, the vendor price files, third-party transcripts and Call Desk's own transcripts of the calls (the replay logs keep the cards but not the spoken words); the scripts above rebuild the audio and prices locally.
 - **Cached agent results.** A Nimble verification shown as "cached" is the stored result of an earlier live run of the same check, with its time.
 - **Price data.** yfinance provides 1-minute bars, not trades. Each bar is loaded as four bar-derived ticks (open, high, low, close). The continuous aggregate rebuilds exact 1-minute OHLC from them. A live feed would insert real trades into the same hypertable. The yfinance bars are not in this repository: run `scripts/fetch_prices.py` before `scripts/seed_tiger.py` (the seed reads `data/prices.csv`). Without them the two CSV price tests are skipped.
 
